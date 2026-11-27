@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.tg.TGLauncher</id>
+  <name>TG Launcher</name>
+  <summary>Next-generation open source Minecraft launcher</summary>
+  <developer id="org.tg">
+    <name>TG</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <description>
+    <p>TG Launcher is a next-generation open source Minecraft launcher by TG.</p>
+  </description>
+  <launchable type="desktop-id">org.tg.TGLauncher.desktop</launchable>
+  <url type="homepage">https://github.com/ShadowGamerIND37/OneLauncher</url>
+  <url type="bugtracker">https://github.com/ShadowGamerIND37/OneLauncher/issues</url>
+  <url type="vcs-browser">https://github.com/ShadowGamerIND37/OneLauncher</url>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>oneclient_app</binary>
+  </provides>
+</component>

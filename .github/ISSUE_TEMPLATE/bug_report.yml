@@ -1,5 +1,5 @@
 name: Bug report
-description: Create a report to help us improve Polyfrost. Include screenshots if possible.
+description: Create a report to help us improve TG Launcher. Include screenshots if possible.
 labels: [bug]
 body:
   - type: markdown
@@ -18,8 +18,7 @@ body:
       multiple: true
       options:
         - Core
-        - OneClient
-        - OneLauncher
+        - TG Launcher
   - type: textarea
     attributes:
       label: Describe the bug

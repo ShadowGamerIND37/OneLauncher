@@ -10,7 +10,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-USER_AGENT = "Polyfrost/OneLauncher (crowdin-publish; +https://github.com/Polyfrost/OneLauncher)"
+USER_AGENT = "ShadowGamerIND37/OneLauncher (crowdin-publish; +https://github.com/ShadowGamerIND37/OneLauncher)"
 API_URL = "https://api.crowdin.com/api/v2"
 BUILD_TIMEOUT = 900
 POLL_INTERVAL = 5

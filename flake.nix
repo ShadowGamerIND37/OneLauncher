@@ -1,5 +1,5 @@
 {
-  description = "OneClient (Polyfrost OneLauncher) pour NixOS";
+  description = "TG Launcher pour NixOS";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -11,21 +11,21 @@
         config.allowUnfree = true;
       };
 
-      oneclient = pkgs.callPackage ./nix/package.nix { };
+      tglauncher = pkgs.callPackage ./nix/package.nix { };
     in
     {
       packages.${system} = {
-        inherit oneclient;
-        default = oneclient;
+        inherit tglauncher;
+        default = tglauncher;
       };
 
       apps.${system}.default = {
         type = "app";
-        program = "${oneclient}/bin/oneclient";
+        program = "${tglauncher}/bin/tglauncher";
       };
 
       overlays.default = final: prev: {
-        oneclient = final.callPackage ./nix/package.nix { };
+        tglauncher = final.callPackage ./nix/package.nix { };
       };
     };
 }

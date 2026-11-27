@@ -126,7 +126,7 @@ async fn weigh(
 
     if let Some(old) = leftovers(state).await {
         return Err(format!(
-            "Clear the {} still sitting in {} first. OneClient keeps track of one old folder at a time.",
+            "Clear the {} still sitting in {} first. TG Launcher keeps track of one old folder at a time.",
             format_bytes(old.bytes),
             old.path.display()
         ));
@@ -407,7 +407,7 @@ pub fn restart_pending(state: &LauncherState, current: &Path) -> Option<String> 
 
     (settled != current).then(|| {
         format!(
-            "A move to {} is already waiting. Restart OneClient to finish it.",
+            "A move to {} is already waiting. Restart TG Launcher to finish it.",
             settled.display()
         )
     })
@@ -891,7 +891,7 @@ mod tests {
 
     #[test]
     fn a_folder_that_is_not_the_config_folder_gives_nothing_up() {
-        let names = config_owned_names(Path::new("D:").join("OneClient").as_path());
+        let names = config_owned_names(Path::new("D:").join("TG Launcher").as_path());
 
         assert!(
             names.is_empty(),

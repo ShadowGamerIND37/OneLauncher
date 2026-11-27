@@ -1,4 +1,4 @@
-name: OneClient Release Build
+name: TG Launcher Release Build
 
 
 on:
@@ -12,7 +12,7 @@ on:
 # individual steps that actually need them instead.
 
 concurrency:
-  group: oneclient-release
+  group: tglauncher-release
   cancel-in-progress: false
 
 jobs:
@@ -67,15 +67,15 @@ jobs:
             echo "::error::Could not read version from [workspace.package] in Cargo.toml"
             exit 1
           fi
-          TAG="oneclient-$VERSION"
-          echo "Releasing OneClient $VERSION"
+          TAG="tglauncher-$VERSION"
+          echo "Releasing TG Launcher $VERSION"
 
           # Abort rather than clobber: a published release (or an existing tag,
           # which only appears once a release is published) means this version
           # already shipped. A *draft* is a previous failed/partial run of this
           # same workflow, so reuse it.
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag $TAG already exists on origin - OneClient $VERSION has already been released. Add a change file with \`knope document-change\` first."
+            echo "::error::Tag $TAG already exists on origin - TG Launcher $VERSION has already been released. Add a change file with \`knope document-change\` first."
             exit 1
           fi
 
@@ -85,7 +85,7 @@ jobs:
             RELEASE_EXISTS=1
           fi
           if [ "$RELEASE_EXISTS" = "1" ] && [ "$IS_DRAFT" != "true" ]; then
-            echo "::error::Release $TAG already exists and is published - refusing to overwrite OneClient $VERSION. Add a change file with \`knope document-change\` first."
+            echo "::error::Release $TAG already exists and is published - refusing to overwrite TG Launcher $VERSION. Add a change file with \`knope document-change\` first."
             exit 1
           fi
 
@@ -115,7 +115,7 @@ jobs:
             gh release create "$TAG" \
               --draft \
               --target "$SHA" \
-              --title "OneClient $VERSION" \
+              --title "TG Launcher $VERSION" \
               --notes-file notes.md
           fi
 
@@ -218,7 +218,7 @@ jobs:
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: oneclient-windows-binary-unsigned
+          name: tglauncher-windows-binary-unsigned
           path: target/release/oneclient_app.exe
           overwrite: true
 
@@ -226,7 +226,7 @@ jobs:
         if: matrix.os_key == 'darwin'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: oneclient-macos-${{ matrix.arch }}-binary
+          name: tglauncher-macos-${{ matrix.arch }}-binary
           path: target/${{ matrix.target }}/release/oneclient_app
           overwrite: true
 
@@ -333,8 +333,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          id="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=oneclient-windows-binary-unsigned" --jq '.artifacts[0].id')"
-          [ -n "$id" ] || { echo "::error::oneclient-windows-binary-unsigned artifact not found"; exit 1; }
+          id="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=tglauncher-windows-binary-unsigned" --jq '.artifacts[0].id')"
+          [ -n "$id" ] || { echo "::error::tglauncher-windows-binary-unsigned artifact not found"; exit 1; }
           echo "artifact-id=$id" >> "$GITHUB_OUTPUT"
 
       - name: (Windows) Submit SignPath signing request for app binary
@@ -419,7 +419,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $dest = 'C:\oneclient-smoke'
+          $dest = 'C:\tglauncher-smoke'
           Remove-Item -Recurse -Force $dest -ErrorAction SilentlyContinue
           $exe = Resolve-Path '${{ steps.win_installer.outputs.path }}'
           # NSIS: /S is silent, /D= sets the install dir and must be the last arg.
@@ -445,7 +445,7 @@ jobs:
         id: win_upload_unsigned
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: oneclient-windows-installer-unsigned
+          name: tglauncher-windows-installer-unsigned
           overwrite: true
           path: ${{ steps.win_installer.outputs.path }}
 
@@ -517,7 +517,7 @@ jobs:
       - name: Download app binary
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: oneclient-macos-${{ matrix.arch }}-binary
+          name: tglauncher-macos-${{ matrix.arch }}-binary
           path: target/${{ matrix.target }}/release
 
       - name: Restore executable bit
@@ -570,14 +570,14 @@ jobs:
           set -euo pipefail
           out="packages/oneclient_app/icons/generated"
           mkdir -p "$out"
-          xcrun actool packages/oneclient_app/icons/OneClient.icon \
+          xcrun actool packages/oneclient_app/icons/TGLauncher.icon \
             --compile "$out" \
-            --app-icon OneClient \
+            --app-icon TGLauncher \
             --output-partial-info-plist "$out/partial.plist" \
             --platform macosx \
             --minimum-deployment-target 26.0 \
             --errors --warnings --notices
-          rm -f "$out/OneClient.icns"
+          rm -f "$out/TGLauncher.icns"
           test -f "$out/Assets.car" || { echo "::error::actool produced no Assets.car"; exit 1; }
 
       - name: Package

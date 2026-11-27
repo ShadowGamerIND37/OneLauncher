@@ -6,13 +6,23 @@ use crate::domain::{ContentType, ProviderId};
 use crate::error::{PathsError, PathsResult};
 
 const QUALIFIER: &str = "org";
-const ORGANIZATION: &str = "Polyfrost";
+const ORGANIZATION: &str = "TG";
 
 #[cfg(not(debug_assertions))]
-const APPLICATION: &str = "OneClient";
+const APPLICATION: &str = "TG Launcher";
 
 #[cfg(debug_assertions)]
-const APPLICATION: &str = "OneClient-dev";
+const APPLICATION: &str = "TG Launcher-dev";
+
+/// Pre-rebrand location, kept so existing OneClient data is adopted instead of
+/// starting empty under the new name.
+const OLD_ORGANIZATION: &str = "Polyfrost";
+
+#[cfg(not(debug_assertions))]
+const OLD_APPLICATION: &str = "OneClient";
+
+#[cfg(debug_assertions)]
+const OLD_APPLICATION: &str = "OneClient-dev";
 
 pub const SETTINGS_FILE: &str = "settings.json";
 pub const DATABASE_FILE: &str = "user_data.db";
@@ -42,11 +52,37 @@ pub fn legacy_dir() -> Option<PathBuf> {
         .map(|dirs| dirs.data_local_dir().to_path_buf())
 }
 
+fn old_legacy_dir() -> Option<PathBuf> {
+    ProjectDirs::from(QUALIFIER, OLD_ORGANIZATION, OLD_APPLICATION)
+        .map(|dirs| dirs.data_local_dir().to_path_buf())
+}
+
+fn old_standard_dir() -> Option<PathBuf> {
+    BaseDirs::new().map(|dirs| {
+        dirs.data_dir()
+            .join(OLD_ORGANIZATION)
+            .join(OLD_APPLICATION)
+    })
+}
+
 fn resolve_default_dir() -> PathsResult<PathBuf> {
     if let Some(legacy) = legacy_dir()
         && legacy.join(SETTINGS_FILE).is_file()
     {
         return Ok(legacy);
+    }
+
+    // Rebrand migration: adopt an existing OneClient folder when the new
+    // TG Launcher folder does not exist yet.
+    if let Some(old) = old_legacy_dir()
+        && old.join(SETTINGS_FILE).is_file()
+    {
+        return Ok(old);
+    }
+    if let Some(old) = old_standard_dir()
+        && old.join(SETTINGS_FILE).is_file()
+    {
+        return Ok(old);
     }
 
     standard_dir()
@@ -314,7 +350,7 @@ mod tests {
         assert_eq!(
             tail,
             vec![OsStr::new(APPLICATION), OsStr::new(ORGANIZATION)],
-            "every Polyfrost product shares one folder and takes a single name inside it"
+            "every TG product shares one folder and takes a single name inside it"
         );
     }
 
@@ -336,9 +372,9 @@ mod tests {
         assert_eq!(
             APPLICATION,
             if cfg!(debug_assertions) {
-                "OneClient-dev"
+                "TG Launcher-dev"
             } else {
-                "OneClient"
+                "TG Launcher"
             }
         );
     }

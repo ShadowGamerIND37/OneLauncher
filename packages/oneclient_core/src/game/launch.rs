@@ -562,7 +562,7 @@ async fn start(
         None => cluster.mc_loader.to_string(),
     };
     let header = format!(
-        "OneClient {} ({})\nOS: {} {}\nGame Version: {}\nGame Loader: {loader}\nJava: {} ({java_name})\nPWD: {}\nCommand: {}\n\n",
+        "TG Launcher {} ({})\nOS: {} {}\nGame Version: {}\nGame Loader: {loader}\nJava: {} ({java_name})\nPWD: {}\nCommand: {}\n\n",
         env!("CARGO_PKG_VERSION"),
         if cfg!(debug_assertions) { "debug" } else { "release" },
         sysinfo::System::kernel_long_version(),

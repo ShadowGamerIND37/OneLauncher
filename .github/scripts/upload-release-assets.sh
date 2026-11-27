@@ -22,17 +22,17 @@ fi
 # The updater bundle isn't always arch-tagged by cargo-packager, so the two
 # macOS legs would collide on the release. Rename the updater artifact + its .sig
 # to an arch-unique name before upload, and point the manifest at that name.
-unique="OneClient_${VERSION}_${OS_KEY}_${ARCH}.${ext}"
+unique="TGLauncher_${VERSION}_${OS_KEY}_${ARCH}.${ext}"
 cp "$updater_file" "$OUT_DIR/$unique"
 cp "$updater_file.sig" "$OUT_DIR/$unique.sig"
 
 # cargo-packager names the .deb after the binary (oneclient_app_<ver>_amd64.deb).
-# Rename it to the same OneClient_<ver>_<os>_<arch> scheme as the other assets so
-# the AUR oneclient-bin package can point at a stable, predictable URL.
+# Rename it to the same TGLauncher_<ver>_<os>_<arch> scheme as the other assets so
+# the AUR tglauncher-bin package can point at a stable, predictable URL.
 deb_unique=""
 deb_matches=("$OUT_DIR"/*.deb)
 if [ -e "${deb_matches[0]:-}" ]; then
-  deb_unique="OneClient_${VERSION}_${OS_KEY}_${ARCH}.deb"
+  deb_unique="TGLauncher_${VERSION}_${OS_KEY}_${ARCH}.deb"
   cp "${deb_matches[0]}" "$OUT_DIR/$deb_unique"
 fi
 
@@ -41,7 +41,7 @@ fi
 rpm_unique=""
 rpm_matches=("$OUT_DIR"/*.rpm)
 if [ -e "${rpm_matches[0]:-}" ]; then
-  rpm_unique="OneClient_${VERSION}_${OS_KEY}_${ARCH}.rpm"
+  rpm_unique="TGLauncher_${VERSION}_${OS_KEY}_${ARCH}.rpm"
   cp "${rpm_matches[0]}" "$OUT_DIR/$rpm_unique"
 fi
 
