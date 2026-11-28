@@ -608,7 +608,7 @@ mod tests {
     fn picking_a_bundle_enables_its_defaults_in_every_cluster_and_unpicking_clears_it() {
         let groups = bundle_groups(&catalog());
         assert_eq!(groups.len(), 1);
-        let name = "OneClient 1.21.11 Fabric [SkyBlock]";
+        let name = "TG Launcher 1.21.11 Fabric [SkyBlock]";
 
         let mut on = groups[0].toggled(&HashSet::new());
         assert_eq!(
@@ -624,7 +624,7 @@ mod tests {
     fn editing_a_mod_only_touches_picked_versions() {
         let clusters = catalog();
         let groups = bundle_groups(&clusters);
-        let name = "OneClient 1.21.11 Fabric [SkyBlock]";
+        let name = "TG Launcher 1.21.11 Fabric [SkyBlock]";
 
         let keys = |selected: &HashSet<String>, remembered: &[i64]| {
             let scope = edit_scope(&groups[0], selected, remembered);
@@ -668,8 +668,8 @@ mod tests {
         assert_eq!(
             polyplus,
             vec![
-                ("OneClient 1.21.11 Fabric [QoL]", OverrideType::Disabled),
-                ("OneClient 1.21.11 Fabric [HUD]", OverrideType::Disabled),
+                ("TG Launcher 1.21.11 Fabric [QoL]", OverrideType::Disabled),
+                ("TG Launcher 1.21.11 Fabric [HUD]", OverrideType::Disabled),
             ]
         );
     }
@@ -677,7 +677,7 @@ mod tests {
     #[test]
     fn a_version_can_be_dropped_without_touching_the_others() {
         let groups = bundle_groups(&catalog());
-        let name = "OneClient 1.21.11 Fabric [SkyBlock]";
+        let name = "TG Launcher 1.21.11 Fabric [SkyBlock]";
         let mut on = groups[0].toggled(&HashSet::new());
         on.insert(pkg_key(2, name, "sb-opt"));
 

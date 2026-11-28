@@ -169,9 +169,9 @@ impl Worker {
             .assets(
                 Assets::new()
                     .large_image(LARGE_IMAGE)
-                    .large_text("OneClient"),
+                    .large_text("TG Launcher"),
             )
-            .buttons(vec![Button::new("Website", "https://polyfrost.org/")]);
+            .buttons(vec![Button::new("Website", "https://github.com/ShadowGamerIND37/OneLauncher")]);
 
         if let Err(err) = self.client.set_activity(activity) {
             tracing::warn!("Discord RPC set_activity failed: {err}");

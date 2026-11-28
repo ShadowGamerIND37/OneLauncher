@@ -13,7 +13,7 @@ impl ScratchDir {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         let n = COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        let path = std::env::temp_dir().join(format!("oneclient-{tag}-{}-{n}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("tglauncher-{tag}-{}-{n}", std::process::id()));
         std::fs::create_dir_all(&path)
             .unwrap_or_else(|e| panic!("failed to create scratch dir {}: {e}", path.display()));
 
