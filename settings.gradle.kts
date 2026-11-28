@@ -28,4 +28,4 @@ stonecutter {
     }
 }
 
-rootProject.name = "TG VanillaHUD"
+rootProject.name = "TGVanillaHUD"
