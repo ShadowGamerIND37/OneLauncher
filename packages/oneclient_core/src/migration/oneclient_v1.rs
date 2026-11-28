@@ -179,11 +179,11 @@ mod tests {
     #[test]
     fn category_extraction() {
         assert_eq!(
-            category_from_bundle_name("OneClient 1.21.1 Fabric [HUD]"),
+            category_from_bundle_name("TG Launcher 1.21.1 Fabric [HUD]"),
             Some("HUD".to_string())
         );
         assert_eq!(
-            category_from_bundle_name("OneClient 1.21.11 Fabric [QoL]"),
+            category_from_bundle_name("TG Launcher 1.21.11 Fabric [QoL]"),
             Some("QoL".to_string())
         );
         assert_eq!(category_from_bundle_name("no brackets here"), None);
