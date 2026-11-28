@@ -74,7 +74,7 @@ private val people = listOf(
     Person("Lunasa", role("polycompose_founding", "PolyCompose founding engineer"), "4614dcc468244d1c9a352e2844c6c9b2"),
     Person("Mona", role("compatengine_founding", "CompatEngine founding engineer"), "e90ea9ec080a401b8d106a53c407ac53"),
     Person("DeDiamondPro", role("config_gui_hud", "Config backend, GUI frontend, HUD"), "0b4d470ff2fb487493341eaef8ba4804"),
-    Person("rachel", role("cosmetics_lead", "Lead cosmetics designer, OneClient"), "22e98637ba974b6ba84ffb57a461ce43"),
+    Person("rachel", role("cosmetics_lead", "Lead cosmetics designer, TG Launcher"), "22e98637ba974b6ba84ffb57a461ce43"),
     Person("Qewer", role("designer", "Designer"), "9d139c40d3494916ba4b3d348a284e32"),
     Person("Caledonian", role("designer", "Designer"), "e5de6a33a9e04a4e8a493201d74875a6"),
     Person("Mo2men", role("designer", "Designer"), "bdad0d588e35422d938ae1a4c0d5d026"),
