@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.tg.compose.text.Font
+import org.polyfrost.compose.text.Font
 
 private val MinecraftIconOverrides = mapOf(
     "cog" to "/assets/tgoneconfig/ico/minecraft/cog.svg",

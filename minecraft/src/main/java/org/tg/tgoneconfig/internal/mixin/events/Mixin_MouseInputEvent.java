@@ -20,7 +20,7 @@ import net.minecraft.client.MouseHandler;
 
 //? if = 1.8.9 {
 /*import org.lwjgl.input.Mouse;
-import org.tg.compose.minecraft.legacy.LegacyInputDrain;
+import org.polyfrost.compose.minecraft.legacy.LegacyInputDrain;
 import org.tg.tgoneconfig.internal.legacy.LegacyInputEvents;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 *///?}

@@ -604,14 +604,14 @@ public final class org/tg/tgoneconfig/api/ui/v1/components/ColorPickerKt {
 	public static final synthetic fun ColorPickerPopup (Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;I)V
 	public static final fun ColorPickerPopup (Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;Lorg/tg/tgoneconfig/api/ui/v1/components/Placement;ZZLkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
 	public static final synthetic fun ColorPickerPopup (Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;ZLandroidx/compose/runtime/Composer;I)V
-	public static final fun ColorSwatchButton (Lorg/tg/compose/render/PolyColor;Lkotlin/jvm/functions/Function1;Landroidx/compose/ui/Modifier;Ljava/lang/String;ZZZZLandroidx/compose/foundation/interaction/MutableInteractionSource;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;III)V
+	public static final fun ColorSwatchButton (Lorg/polyfrost/compose/render/PolyColor;Lkotlin/jvm/functions/Function1;Landroidx/compose/ui/Modifier;Ljava/lang/String;ZZZZLandroidx/compose/foundation/interaction/MutableInteractionSource;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;III)V
 	public static final fun ColorSwatchButton-PSU77Us (JLkotlin/jvm/functions/Function1;Landroidx/compose/ui/Modifier;Ljava/lang/String;ZZZLandroidx/compose/foundation/interaction/MutableInteractionSource;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
 	public static final fun colorSwatchMenu-xwkQ0AY (Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;ZLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;J)Ljava/util/List;
 	public static synthetic fun colorSwatchMenu-xwkQ0AY$default (Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;ZLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;JILjava/lang/Object;)Ljava/util/List;
 	public static final fun colorToHex-8_81llA (J)Ljava/lang/String;
-	public static final fun rememberColorPickerModel (Lorg/tg/compose/render/PolyColor;ZLandroidx/compose/runtime/Composer;II)Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;
+	public static final fun rememberColorPickerModel (Lorg/polyfrost/compose/render/PolyColor;ZLandroidx/compose/runtime/Composer;II)Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;
 	public static final fun rememberColorPickerModel-3J-VO9M (JZLandroidx/compose/runtime/Composer;II)Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;
-	public static final fun toPolyColor (Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;)Lorg/tg/compose/render/PolyColor;
+	public static final fun toPolyColor (Lorg/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel;)Lorg/polyfrost/compose/render/PolyColor;
 }
 
 public class org/tg/tgoneconfig/api/ui/v1/components/ColorPickerModel {
@@ -959,8 +959,8 @@ public final class org/tg/tgoneconfig/api/ui/v1/components/ImageViewerKt {
 }
 
 public final class org/tg/tgoneconfig/api/ui/v1/components/ImagesKt {
-	public static final fun fromFile (Lorg/tg/compose/render/PolyBitmap$Companion;Ljava/nio/file/Path;J)Lorg/tg/compose/render/PolyBitmap;
-	public static synthetic fun fromFile$default (Lorg/tg/compose/render/PolyBitmap$Companion;Ljava/nio/file/Path;JILjava/lang/Object;)Lorg/tg/compose/render/PolyBitmap;
+	public static final fun fromFile (Lorg/polyfrost/compose/render/PolyBitmap$Companion;Ljava/nio/file/Path;J)Lorg/polyfrost/compose/render/PolyBitmap;
+	public static synthetic fun fromFile$default (Lorg/polyfrost/compose/render/PolyBitmap$Companion;Ljava/nio/file/Path;JILjava/lang/Object;)Lorg/polyfrost/compose/render/PolyBitmap;
 	public static final fun rememberImageBitmap (Ljava/nio/file/Path;ILandroidx/compose/runtime/Composer;I)Landroidx/compose/ui/graphics/ImageBitmap;
 }
 
@@ -1327,9 +1327,9 @@ public final class org/tg/tgoneconfig/api/ui/v1/components/PlayerHeadKt {
 public final class org/tg/tgoneconfig/api/ui/v1/components/PlayerHeads {
 	public static final field $stable I
 	public static final field INSTANCE Lorg/tg/tgoneconfig/api/ui/v1/components/PlayerHeads;
-	public static final fun bitmap (Ljava/util/UUID;)Lorg/tg/compose/render/PolyBitmap;
-	public static final fun bitmap (Ljava/util/UUID;Z)Lorg/tg/compose/render/PolyBitmap;
-	public static final fun defaultBitmap (Ljava/util/UUID;)Lorg/tg/compose/render/PolyBitmap;
+	public static final fun bitmap (Ljava/util/UUID;)Lorg/polyfrost/compose/render/PolyBitmap;
+	public static final fun bitmap (Ljava/util/UUID;Z)Lorg/polyfrost/compose/render/PolyBitmap;
+	public static final fun defaultBitmap (Ljava/util/UUID;)Lorg/polyfrost/compose/render/PolyBitmap;
 	public static final fun defaultFace (Ljava/util/UUID;)Landroidx/compose/ui/graphics/ImageBitmap;
 	public static final fun face (Ljava/util/UUID;)Landroidx/compose/ui/graphics/ImageBitmap;
 	public static final fun face (Ljava/util/UUID;Z)Landroidx/compose/ui/graphics/ImageBitmap;
@@ -1343,8 +1343,8 @@ public final class org/tg/tgoneconfig/api/ui/v1/components/PlayerHeads {
 
 public final class org/tg/tgoneconfig/api/ui/v1/components/PlayerSkinLayers {
 	public static final field $stable I
-	public final fun getFace ()Lorg/tg/compose/render/PolyBitmap;
-	public final fun getHat ()Lorg/tg/compose/render/PolyBitmap;
+	public final fun getFace ()Lorg/polyfrost/compose/render/PolyBitmap;
+	public final fun getHat ()Lorg/polyfrost/compose/render/PolyBitmap;
 	public final fun getSize ()I
 	public final fun getTexture ()Ljava/lang/String;
 }

@@ -144,12 +144,12 @@ public class org/tg/tgoneconfig/api/config/v1/KtConfig : org/tg/tgoneconfig/api/
 	public final fun callback (Lkotlin/properties/PropertyDelegateProvider;Lkotlin/jvm/functions/Function1;)Lkotlin/properties/PropertyDelegateProvider;
 	protected final synthetic fun checkbox (Ljava/lang/String;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
 	public static synthetic fun checkbox$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Ljava/lang/String;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
-	protected final synthetic fun color (Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
-	protected final fun color (Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
-	protected final synthetic fun color (Lorg/tg/compose/render/PolyColor;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
-	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
-	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
-	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Lorg/tg/compose/render/PolyColor;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
+	protected final synthetic fun color (Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
+	protected final fun color (Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
+	protected final synthetic fun color (Lorg/polyfrost/compose/render/PolyColor;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
+	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
+	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
+	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Lorg/polyfrost/compose/render/PolyColor;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
 	protected final synthetic fun colorList (Ljava/lang/String;[ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Z)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
 	public static synthetic fun colorList$default (Lorg/tg/tgoneconfig/api/config/v1/KtConfig;Ljava/lang/String;[ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
 	protected final synthetic fun draggableList (Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;Z)Lorg/tg/tgoneconfig/api/config/v1/KtConfig$Provider;
@@ -257,19 +257,19 @@ protected final class org/tg/tgoneconfig/api/config/v1/KtConfig$Provider : kotli
 public final class org/tg/tgoneconfig/api/config/v1/PolyColorJson {
 	public static final field $stable I
 	public static final field INSTANCE Lorg/tg/tgoneconfig/api/config/v1/PolyColorJson;
-	public static final fun decode (Ljava/lang/String;)Lorg/tg/compose/render/PolyColor;
-	public static final fun decodeOrNull (Ljava/lang/String;)Lorg/tg/compose/render/PolyColor;
-	public static final fun encode (Lorg/tg/compose/render/PolyColor;)Ljava/lang/String;
+	public static final fun decode (Ljava/lang/String;)Lorg/polyfrost/compose/render/PolyColor;
+	public static final fun decodeOrNull (Ljava/lang/String;)Lorg/polyfrost/compose/render/PolyColor;
+	public static final fun encode (Lorg/polyfrost/compose/render/PolyColor;)Ljava/lang/String;
 }
 
 public final class org/tg/tgoneconfig/api/config/v1/PolyColors {
-	public static final fun copy (Lorg/tg/compose/render/PolyColor;)Lorg/tg/compose/render/PolyColor;
-	public static final fun copy (Lorg/tg/compose/render/PolyColor;I)Lorg/tg/compose/render/PolyColor;
-	public static final fun copy (Lorg/tg/compose/render/PolyColor;IZ)Lorg/tg/compose/render/PolyColor;
-	public static final fun copy (Lorg/tg/compose/render/PolyColor;IZF)Lorg/tg/compose/render/PolyColor;
-	public static final fun copy (Lorg/tg/compose/render/PolyColor;IZFZ)Lorg/tg/compose/render/PolyColor;
-	public static final fun copy (Lorg/tg/compose/render/PolyColor;IZFZI)Lorg/tg/compose/render/PolyColor;
-	public static synthetic fun copy$default (Lorg/tg/compose/render/PolyColor;IZFZIILjava/lang/Object;)Lorg/tg/compose/render/PolyColor;
+	public static final fun copy (Lorg/polyfrost/compose/render/PolyColor;)Lorg/polyfrost/compose/render/PolyColor;
+	public static final fun copy (Lorg/polyfrost/compose/render/PolyColor;I)Lorg/polyfrost/compose/render/PolyColor;
+	public static final fun copy (Lorg/polyfrost/compose/render/PolyColor;IZ)Lorg/polyfrost/compose/render/PolyColor;
+	public static final fun copy (Lorg/polyfrost/compose/render/PolyColor;IZF)Lorg/polyfrost/compose/render/PolyColor;
+	public static final fun copy (Lorg/polyfrost/compose/render/PolyColor;IZFZ)Lorg/polyfrost/compose/render/PolyColor;
+	public static final fun copy (Lorg/polyfrost/compose/render/PolyColor;IZFZI)Lorg/polyfrost/compose/render/PolyColor;
+	public static synthetic fun copy$default (Lorg/polyfrost/compose/render/PolyColor;IZFZIILjava/lang/Object;)Lorg/polyfrost/compose/render/PolyColor;
 }
 
 public abstract class org/tg/tgoneconfig/api/config/v1/ShareCodeResult {
@@ -331,13 +331,13 @@ public final class org/tg/tgoneconfig/api/config/v1/TreeBuilders {
 	public static final fun button (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function0;)Lorg/tg/tgoneconfig/api/config/v1/Property;
 	public static final fun button (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function0;)Lorg/tg/tgoneconfig/api/config/v1/Property;
 	public static synthetic fun button$default (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
-	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;)Lorg/tg/tgoneconfig/api/config/v1/Property;
-	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;Z)Lorg/tg/tgoneconfig/api/config/v1/Property;
-	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZZ)Lorg/tg/tgoneconfig/api/config/v1/Property;
-	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZZLjava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
-	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZZLjava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
-	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
-	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/tg/compose/render/PolyColor;ZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;Z)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZZ)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZZLjava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZZLjava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun color (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static synthetic fun color$default (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;Lorg/polyfrost/compose/render/PolyColor;ZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
 	public static final fun dropdown (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;ILjava/util/List;)Lorg/tg/tgoneconfig/api/config/v1/Property;
 	public static final fun dropdown (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;ILjava/util/List;Ljava/util/Map;)Lorg/tg/tgoneconfig/api/config/v1/Property;
 	public static final fun dropdown (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/lang/String;Ljava/lang/String;ILjava/util/List;Ljava/util/Map;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
@@ -1144,7 +1144,7 @@ public final class org/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL {
 	public static synthetic fun accordion$default (Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL;
 	public final fun button (Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$RunnableProp;
 	public final fun checkbox (Z)Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$Prop;
-	public final fun color (Lorg/tg/compose/render/PolyColor;)Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$ColorProp;
+	public final fun color (Lorg/polyfrost/compose/render/PolyColor;)Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$ColorProp;
 	public final fun colorList ([I)Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$ColorListProp;
 	public static final fun config (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V
 	public final fun draggableList ([Ljava/lang/String;[Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$DraggableListProp;
@@ -1191,7 +1191,7 @@ public final class org/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$ColorListProp 
 
 public final class org/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$ColorProp : org/tg/tgoneconfig/api/config/v1/dsl/ConfigDSL$Prop {
 	public static final field $stable I
-	public fun <init> (Lorg/tg/compose/render/PolyColor;)V
+	public fun <init> (Lorg/polyfrost/compose/render/PolyColor;)V
 	public final fun getAlpha ()Z
 	public final fun getSwatch ()Z
 	public final fun setAlpha (Z)V
@@ -1463,11 +1463,11 @@ public final class org/tg/tgoneconfig/api/config/v1/serialize/adapter/impl/TGOne
 public class org/tg/tgoneconfig/api/config/v1/serialize/adapter/impl/PolyColorAdapter : org/tg/tgoneconfig/api/config/v1/serialize/adapter/Adapter {
 	public fun <init> ()V
 	public synthetic fun deserialize (Ljava/lang/Object;)Ljava/lang/Object;
-	public fun deserialize (Ljava/lang/Object;)Lorg/tg/compose/render/PolyColor;
+	public fun deserialize (Ljava/lang/Object;)Lorg/polyfrost/compose/render/PolyColor;
 	public fun getOutputClass ()Ljava/lang/Class;
 	public fun getTargetClass ()Ljava/lang/Class;
 	public synthetic fun serialize (Ljava/lang/Object;)Ljava/lang/Object;
-	public fun serialize (Lorg/tg/compose/render/PolyColor;)Ljava/lang/Object;
+	public fun serialize (Lorg/polyfrost/compose/render/PolyColor;)Ljava/lang/Object;
 }
 
 public abstract interface class org/tg/tgoneconfig/api/config/v1/serialize/impl/FileSerializer : org/tg/tgoneconfig/api/config/v1/serialize/Serializer {

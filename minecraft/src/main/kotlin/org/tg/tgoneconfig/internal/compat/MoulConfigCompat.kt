@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 import kotlin.reflect.KClass
 import org.apache.logging.log4j.LogManager
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.CompatSnapshots
 import org.tg.tgoneconfig.api.config.v1.Property
 import org.tg.tgoneconfig.api.config.v1.Tree

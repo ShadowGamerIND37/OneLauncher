@@ -21,7 +21,7 @@ import org.tg.tgoneconfig.api.ui.v1.components.handleEscapeStack
 import org.tg.tgoneconfig.api.ui.v1.theme.TGOneConfigTheme
 import org.tg.tgoneconfig.api.ui.v1.theme.ProvideTGOneConfigTheme
 import org.tg.tgoneconfig.internal.ThemeConfig
-import org.tg.compose.minecraft.screen.ComposeScreen
+import org.polyfrost.compose.minecraft.screen.ComposeScreen
 
 //? if = 1.8.9 {
 /*import net.minecraft.client.Minecraft

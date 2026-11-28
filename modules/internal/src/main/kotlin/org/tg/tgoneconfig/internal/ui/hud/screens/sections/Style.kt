@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.hud.v1.Font
 import org.tg.tgoneconfig.api.hud.v1.Hud
 import org.tg.tgoneconfig.api.hud.v1.Weight

@@ -26,10 +26,10 @@
 
 package org.tg.tgoneconfig.api.hud.v1
 
-import org.tg.compose.render.PolyColor
-import org.tg.compose.render.PolyGradient
-import org.tg.compose.render.PolyPath
-import org.tg.compose.render.RenderContext
+import org.polyfrost.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyGradient
+import org.polyfrost.compose.render.PolyPath
+import org.polyfrost.compose.render.RenderContext
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import java.util.IdentityHashMap
 import kotlin.math.abs

@@ -27,7 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import org.tg.compose.effect.polyGlassGlow
+import org.polyfrost.compose.effect.polyGlassGlow
 import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
 import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
 import kotlin.math.max

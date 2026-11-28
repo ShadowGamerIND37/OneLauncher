@@ -5,7 +5,7 @@ package org.tg.tgoneconfig.api.hud.v1
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 
 @ExperimentalTGOneConfigUiApi

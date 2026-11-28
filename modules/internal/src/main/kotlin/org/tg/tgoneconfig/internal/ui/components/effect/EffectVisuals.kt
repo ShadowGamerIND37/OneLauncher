@@ -8,7 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.unit.dp
-import org.tg.compose.backend.asComposeImageBitmap
+import org.polyfrost.compose.backend.asComposeImageBitmap
 import org.tg.tgoneconfig.internal.ui.components.Icon
 import org.tg.tgoneconfig.internal.ui.components.picker.PickerTileIcon
 import org.tg.tgoneconfig.internal.ui.themes.LocalTheme

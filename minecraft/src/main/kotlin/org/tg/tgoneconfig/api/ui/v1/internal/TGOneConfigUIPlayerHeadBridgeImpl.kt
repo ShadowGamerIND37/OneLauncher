@@ -5,10 +5,10 @@ package org.tg.tgoneconfig.api.ui.v1.internal
 
 import java.util.UUID
 import java.util.WeakHashMap
-import org.tg.compose.minecraft.mc.McPlayerFaces
-import org.tg.compose.minecraft.mc.McSkinLayers
-import org.tg.compose.minecraft.mc.McSkinLayersResult
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.minecraft.mc.McPlayerFaces
+import org.polyfrost.compose.minecraft.mc.McSkinLayers
+import org.polyfrost.compose.minecraft.mc.McSkinLayersResult
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.components.PlayerSkinLayers
 import org.tg.tgoneconfig.api.ui.v1.components.PlayerSkinLayersResult

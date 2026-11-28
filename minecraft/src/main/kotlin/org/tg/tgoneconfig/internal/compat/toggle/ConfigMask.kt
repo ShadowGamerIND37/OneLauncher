@@ -5,7 +5,7 @@ import java.lang.reflect.Array as ReflectArray
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 import org.apache.logging.log4j.LogManager
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.CompatSnapshots
 import org.tg.tgoneconfig.api.config.v1.ConfigManager
 import org.tg.tgoneconfig.api.config.v1.Property

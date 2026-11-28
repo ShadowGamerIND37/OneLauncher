@@ -18,8 +18,8 @@ import kotlinx.coroutines.launch
 import net.minecraft.client.Minecraft
 import org.tg.tgoneconfig.api.hud.v1.HudManager
 import org.tg.tgoneconfig.api.platform.v1.Platform
-import org.tg.compose.minecraft.screen.ComposeScreen
-import org.tg.compose.minecraft.platform.RenderThreadDispatcher
+import org.polyfrost.compose.minecraft.screen.ComposeScreen
+import org.polyfrost.compose.minecraft.platform.RenderThreadDispatcher
 import java.io.File
 
 //? if >= 1.21.10 {

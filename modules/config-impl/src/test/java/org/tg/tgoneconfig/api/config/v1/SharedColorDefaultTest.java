@@ -27,7 +27,7 @@
 package org.tg.tgoneconfig.api.config.v1;
 
 import org.junit.jupiter.api.Test;
-import org.tg.compose.render.PolyColor;
+import org.polyfrost.compose.render.PolyColor;
 
 import static org.junit.jupiter.api.Assertions.*;
 

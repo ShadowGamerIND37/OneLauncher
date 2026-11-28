@@ -3,7 +3,7 @@
 package org.tg.tgoneconfig.api.hud.v1
 
 import androidx.compose.runtime.Composable
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.notifications.v1.SvgMask
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.theme.TGOneConfigTheme

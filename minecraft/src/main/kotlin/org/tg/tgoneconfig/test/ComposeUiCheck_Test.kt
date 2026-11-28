@@ -34,12 +34,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.minecraft.client.gui.screens.TitleScreen
-import org.tg.compose.text.Font
+import org.polyfrost.compose.text.Font
 import org.tg.tgoneconfig.api.event.v1.EventManager
 import org.tg.tgoneconfig.api.event.v1.events.TickEvent
 import org.tg.tgoneconfig.api.platform.v1.Platform
 import org.tg.tgoneconfig.api.hud.v1.HudManager
-import org.tg.compose.minecraft.screen.ComposeScreen
+import org.polyfrost.compose.minecraft.screen.ComposeScreen
 import org.tg.tgoneconfig.internal.ui.compose.impls.TGOneConfigUIScreen
 import org.tg.tgoneconfig.internal.ui.navigation.graph.ModConfigRoute
 

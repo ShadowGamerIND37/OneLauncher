@@ -1,6 +1,6 @@
 package org.tg.tgoneconfig.api.notifications.v1
 
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.w3c.dom.Element
 import org.xml.sax.ErrorHandler
 import org.xml.sax.InputSource

@@ -14,11 +14,11 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Assumptions.assumeFalse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.tg.compose.node.PolyNode
-import org.tg.compose.node.TextNode
-import org.tg.compose.render.PolyFont
-import org.tg.compose.runtime.PolyComposeClock
-import org.tg.compose.runtime.PolyComposeRuntime
+import org.polyfrost.compose.node.PolyNode
+import org.polyfrost.compose.node.TextNode
+import org.polyfrost.compose.render.PolyFont
+import org.polyfrost.compose.runtime.PolyComposeClock
+import org.polyfrost.compose.runtime.PolyComposeRuntime
 import java.lang.invoke.MethodHandles.publicLookup
 import java.lang.invoke.MethodType.methodType
 import java.net.URLClassLoader

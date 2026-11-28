@@ -30,7 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import org.jetbrains.annotations.ApiStatus
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 
 public object NotificationTheme {
     public var background: PolyColor by mutableStateOf(PolyColor.hex("#192126").withAlpha(0.85f))

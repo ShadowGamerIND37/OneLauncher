@@ -29,7 +29,7 @@ package org.tg.tgoneconfig.api.notifications.v1
 import org.apache.logging.log4j.LogManager
 import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.skia.Image
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 

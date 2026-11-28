@@ -24,27 +24,27 @@ public final class org/tg/tgoneconfig/api/notifications/v1/Notification : org/tg
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/jetbrains/skia/Image;FLjava/util/concurrent/Callable;Ljava/util/List;)V
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/jetbrains/skia/Image;FLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)V
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/jetbrains/skia/Image;FLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;F)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/util/List;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;J)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZ)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)V
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;F)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;J)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZ)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun dismiss ()V
 	public final fun getActions ()Ljava/util/List;
 	public final fun getCreatedAt ()J
 	public final fun getDuration ()F
 	public final fun getDurationMillis ()J
 	public final synthetic fun getIcon ()Lorg/jetbrains/skia/Image;
-	public final fun getIcon ()Lorg/tg/compose/render/PolyBitmap;
+	public final fun getIcon ()Lorg/polyfrost/compose/render/PolyBitmap;
 	public final fun getIconName ()Ljava/lang/String;
 	public final fun getId ()J
 	public final fun getMessage ()Ljava/lang/String;
@@ -92,34 +92,34 @@ public final class org/tg/tgoneconfig/api/notifications/v1/NotificationHandle$De
 public final class org/tg/tgoneconfig/api/notifications/v1/NotificationTheme {
 	public static final field $stable I
 	public static final field INSTANCE Lorg/tg/tgoneconfig/api/notifications/v1/NotificationTheme;
-	public final fun accentFor (Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;)Lorg/tg/compose/render/PolyColor;
-	public final fun actionFillFor (Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;)Lorg/tg/compose/render/PolyColor;
-	public final fun getAccent ()Lorg/tg/compose/render/PolyColor;
-	public final fun getActionPrimaryText ()Lorg/tg/compose/render/PolyColor;
-	public final fun getActionSubtleText ()Lorg/tg/compose/render/PolyColor;
-	public final fun getBackground ()Lorg/tg/compose/render/PolyColor;
-	public final fun getBorder ()Lorg/tg/compose/render/PolyColor;
+	public final fun accentFor (Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;)Lorg/polyfrost/compose/render/PolyColor;
+	public final fun actionFillFor (Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;)Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getAccent ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getActionPrimaryText ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getActionSubtleText ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getBackground ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getBorder ()Lorg/polyfrost/compose/render/PolyColor;
 	public final fun getDisabledAlpha ()F
-	public final fun getError ()Lorg/tg/compose/render/PolyColor;
+	public final fun getError ()Lorg/polyfrost/compose/render/PolyColor;
 	public final fun getFontBody ()Ljava/lang/String;
 	public final fun getFontTitle ()Ljava/lang/String;
 	public final fun getIconFolder ()Ljava/lang/String;
-	public final fun getInfo ()Lorg/tg/compose/render/PolyColor;
-	public final fun getOnError ()Lorg/tg/compose/render/PolyColor;
-	public final fun getOnInfo ()Lorg/tg/compose/render/PolyColor;
-	public final fun getOnSuccess ()Lorg/tg/compose/render/PolyColor;
-	public final fun getOnWarning ()Lorg/tg/compose/render/PolyColor;
-	public final fun getProgressTrack ()Lorg/tg/compose/render/PolyColor;
+	public final fun getInfo ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getOnError ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getOnInfo ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getOnSuccess ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getOnWarning ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getProgressTrack ()Lorg/polyfrost/compose/render/PolyColor;
 	public final fun getRadiusButton ()F
 	public final fun getRadiusCard ()F
 	public final fun getRadiusProgress ()F
-	public final fun getSubtleButton ()Lorg/tg/compose/render/PolyColor;
-	public final fun getSuccess ()Lorg/tg/compose/render/PolyColor;
-	public final fun getTextPrimary ()Lorg/tg/compose/render/PolyColor;
-	public final fun getTextSecondary ()Lorg/tg/compose/render/PolyColor;
-	public final fun getWarning ()Lorg/tg/compose/render/PolyColor;
-	public final fun onActionFillFor (Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;)Lorg/tg/compose/render/PolyColor;
-	public final fun progressTrackColor ()Lorg/tg/compose/render/PolyColor;
+	public final fun getSubtleButton ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getSuccess ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getTextPrimary ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getTextSecondary ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun getWarning ()Lorg/polyfrost/compose/render/PolyColor;
+	public final fun onActionFillFor (Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;)Lorg/polyfrost/compose/render/PolyColor;
+	public final fun progressTrackColor ()Lorg/polyfrost/compose/render/PolyColor;
 }
 
 public final class org/tg/tgoneconfig/api/notifications/v1/NotificationToastsKt {
@@ -132,7 +132,7 @@ public final class org/tg/tgoneconfig/api/notifications/v1/NotificationType : ja
 	public static final field PROGRESS Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;
 	public static final field SUCCESS Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;
 	public static final field WARNING Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;
-	public final fun getAccent ()Lorg/tg/compose/render/PolyColor;
+	public final fun getAccent ()Lorg/polyfrost/compose/render/PolyColor;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public final fun getIconName ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;
@@ -151,11 +151,11 @@ public final class org/tg/tgoneconfig/api/notifications/v1/Notifications {
 	public static final synthetic fun error$default (Ljava/lang/String;Ljava/lang/String;FILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static synthetic fun error$default (Ljava/lang/String;Ljava/lang/String;JILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final synthetic fun icon (Ljava/lang/String;)Lorg/jetbrains/skia/Image;
-	public static final fun icon (Ljava/lang/String;)Lorg/tg/compose/render/PolyBitmap;
+	public static final fun icon (Ljava/lang/String;)Lorg/polyfrost/compose/render/PolyBitmap;
 	public static final synthetic fun icon (Ljava/lang/String;I)Lorg/jetbrains/skia/Image;
-	public static final fun icon (Ljava/lang/String;I)Lorg/tg/compose/render/PolyBitmap;
+	public static final fun icon (Ljava/lang/String;I)Lorg/polyfrost/compose/render/PolyBitmap;
 	public static synthetic fun icon$default (Ljava/lang/String;IILjava/lang/Object;)Lorg/jetbrains/skia/Image;
-	public static synthetic fun icon$default (Ljava/lang/String;IILjava/lang/Object;)Lorg/tg/compose/render/PolyBitmap;
+	public static synthetic fun icon$default (Ljava/lang/String;IILjava/lang/Object;)Lorg/polyfrost/compose/render/PolyBitmap;
 	public static final fun info (Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final fun info (Ljava/lang/String;Ljava/lang/String;F)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final fun info (Ljava/lang/String;Ljava/lang/String;J)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
@@ -170,34 +170,34 @@ public final class org/tg/tgoneconfig/api/notifications/v1/Notifications {
 	public static final synthetic fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/jetbrains/skia/Image;FLjava/util/concurrent/Callable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final synthetic fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/jetbrains/skia/Image;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final synthetic fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/jetbrains/skia/Image;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;F)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final synthetic fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;J)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZ)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;F)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final synthetic fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;J)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZ)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun send (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static synthetic fun send$default (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/jetbrains/skia/Image;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static synthetic fun send$default (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static synthetic fun send$default (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static synthetic fun send$default (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static synthetic fun send$default (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;J)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZ)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static synthetic fun sendOnce$default (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static final fun sendWithFloatDuration (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
-	public static synthetic fun sendWithFloatDuration$default (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/tg/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;J)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZ)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendOnce (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static synthetic fun sendOnce$default (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;Ljava/lang/String;JZLjava/util/concurrent/Callable;Ljava/util/List;Ljava/lang/Runnable;Ljava/lang/Runnable;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static final fun sendWithFloatDuration (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
+	public static synthetic fun sendWithFloatDuration$default (Ljava/lang/String;Ljava/lang/String;Lorg/tg/tgoneconfig/api/notifications/v1/NotificationType;Lorg/polyfrost/compose/render/PolyBitmap;FLjava/util/concurrent/Callable;Ljava/lang/Runnable;Ljava/util/List;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final fun success (Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final fun success (Ljava/lang/String;Ljava/lang/String;F)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
 	public static final fun success (Ljava/lang/String;Ljava/lang/String;J)Lorg/tg/tgoneconfig/api/notifications/v1/Notification;
@@ -216,7 +216,7 @@ public final class org/tg/tgoneconfig/api/notifications/v1/Notifications$Builder
 	public final fun duration (J)Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;
 	public final fun icon (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;
 	public final synthetic fun icon (Lorg/jetbrains/skia/Image;)Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;
-	public final fun icon (Lorg/tg/compose/render/PolyBitmap;)Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;
+	public final fun icon (Lorg/polyfrost/compose/render/PolyBitmap;)Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;
 	public final fun onClick (Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;
 	public final fun onDismiss (Ljava/lang/Runnable;)Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;
 	public final fun persistent ()Lorg/tg/tgoneconfig/api/notifications/v1/Notifications$Builder;

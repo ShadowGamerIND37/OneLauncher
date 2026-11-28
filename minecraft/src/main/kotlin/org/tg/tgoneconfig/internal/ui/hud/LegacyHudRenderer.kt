@@ -6,7 +6,7 @@ import java.util.WeakHashMap
 import org.apache.logging.log4j.LogManager
 import org.tg.tgoneconfig.api.hud.v1.HudManager
 import org.tg.tgoneconfig.api.hud.v1.LegacyHud
-import org.tg.compose.minecraft.render.gl.GuiDraw
+import org.polyfrost.compose.minecraft.render.gl.GuiDraw
 
 //? if > 1.8.9 {
 import net.minecraft.client.gui.GuiGraphicsExtractor

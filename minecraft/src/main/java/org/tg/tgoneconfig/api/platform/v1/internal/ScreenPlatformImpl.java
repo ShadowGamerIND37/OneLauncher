@@ -36,9 +36,9 @@ import net.minecraft.client.GameNarrator;
 import org.tg.tgoneconfig.api.event.v1.EventDelay;
 import org.tg.tgoneconfig.api.event.v1.events.FramebufferRenderEvent;
 import org.tg.tgoneconfig.api.platform.v1.ScreenPlatform;
-import org.tg.compose.minecraft.screen.ComposeScreen;
-import org.tg.compose.minecraft.screen.ComposeSupport;
-import org.tg.compose.minecraft.render.gl.GlHost;
+import org.polyfrost.compose.minecraft.screen.ComposeScreen;
+import org.polyfrost.compose.minecraft.screen.ComposeSupport;
+import org.polyfrost.compose.minecraft.render.gl.GlHost;
 //? if = 1.8.9
 //import org.tg.tgoneconfig.internal.legacy.LegacyPanoramaTracker;
 

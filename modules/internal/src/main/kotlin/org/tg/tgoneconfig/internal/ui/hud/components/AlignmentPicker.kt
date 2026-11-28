@@ -25,7 +25,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.tg.compose.layout.PolyAlign
+import org.polyfrost.compose.layout.PolyAlign
 import org.tg.tgoneconfig.api.ui.v1.a11y.A11yRole
 import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
 import org.tg.tgoneconfig.api.ui.v1.components.oneConfigClickable

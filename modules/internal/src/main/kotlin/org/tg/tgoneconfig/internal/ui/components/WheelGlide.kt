@@ -19,10 +19,10 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.tg.compose.host.LocalWheelHandler
-import org.tg.compose.host.WheelHandler
-import org.tg.compose.host.WheelInput
-import org.tg.compose.host.wheelInput
+import org.polyfrost.compose.host.LocalWheelHandler
+import org.polyfrost.compose.host.WheelHandler
+import org.polyfrost.compose.host.WheelInput
+import org.polyfrost.compose.host.wheelInput
 import org.tg.tgoneconfig.api.platform.v1.DesktopHelper
 import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
 import kotlin.math.abs

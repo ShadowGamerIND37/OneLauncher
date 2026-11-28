@@ -28,10 +28,10 @@ package org.tg.tgoneconfig.api.notifications.v1
 
 import org.apache.logging.log4j.LogManager
 import org.jetbrains.annotations.ApiStatus
-import org.tg.compose.node.PolyNode
-import org.tg.compose.render.RenderContext
-import org.tg.compose.runtime.PolyComposeHost
-import org.tg.compose.runtime.PolyComposeRuntime
+import org.polyfrost.compose.node.PolyNode
+import org.polyfrost.compose.render.RenderContext
+import org.polyfrost.compose.runtime.PolyComposeHost
+import org.polyfrost.compose.runtime.PolyComposeRuntime
 import org.tg.tgoneconfig.api.platform.v1.Platform
 
 @ApiStatus.Internal

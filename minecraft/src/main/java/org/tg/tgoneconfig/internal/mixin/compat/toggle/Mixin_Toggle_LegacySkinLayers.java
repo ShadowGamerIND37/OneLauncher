@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Pseudo
-@Mixin(targets = "org.tg.skinlayers.skin.SkinMeshCache", remap = false)
+@Mixin(targets = "org.polyfrost.skinlayers.skin.SkinMeshCache", remap = false)
 public class Mixin_Toggle_LegacySkinLayers {
     @Unique
     private static final ModToggle tgoneconfig$toggle = ModToggles.handle("legacy-skin-layers");

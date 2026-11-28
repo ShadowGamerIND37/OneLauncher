@@ -6,7 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
-import org.tg.compose.backend.drawPoly
+import org.polyfrost.compose.backend.drawPoly
 
 /**
  * Draws the blurred screen behind this element inside [shape]

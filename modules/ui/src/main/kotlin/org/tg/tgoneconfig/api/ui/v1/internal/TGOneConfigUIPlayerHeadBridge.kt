@@ -1,6 +1,6 @@
 package org.tg.tgoneconfig.api.ui.v1.internal
 
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.InternalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.components.PlayerSkinLayers

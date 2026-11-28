@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.ComponentLike
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.Config
 import org.tg.tgoneconfig.api.config.v1.MetaKeys
 import org.tg.tgoneconfig.api.config.v1.Property

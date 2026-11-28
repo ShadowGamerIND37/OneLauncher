@@ -79,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - TGOneConfig now draws its UI with [PolyCompose](https://github.com/TG/PolyCompose), which ships as its own mod and replaces the Compose Multiplatform bundle. PolyCompose 3.0.0 or newer is required
 - The HUD editor only measures where vanilla HUD elements sit while it is open
-- API: The Compose host, renderers, HUD layers, inline canvases, offscreen rendering, screen blur, entity previews and item icons moved from TGOneConfig to PolyCompose. Mods using them must depend on PolyCompose and use the `org.tg.compose` packages: `InlinePolyCanvas`, `PolyOffscreen`, `ScreenBlur` and `EntityPreview` keep their names, `ComposeHudLayer` and `ComposeHudInput` are now `HudLayer` and `HudInput`, and `PolyItemIcon` is now `McItemIcon`
+- API: The Compose host, renderers, HUD layers, inline canvases, offscreen rendering, screen blur, entity previews and item icons moved from TGOneConfig to PolyCompose. Mods using them must depend on PolyCompose and use the `org.polyfrost.compose` packages: `InlinePolyCanvas`, `PolyOffscreen`, `ScreenBlur` and `EntityPreview` keep their names, `ComposeHudLayer` and `ComposeHudInput` are now `HudLayer` and `HudInput`, and `PolyItemIcon` is now `McItemIcon`
 - API: The `poly-compose` module is gone. Depend on `org.polyfrost:polycompose-core` instead
 
 ### Fixed

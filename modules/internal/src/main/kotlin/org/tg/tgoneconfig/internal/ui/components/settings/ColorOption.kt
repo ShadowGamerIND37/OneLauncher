@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.Property
 import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
 import org.tg.tgoneconfig.api.ui.v1.components.ColorSwatchButton

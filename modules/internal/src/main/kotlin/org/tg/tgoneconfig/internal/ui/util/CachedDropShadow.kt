@@ -8,9 +8,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.graphics.toArgb
-import org.tg.compose.backend.PolyDrawCanvas
-import org.tg.compose.render.PolyColor
-import org.tg.compose.render.PolyShadow
+import org.polyfrost.compose.backend.PolyDrawCanvas
+import org.polyfrost.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyShadow
 
 @Stable
 fun Modifier.cachedDropShadow(shape: Shape, shadow: Shadow, hole: Boolean = false): Modifier {

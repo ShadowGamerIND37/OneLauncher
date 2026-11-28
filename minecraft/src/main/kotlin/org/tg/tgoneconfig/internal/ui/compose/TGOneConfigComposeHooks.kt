@@ -1,9 +1,9 @@
 package org.tg.tgoneconfig.internal.ui.compose
 
-import org.tg.compose.host.ComposeHost
-import org.tg.compose.host.GameInputLayer
-import org.tg.compose.host.OverlayRenderer
-import org.tg.compose.render.RenderContext
+import org.polyfrost.compose.host.ComposeHost
+import org.polyfrost.compose.host.GameInputLayer
+import org.polyfrost.compose.host.OverlayRenderer
+import org.polyfrost.compose.render.RenderContext
 import org.tg.tgoneconfig.api.hud.v1.HudManager
 import org.tg.tgoneconfig.api.notifications.v1.NotificationsManager
 import org.tg.tgoneconfig.api.notifications.v1.NotificationsRenderer
@@ -12,7 +12,7 @@ import org.tg.tgoneconfig.api.ui.v1.platform.HudFrameHooks
 import org.tg.tgoneconfig.internal.TGOneConfigConfig
 
 //? if = 1.8.9 {
-/*import org.tg.compose.host.LegacyInputObserver
+/*import org.polyfrost.compose.host.LegacyInputObserver
 import org.tg.tgoneconfig.internal.legacy.LegacyInputEvents
 *///?}
 

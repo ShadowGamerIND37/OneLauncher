@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import org.tg.compose.backend.asComposeImageBitmap
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.backend.asComposeImageBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.InternalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.internal.playerHeadBridge
@@ -97,7 +97,7 @@ public object PlayerHeads {
         runCatching { playerHeadBridge()?.skinLayers(texture) }.getOrNull() ?: PlayerSkinLayersResult.Unreadable
 }
 
-@Deprecated(MOVED, ReplaceWith("McSkinLayersResult", "org.tg.compose.minecraft.mc.McSkinLayersResult"))
+@Deprecated(MOVED, ReplaceWith("McSkinLayersResult", "org.polyfrost.compose.minecraft.mc.McSkinLayersResult"))
 @Suppress("DEPRECATION")
 @ExperimentalTGOneConfigUiApi
 public sealed interface PlayerSkinLayersResult {
@@ -108,7 +108,7 @@ public sealed interface PlayerSkinLayersResult {
     public class Loaded(public val layers: PlayerSkinLayers) : PlayerSkinLayersResult
 }
 
-@Deprecated(MOVED, ReplaceWith("McSkinLayers", "org.tg.compose.minecraft.mc.McSkinLayers"))
+@Deprecated(MOVED, ReplaceWith("McSkinLayers", "org.polyfrost.compose.minecraft.mc.McSkinLayers"))
 @ExperimentalTGOneConfigUiApi
 public class PlayerSkinLayers @InternalTGOneConfigUiApi constructor(
     public val texture: String,
@@ -237,8 +237,8 @@ public fun PlayerHead(playerId: UUID, size: Dp, modifier: Modifier) {
 private const val LOADED_SKIN_REFRESH_MILLIS = 1000L
 
 private const val MOVED = "Moved to McPlayerFaces in PolyCompose"
-private const val FACES = "org.tg.compose.minecraft.mc.McPlayerFaces"
-private const val IMAGE = "org.tg.compose.backend.asComposeImageBitmap"
+private const val FACES = "org.polyfrost.compose.minecraft.mc.McPlayerFaces"
+private const val IMAGE = "org.polyfrost.compose.backend.asComposeImageBitmap"
 
 private val images = WeakHashMap<PolyBitmap, WeakReference<ImageBitmap>>()
 

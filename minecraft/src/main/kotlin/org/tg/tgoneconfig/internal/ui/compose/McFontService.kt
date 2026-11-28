@@ -1,6 +1,6 @@
 package org.tg.tgoneconfig.internal.ui.compose
 
-import org.tg.compose.render.FontManager
+import org.polyfrost.compose.render.FontManager
 
 object McFontService {
     fun init() {

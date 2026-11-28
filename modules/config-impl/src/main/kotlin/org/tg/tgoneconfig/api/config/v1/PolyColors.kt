@@ -5,7 +5,7 @@ package org.tg.tgoneconfig.api.config.v1
 import com.electronwill.nightconfig.json.JsonFormat
 import com.electronwill.nightconfig.json.JsonParser
 import org.jetbrains.annotations.ApiStatus
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.serialize.adapter.impl.PolyColorAdapter
 import java.io.StringWriter
 

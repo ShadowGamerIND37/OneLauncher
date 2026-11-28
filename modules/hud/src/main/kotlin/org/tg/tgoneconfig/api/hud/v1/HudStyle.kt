@@ -3,7 +3,7 @@
 package org.tg.tgoneconfig.api.hud.v1
 
 import androidx.compose.runtime.snapshots.Snapshot
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.copy
 import org.tg.tgoneconfig.api.platform.v1.Platform
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi

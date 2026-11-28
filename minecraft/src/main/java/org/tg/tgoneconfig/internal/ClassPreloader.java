@@ -38,7 +38,7 @@ import org.tg.tgoneconfig.api.event.v1.events.InitializationEvent;
 import org.tg.tgoneconfig.api.event.v1.invoke.EventHandler;
 import org.tg.tgoneconfig.api.platform.v1.Platform;
 import org.tg.tgoneconfig.internal.compat.CompatLoader;
-import org.tg.compose.minecraft.font.StbFonts;
+import org.polyfrost.compose.minecraft.font.StbFonts;
 import org.tg.tgoneconfig.internal.ui.compose.impls.TGOneConfigUIScreen;
 
 import java.io.BufferedReader;

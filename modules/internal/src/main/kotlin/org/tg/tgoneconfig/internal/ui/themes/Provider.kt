@@ -28,9 +28,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import org.tg.compose.backend.PolyFontSource
-import org.tg.compose.render.FontManager
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.backend.PolyFontSource
+import org.polyfrost.compose.render.FontManager
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.notifications.v1.NotificationTheme
 import org.tg.tgoneconfig.api.platform.v1.Platform
 import org.tg.tgoneconfig.api.ui.v1.components.themedScrollbarStyle

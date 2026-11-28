@@ -1,7 +1,7 @@
 package org.tg.tgoneconfig.internal;
 
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
-import org.tg.compose.render.PolyBitmap;
+import org.polyfrost.compose.render.PolyBitmap;
 import org.slf4j.LoggerFactory;
 
 public final class TGOneConfigPreLaunch implements PreLaunchEntrypoint {

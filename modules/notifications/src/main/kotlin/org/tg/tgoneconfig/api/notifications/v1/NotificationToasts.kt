@@ -35,24 +35,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import org.tg.compose.composables.NodeBox
-import org.tg.compose.composables.NodeCanvas
-import org.tg.compose.composables.NodeColumn
-import org.tg.compose.composables.NodeRow
-import org.tg.compose.composables.NodeText
-import org.tg.compose.composables.PolyModifier
-import org.tg.compose.composables.align
-import org.tg.compose.composables.background
-import org.tg.compose.composables.border
-import org.tg.compose.composables.fade
-import org.tg.compose.composables.height
-import org.tg.compose.composables.margin
-import org.tg.compose.composables.padding
-import org.tg.compose.composables.size
-import org.tg.compose.composables.tag
-import org.tg.compose.composables.width
-import org.tg.compose.layout.PolyAlign
-import org.tg.compose.render.PolyFont
+import org.polyfrost.compose.composables.NodeBox
+import org.polyfrost.compose.composables.NodeCanvas
+import org.polyfrost.compose.composables.NodeColumn
+import org.polyfrost.compose.composables.NodeRow
+import org.polyfrost.compose.composables.NodeText
+import org.polyfrost.compose.composables.PolyModifier
+import org.polyfrost.compose.composables.align
+import org.polyfrost.compose.composables.background
+import org.polyfrost.compose.composables.border
+import org.polyfrost.compose.composables.fade
+import org.polyfrost.compose.composables.height
+import org.polyfrost.compose.composables.margin
+import org.polyfrost.compose.composables.padding
+import org.polyfrost.compose.composables.size
+import org.polyfrost.compose.composables.tag
+import org.polyfrost.compose.composables.width
+import org.polyfrost.compose.layout.PolyAlign
+import org.polyfrost.compose.render.PolyFont
 
 private const val CARD_WIDTH = 340f
 private const val CARD_PAD_H = 14f

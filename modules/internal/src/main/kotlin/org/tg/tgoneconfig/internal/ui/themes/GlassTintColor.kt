@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import org.tg.compose.host.BackdropSample
+import org.polyfrost.compose.host.BackdropSample
 import org.tg.tgoneconfig.api.platform.v1.Platform
 import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
 import org.tg.tgoneconfig.internal.ui.components.AnimationsMotionScale

@@ -3,10 +3,10 @@
 package org.tg.tgoneconfig.api.ui.v1.platform
 
 import androidx.compose.runtime.Composable
-import org.tg.compose.host.ComposeOptions
-import org.tg.compose.host.SceneKind
-import org.tg.compose.host.WheelHandler
-import org.tg.compose.minecraft.hud.HudLayer
+import org.polyfrost.compose.host.ComposeOptions
+import org.polyfrost.compose.host.SceneKind
+import org.polyfrost.compose.host.WheelHandler
+import org.polyfrost.compose.minecraft.hud.HudLayer
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.a11y.A11y
 import org.tg.tgoneconfig.api.ui.v1.a11y.Motion

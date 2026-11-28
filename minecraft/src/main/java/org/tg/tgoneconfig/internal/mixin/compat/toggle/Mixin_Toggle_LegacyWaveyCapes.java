@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Pseudo
-@Mixin(targets = "org.tg.waveycapes.CapeLayer", remap = false)
+@Mixin(targets = "org.polyfrost.waveycapes.CapeLayer", remap = false)
 public class Mixin_Toggle_LegacyWaveyCapes {
     @Unique
     private static final ModToggle tgoneconfig$toggle = ModToggles.handle("legacy-waveycapes");

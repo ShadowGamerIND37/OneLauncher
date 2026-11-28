@@ -5,7 +5,7 @@ package org.tg.tgoneconfig.api.ui.v1.platform
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import org.apache.logging.log4j.LogManager
-import org.tg.compose.minecraft.hud.HudInput
+import org.polyfrost.compose.minecraft.hud.HudInput
 import org.tg.tgoneconfig.api.hud.v1.HudClickInput
 import org.tg.tgoneconfig.api.hud.v1.HudManager
 import org.tg.tgoneconfig.api.hud.v1.HudMouseButton

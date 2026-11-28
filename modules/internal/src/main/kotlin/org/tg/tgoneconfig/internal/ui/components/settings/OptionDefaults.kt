@@ -1,6 +1,6 @@
 package org.tg.tgoneconfig.internal.ui.components.settings
 
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.MetaKeys
 import org.tg.tgoneconfig.api.config.v1.Property
 import org.tg.tgoneconfig.api.config.v1.Visualizer

@@ -4,9 +4,9 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import org.tg.compose.minecraft.mc.McItemIconHandle
-import org.tg.compose.minecraft.mc.McItemIcons
-import org.tg.compose.render.RenderContext
+import org.polyfrost.compose.minecraft.mc.McItemIconHandle
+import org.polyfrost.compose.minecraft.mc.McItemIcons
+import org.polyfrost.compose.render.RenderContext
 
 //? if > 1.8.9 {
 import net.minecraft.core.registries.BuiltInRegistries

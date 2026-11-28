@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
-import org.tg.compose.render.RenderContext
+import org.polyfrost.compose.render.RenderContext
 import org.tg.tgoneconfig.api.hud.v1.LocalHud
 import org.tg.tgoneconfig.internal.ui.components.picker.PickerEntry
 import java.util.ServiceLoader

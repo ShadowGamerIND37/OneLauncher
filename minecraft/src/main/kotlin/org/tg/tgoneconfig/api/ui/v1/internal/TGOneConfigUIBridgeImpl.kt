@@ -8,7 +8,7 @@ import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import org.tg.tgoneconfig.api.ui.v1.TGOneConfigUIBridge
 import org.tg.tgoneconfig.api.ui.v1.page.TGOneConfigPage
 import org.tg.tgoneconfig.internal.TGOneConfig
-import org.tg.compose.minecraft.screen.ComposeScreen
+import org.polyfrost.compose.minecraft.screen.ComposeScreen
 import org.tg.tgoneconfig.internal.ui.compose.impls.TGOneConfigUIScreen
 import org.tg.tgoneconfig.internal.ui.navigation.PageArguments
 import org.tg.tgoneconfig.internal.ui.navigation.PageRoute

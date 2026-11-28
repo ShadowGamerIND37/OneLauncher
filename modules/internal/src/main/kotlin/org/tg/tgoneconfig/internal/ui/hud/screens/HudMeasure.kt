@@ -13,8 +13,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.tg.compose.backend.drawPoly
-import org.tg.compose.render.PolyFont
+import org.polyfrost.compose.backend.drawPoly
+import org.polyfrost.compose.render.PolyFont
 import org.tg.tgoneconfig.api.ui.v1.theme.TGOneConfigTheme
 import org.tg.tgoneconfig.internal.ui.themes.Accent
 import org.tg.tgoneconfig.internal.ui.themes.TGedDark

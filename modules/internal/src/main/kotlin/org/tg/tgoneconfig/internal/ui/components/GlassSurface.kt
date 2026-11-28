@@ -8,10 +8,10 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import org.tg.compose.backend.PolyCanvas
-import org.tg.compose.backend.drawPoly
-import org.tg.compose.effect.polyGlass
-import org.tg.compose.effect.polyGlassSplit
+import org.polyfrost.compose.backend.PolyCanvas
+import org.polyfrost.compose.backend.drawPoly
+import org.polyfrost.compose.effect.polyGlass
+import org.polyfrost.compose.effect.polyGlassSplit
 import org.tg.tgoneconfig.internal.ui.themes.GlassTintColor
 import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
 import org.tg.tgoneconfig.internal.ui.themes.ReduceTransparency

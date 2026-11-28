@@ -67,9 +67,9 @@ import org.tg.tgoneconfig.internal.ui.api.ThirdPartyModCategories;
 import org.tg.tgoneconfig.internal.ui.compose.McFontService;
 import org.tg.tgoneconfig.internal.ui.compose.TGOneConfigComposeHooks;
 //? if >= 1.21.11
-import org.tg.compose.minecraft.render.blaze.BlazeHud;
-import org.tg.compose.minecraft.render.gl.GlHost;
-import org.tg.compose.minecraft.mc.McItemIcons;
+import org.polyfrost.compose.minecraft.render.blaze.BlazeHud;
+import org.polyfrost.compose.minecraft.render.gl.GlHost;
+import org.polyfrost.compose.minecraft.mc.McItemIcons;
 import org.tg.tgoneconfig.internal.ui.compose.impls.HudEditorUIScreen;
 import org.tg.tgoneconfig.internal.ui.compose.impls.TGOneConfigUIScreen;
 import org.tg.tgoneconfig.internal.ui.hud.BuiltinHudRegistrar;

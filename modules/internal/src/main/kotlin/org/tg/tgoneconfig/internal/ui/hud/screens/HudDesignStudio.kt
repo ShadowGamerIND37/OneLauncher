@@ -66,8 +66,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.tg.compose.backend.drawPoly
-import org.tg.compose.render.RenderContext
+import org.polyfrost.compose.backend.drawPoly
+import org.polyfrost.compose.render.RenderContext
 import org.tg.tgoneconfig.api.config.v1.Config
 import org.tg.tgoneconfig.api.config.v1.Properties
 import org.tg.tgoneconfig.api.config.v1.Property

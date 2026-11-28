@@ -34,8 +34,8 @@ import org.tg.tgoneconfig.api.event.v1.events.FramebufferRenderEvent;
 import org.tg.tgoneconfig.api.event.v1.events.MainMenuFpsEvent;
 import org.tg.tgoneconfig.api.event.v1.invoke.EventHandler;
 import org.tg.tgoneconfig.api.platform.v1.Platform;
-import org.tg.compose.host.ComposeHost;
-import org.tg.compose.minecraft.screen.ComposeScreen;
+import org.polyfrost.compose.host.ComposeHost;
+import org.polyfrost.compose.minecraft.screen.ComposeScreen;
 import org.tg.tgoneconfig.internal.ui.compose.impls.TGOneConfigUIScreen;
 
 import java.lang.invoke.MethodHandle;
@@ -43,7 +43,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 public final class MainMenuFpsSampler {
-    private static final String POLYPLUS_PACKAGE = "org.tg.polyplus.";
+    private static final String POLYPLUS_PACKAGE = "org.polyfrost.polyplus.";
 
     private static final long MAX_TICK_GAP_NANOS = 250L * 1_000_000L;
 

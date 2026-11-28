@@ -19,13 +19,13 @@ import org.tg.tgoneconfig.internal.TGOneConfigConfig
 import org.tg.tgoneconfig.internal.ThemeConfig
 import org.tg.tgoneconfig.internal.ui.components.BackdropUsers
 import org.tg.tgoneconfig.internal.ui.components.RetainedVisibility
-import org.tg.compose.minecraft.mc.McItemIcons
-import org.tg.compose.minecraft.screen.ComposeScreen
+import org.polyfrost.compose.minecraft.mc.McItemIcons
+import org.polyfrost.compose.minecraft.screen.ComposeScreen
 import org.tg.tgoneconfig.internal.ui.compose.TGOneConfigComposeHooks
 //? if >= 1.21.11
-import org.tg.compose.minecraft.render.blaze.BlazeHud
+import org.polyfrost.compose.minecraft.render.blaze.BlazeHud
 //? if < 1.21.11
-//import org.tg.compose.render.RenderContext
+//import org.polyfrost.compose.render.RenderContext
 import org.tg.tgoneconfig.internal.ui.guiCloseAnimationMillis
 import org.tg.tgoneconfig.internal.ui.hud.screens.HudDesignSession
 import org.tg.tgoneconfig.internal.ui.hud.screens.HudDesignStudio

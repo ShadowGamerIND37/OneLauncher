@@ -48,8 +48,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
-import org.tg.compose.backend.PolyImageBitmap
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.backend.PolyImageBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.hud.v1.HudManager
 import org.tg.tgoneconfig.api.ui.v1.components.oneConfigClickable
 import org.tg.tgoneconfig.internal.TGOneConfigConfig

@@ -2,7 +2,7 @@ package org.tg.tgoneconfig.api.config.v1.dsl
 
 import org.apache.logging.log4j.LogManager
 import org.jetbrains.annotations.ApiStatus
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.Properties
 import org.tg.tgoneconfig.api.config.v1.Property
 import org.tg.tgoneconfig.api.config.v1.Tree

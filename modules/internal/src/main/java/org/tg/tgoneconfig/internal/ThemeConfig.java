@@ -2,7 +2,7 @@ package org.tg.tgoneconfig.internal;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.tg.compose.render.PolyColor;
+import org.polyfrost.compose.render.PolyColor;
 import org.tg.tgoneconfig.api.config.v1.Config;
 import org.tg.tgoneconfig.api.config.v1.ConfigManager;
 import org.tg.tgoneconfig.api.config.v1.Node;

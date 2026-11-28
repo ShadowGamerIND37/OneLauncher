@@ -15,8 +15,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import org.tg.compose.backend.asComposeImageBitmap
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.backend.asComposeImageBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage

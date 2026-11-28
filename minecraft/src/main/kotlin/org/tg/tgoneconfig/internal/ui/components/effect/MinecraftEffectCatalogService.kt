@@ -1,6 +1,6 @@
 package org.tg.tgoneconfig.internal.ui.components.effect
 
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.event.v1.EventManager
 import org.tg.tgoneconfig.api.event.v1.events.ResourceFinishedLoading
 import org.slf4j.LoggerFactory

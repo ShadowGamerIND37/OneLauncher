@@ -2,7 +2,7 @@ package org.tg.tgoneconfig.internal.ui.components.effect
 
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshots.Snapshot
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.internal.ui.components.picker.PickerEntry
 import org.tg.tgoneconfig.internal.ui.components.picker.normalizeIds
 import java.util.Locale

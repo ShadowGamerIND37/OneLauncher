@@ -93,8 +93,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.apache.logging.log4j.LogManager
-import org.tg.compose.backend.asComposeImageBitmap
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.backend.asComposeImageBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import org.tg.tgoneconfig.api.config.v1.MetaKeys
 import org.tg.tgoneconfig.api.config.v1.Node
 import org.tg.tgoneconfig.api.config.v1.Property

@@ -21,7 +21,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import org.tg.compose.host.BackStack
+import org.polyfrost.compose.host.BackStack
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
 
 @ExperimentalTGOneConfigUiApi

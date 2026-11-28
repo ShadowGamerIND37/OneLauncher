@@ -19,7 +19,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.tg.compose.layout.PolyAlign
+import org.polyfrost.compose.layout.PolyAlign
 import org.tg.tgoneconfig.api.hud.v1.Hud
 import org.tg.tgoneconfig.api.hud.v1.HudAnchor
 import org.tg.tgoneconfig.api.hud.v1.HudManager

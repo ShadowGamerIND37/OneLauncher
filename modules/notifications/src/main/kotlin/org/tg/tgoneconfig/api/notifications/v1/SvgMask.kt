@@ -1,7 +1,7 @@
 package org.tg.tgoneconfig.api.notifications.v1
 
 import org.jetbrains.annotations.ApiStatus
-import org.tg.compose.render.PolyBitmap
+import org.polyfrost.compose.render.PolyBitmap
 import java.util.concurrent.ConcurrentHashMap
 
 @ApiStatus.Internal

@@ -3,7 +3,7 @@
 package org.tg.tgoneconfig.api.ui.v1.components
 
 import org.apache.logging.log4j.LogManager
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.Property
 import org.tg.tgoneconfig.api.config.v1.serialize.ObjectSerializer
 import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi

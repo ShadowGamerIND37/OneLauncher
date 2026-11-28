@@ -11,8 +11,8 @@ import org.tg.tgoneconfig.api.event.v1.events.Event
 import org.tg.tgoneconfig.api.event.v1.events.FramebufferRenderEvent
 import org.tg.tgoneconfig.api.platform.v1.ModInfo
 import org.tg.tgoneconfig.api.platform.v1.Platform
-import org.tg.compose.minecraft.render.GpuBackend
-import org.tg.compose.minecraft.render.gl.resyncTextureBindCache
+import org.polyfrost.compose.minecraft.render.GpuBackend
+import org.polyfrost.compose.minecraft.render.gl.resyncTextureBindCache
 
 object CompatLoader {
     private val LOGGER = LogManager.getLogger("TG OneConfig/Compat")
@@ -56,8 +56,8 @@ object CompatLoader {
         "kotlinx",
         "androidx.compose",
         "org.jetbrains.compose",
-        "org.tg.compose",
-        "org.tg.polyui"
+        "org.polyfrost.compose",
+        "org.polyfrost.polyui"
     )
 
     private val ownerByClassName = ConcurrentHashMap<String, Optional<ModInfo>>()

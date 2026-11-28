@@ -4,7 +4,7 @@ package org.tg.tgoneconfig.api.config.v1
 
 import org.apache.logging.log4j.LogManager
 import org.jetbrains.annotations.ApiStatus
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.ui.v1.keybind.TGOneConfigKeybind
 import java.util.function.Supplier
 
