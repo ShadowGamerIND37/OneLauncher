@@ -1,0 +1,629 @@
+package org.tg.tgvanillahud.mixin.editor;
+
+//? if > 1.8.9 {
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+//? if > 1.8.9
+import net.minecraft.client.DeltaTracker;
+//? if > 1.8.9
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//? if >=26.2 {
+import net.minecraft.client.gui.Hud;
+//?} elif > 1.8.9 {
+/*import net.minecraft.client.gui.Gui;
+*///?} else {
+/*import net.minecraft.client.gui.GameGui;
+*///?}
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.PlayerRideableJumping;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.scores.Objective;
+import org.objectweb.asm.Opcodes;
+import org.tg.tgoneconfig.api.hud.v1.HudPreview;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.VanillaHud;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+
+import java.util.Collection;
+
+//? if >=26.2 {
+@Mixin(Hud.class)
+//?} elif > 1.8.9 {
+/*@Mixin(Gui.class)
+*///?} else {
+/*@Mixin(GameGui.class)
+*///?}
+public abstract class GuiEditorMixin {
+
+    @Shadow
+    private Component overlayMessageString;
+    @Shadow
+    private int overlayMessageTime;
+    @Shadow
+    private boolean animateOverlayMessageColor;
+    @Shadow
+    private ItemStack lastToolHighlight;
+    @Shadow
+    private int toolHighlightTimer;
+    @Shadow
+    private Component title;
+    @Shadow
+    private Component subtitle;
+    @Shadow
+    private int titleTime;
+    @Shadow
+    private int titleFadeInTime;
+    @Shadow
+    private int titleStayTime;
+    @Shadow
+    private int titleFadeOutTime;
+
+    @Unique
+    private static boolean tgvanillahud$editing() {
+        return VanillaHud.previewing();
+    }
+
+    @Unique
+    private static <T> T tgvanillahud$held(String key, T live, boolean valid, T demo) {
+        T value = HudPreview.previewValue(Huds.INSTANCE.getHealth(), key, () -> valid ? live : null, demo);
+        return value != null ? value : live;
+    }
+
+    @Unique
+    private static boolean tgvanillahud$statusBars() {
+        return tgvanillahud$editing();
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderArmor",
+            *///?} else {
+             method = "extractArmor",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getArmorValue()I"))
+    private static int tgvanillahud$forceArmor(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("armor", original, original > 0, 20) : original;
+    }
+
+    //~ if >=26 'renderPlayerHealth' -> 'extractPlayerHealth'
+    @ModifyExpressionValue(method = "extractPlayerHealth", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getHealth()F"))
+    private float tgvanillahud$forceHealth(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("health", original, original > 0, 20F) : original;
+    }
+
+    //~ if >=26 'renderPlayerHealth' -> 'extractPlayerHealth'
+    @ModifyExpressionValue(method = "extractPlayerHealth", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getAttributeValue(Lnet/minecraft/core/Holder;)D"))
+    private double tgvanillahud$forceMaxHealth(double original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("maxHealth", original, original > 0, 20.0) : original;
+    }
+
+    //~ if >=26 'renderPlayerHealth' -> 'extractPlayerHealth'
+    @ModifyExpressionValue(method = "extractPlayerHealth", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getAbsorptionAmount()F"))
+    private float tgvanillahud$forceAbsorption(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("absorption", original, true, 0F) : original;
+    }
+
+    //~ if >=26 'renderPlayerHealth' -> 'extractPlayerHealth'
+    @ModifyExpressionValue(method = "extractPlayerHealth", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;hasEffect(Lnet/minecraft/core/Holder;)Z"))
+    private boolean tgvanillahud$forceNoRegeneration(boolean original) {
+        return !tgvanillahud$editing() && original;
+    }
+
+    //~ if >=26 'renderFood' -> 'extractFood'
+    @ModifyExpressionValue(method = "extractFood", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/food/FoodData;getFoodLevel()I"))
+    private int tgvanillahud$forceFood(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("food", original, original > 0, 20) : original;
+    }
+
+    //~ if >=26 'renderFood' -> 'extractFood'
+    @ModifyExpressionValue(method = "extractFood", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/food/FoodData;getSaturationLevel()F"))
+    private float tgvanillahud$forceSaturation(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("saturation", original, true, 5F) : original;
+    }
+
+    //~ if >=26 'renderFood' -> 'extractFood'
+    @ModifyExpressionValue(method = "extractFood", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;hasEffect(Lnet/minecraft/core/Holder;)Z"))
+    private boolean tgvanillahud$forceNoHunger(boolean original) {
+        return !tgvanillahud$editing() && original;
+    }
+
+    //~ if >=26 'renderItemHotbar' -> 'extractItemHotbar'
+    @ModifyExpressionValue(method = "extractItemHotbar", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getOffhandItem()Lnet/minecraft/world/item/ItemStack;"))
+    private ItemStack tgvanillahud$forceNoOffhand(ItemStack original) {
+        return Huds.INSTANCE.getHotbar().showsDemo() ? ItemStack.EMPTY : original;
+    }
+
+    @WrapMethod(
+            //? if <26 {
+            /*method = "renderOverlayMessage"
+            *///?} else {
+             method = "extractOverlayMessage"
+            //?}
+    )
+    private void tgvanillahud$forceActionBar(GuiGraphicsExtractor graphics, DeltaTracker delta, Operation<Void> original) {
+        if (!tgvanillahud$editing()) {
+            original.call(graphics, delta);
+            return;
+        }
+        Component message = overlayMessageString;
+        int time = overlayMessageTime;
+        boolean animated = animateOverlayMessageColor;
+        overlayMessageString = Huds.INSTANCE.getActionBar().previewMessage();
+        overlayMessageTime = 60;
+        animateOverlayMessageColor = false;
+        original.call(graphics, delta);
+        overlayMessageString = message;
+        overlayMessageTime = time;
+        animateOverlayMessageColor = animated;
+    }
+
+    @WrapMethod(
+            //? if <26 {
+            /*method = "renderSelectedItemName"
+            *///?} else {
+             method = "extractSelectedItemName"
+            //?}
+    )
+    private void tgvanillahud$forceItemName(GuiGraphicsExtractor graphics, Operation<Void> original) {
+        if (!tgvanillahud$editing()) {
+            original.call(graphics);
+            return;
+        }
+        ItemStack item = lastToolHighlight;
+        int timer = toolHighlightTimer;
+        lastToolHighlight = Huds.INSTANCE.getHeldItemTooltip().previewItem();
+        toolHighlightTimer = 100;
+        original.call(graphics);
+        lastToolHighlight = item;
+        toolHighlightTimer = timer;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderSelectedItemName",
+            *///?} else {
+             method = "extractSelectedItemName",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;canHurtPlayer()Z"))
+    private boolean tgvanillahud$forceItemNameOffset(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+
+    @WrapMethod(
+            //? if <26 {
+            /*method = "renderTitle"
+            *///?} else {
+             method = "extractTitle"
+            //?}
+    )
+    private void tgvanillahud$forceTitle(GuiGraphicsExtractor graphics, DeltaTracker delta, Operation<Void> original) {
+        if (!tgvanillahud$editing()) {
+            original.call(graphics, delta);
+            return;
+        }
+        Component realTitle = title, realSubtitle = subtitle;
+        int time = titleTime, fadeIn = titleFadeInTime, stay = titleStayTime, fadeOut = titleFadeOutTime;
+        Component previewTitle = Huds.INSTANCE.getTitle().previewText();
+        subtitle = Huds.INSTANCE.getSubtitle().previewText();
+        title = previewTitle;
+        titleFadeInTime = 10;
+        titleStayTime = 70;
+        titleFadeOutTime = 20;
+        titleTime = titleFadeOutTime + titleStayTime;
+        original.call(graphics, delta);
+        title = realTitle;
+        subtitle = realSubtitle;
+        titleTime = time;
+        titleFadeInTime = fadeIn;
+        titleStayTime = stay;
+        titleFadeOutTime = fadeOut;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderHotbarAndDecorations",
+            *///?} else {
+             method = "extractHotbarAndDecorations",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;canHurtPlayer()Z"))
+    private boolean tgvanillahud$forceHealthHungerAir(boolean original) {
+        return tgvanillahud$statusBars() || original;
+    }
+
+    @ModifyExpressionValue(
+            //? if 1.21.1 {
+            /*method = "renderPlayerHealth",
+            *///?} elif <26 {
+            /*method = "renderAirBubbles",
+            *///?} else {
+             method = "extractAirBubbles",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;getAirSupply()I"))
+    private int tgvanillahud$forceAir(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("air", original, original > 0 && original < 300, 299) : original;
+    }
+
+    //? if <=1.21.5 {
+    /*@ModifyExpressionValue(method = "renderExperienceLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Gui;isExperienceBarVisible()Z"))
+    private boolean tgvanillahud$forceXpLevelVisible(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+
+    @ModifyExpressionValue(method = "renderExperienceLevel", at = @At(value = "FIELD", target = "Lnet/minecraft/client/player/LocalPlayer;experienceLevel:I", opcode = Opcodes.GETFIELD))
+    private int tgvanillahud$forceXpLevel(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("xpLevel", original, original > 0, 30) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderHotbarAndDecorations", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;jumpableVehicle()Lnet/minecraft/world/entity/PlayerRideableJumping;"))
+    private PlayerRideableJumping tgvanillahud$forceNoJumpBar(PlayerRideableJumping original) {
+        return tgvanillahud$editing() ? null : original;
+    }
+
+    @ModifyExpressionValue(method = "renderExperienceBar", at = @At(value = "FIELD", target = "Lnet/minecraft/client/player/LocalPlayer;experienceProgress:F", opcode = Opcodes.GETFIELD))
+    private float tgvanillahud$forceXpProgress(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("xpProgress", original, original > 0, 0.5F) : original;
+    }
+    *///?} else {
+    @ModifyExpressionValue(method = "nextContextualInfoState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;jumpableVehicle()Lnet/minecraft/world/entity/PlayerRideableJumping;"))
+    private PlayerRideableJumping tgvanillahud$forceNoJumpBar(PlayerRideableJumping original) {
+        return tgvanillahud$editing() ? null : original;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderHotbarAndDecorations",
+            *///?} else {
+             method = "extractHotbarAndDecorations",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;hasExperience()Z"))
+    private boolean tgvanillahud$forceXpHasExperience(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderHotbarAndDecorations",
+            *///?} else {
+             method = "extractHotbarAndDecorations",
+            //?}
+            at = @At(value = "FIELD", target = "Lnet/minecraft/client/player/LocalPlayer;experienceLevel:I", opcode = Opcodes.GETFIELD))
+    private int tgvanillahud$forceXpLevel(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("xpLevel", original, original > 0, 30) : original;
+    }
+    //?}
+
+    //? if <=1.21.5 {
+    /*@ModifyExpressionValue(method = "renderHotbarAndDecorations", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Gui;isExperienceBarVisible()Z"))
+    private boolean tgvanillahud$forceXpBar(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+    *///?} else {
+    @ModifyExpressionValue(method = "nextContextualInfoState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;hasExperience()Z"))
+    private boolean tgvanillahud$forceXpBar(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+    //?}
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderTabList",
+            *///?} else {
+            method = "extractTabList",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/KeyMapping;isDown()Z"))
+    private boolean tgvanillahud$forceTabListKey(boolean original) {
+        return VanillaHud.previewing() || original;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderTabList",
+            *///?} else {
+            method = "extractTabList",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isLocalServer()Z"))
+    private boolean tgvanillahud$forceTabListLocal(boolean original) {
+        return !VanillaHud.previewing() && original;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderScoreboardSidebar",
+            *///?} else {
+            method = "extractScoreboardSidebar",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/scores/Scoreboard;getDisplayObjective(Lnet/minecraft/world/scores/DisplaySlot;)Lnet/minecraft/world/scores/Objective;", ordinal = 1))
+    private Objective tgvanillahud$forceScoreboard(Objective original) {
+        return tgvanillahud$editing() ? Huds.INSTANCE.getScoreboard().previewObjective() : original;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "renderEffects",
+            *///?} else {
+            method = "extractEffects",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getActiveEffects()Ljava/util/Collection;")
+    )
+    private Collection<MobEffectInstance> tgvanillahud$forceEffects(Collection<MobEffectInstance> original) {
+        if (tgvanillahud$editing()) return Huds.INSTANCE.getStatusEffects().previewEffects();
+        return original;
+    }
+}
+//?} else {
+/*// 1.8.9 has no extract pass: the action bar and the title are drawn inline in GameGui.render
+// and the rest hang off sub methods, so the demo state is swapped in around the method that
+// draws each element and the expressions that gate it are forced open. Every target below
+// was read off the 1.8.9 bytecode.
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import net.minecraft.client.gui.BossBar;
+import net.minecraft.client.gui.GameGui;
+import net.minecraft.client.render.Window;
+import net.minecraft.scoreboard.ScoreboardObjective;
+import net.minecraft.world.item.ItemStack;
+import org.objectweb.asm.Opcodes;
+import org.tg.tgoneconfig.api.hud.v1.HudPreview;
+import org.tg.tgvanillahud.compat.LegacyDrawContext;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.VanillaHud;
+import org.tg.tgvanillahud.util.DemoData;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+
+@Mixin(GameGui.class)
+public abstract class GuiEditorMixin {
+
+    @Shadow private String overlayMessage;
+    @Shadow private int overlayMessageCooldown;
+    @Shadow private boolean overlayMessageTinted;
+    @Shadow private ItemStack selectedItem;
+    @Shadow private int itemSelectedTimer;
+    @Shadow private String title;
+    @Shadow private String subtitle;
+    @Shadow private int titleTime;
+    @Shadow private int titleFadeInTime;
+    @Shadow private int titleDuration;
+    @Shadow private int titleFadeOutTime;
+
+    @Unique
+    private static boolean tgvanillahud$editing() {
+        return VanillaHud.previewing();
+    }
+
+    @Unique
+    private static <T> T tgvanillahud$held(String key, T live, boolean valid, T demo) {
+        T value = HudPreview.previewValue(Huds.INSTANCE.getHealth(), key, () -> valid ? live : null, demo);
+        return value != null ? value : live;
+    }
+
+    @Unique
+    private static boolean tgvanillahud$statusBars() {
+        return tgvanillahud$editing();
+    }
+
+    @WrapMethod(method = "render")
+    private void tgvanillahud$forceActionBarAndTitle(float tickDelta, Operation<Void> original) {
+        // a HEAD inject would run inside this wrapper, after the demo fields go in, so hasLiveData would read the demo as live.
+        // starting the frame here caches previewing from the real fields first
+        VanillaHud.beginFrame(LegacyDrawContext.INSTANCE);
+        boolean actionBar = tgvanillahud$editing();
+        boolean titles = tgvanillahud$editing();
+        String message = this.overlayMessage;
+        int messageTime = this.overlayMessageCooldown;
+        boolean tinted = this.overlayMessageTinted;
+        String realTitle = this.title, realSubtitle = this.subtitle;
+        int time = this.titleTime, fadeIn = this.titleFadeInTime, stay = this.titleDuration, fadeOut = this.titleFadeOutTime;
+        if (actionBar) {
+            this.overlayMessage = Huds.INSTANCE.getActionBar().previewMessage();
+            this.overlayMessageCooldown = 60;
+            this.overlayMessageTinted = false;
+        }
+        if (titles) {
+            String previewTitle = Huds.INSTANCE.getTitle().previewText();
+            this.subtitle = Huds.INSTANCE.getSubtitle().previewText();
+            this.title = previewTitle;
+            this.titleFadeInTime = 10;
+            this.titleDuration = 70;
+            this.titleFadeOutTime = 20;
+            this.titleTime = this.titleFadeOutTime + this.titleDuration;
+        }
+        original.call(tickDelta);
+        if (actionBar) {
+            this.overlayMessage = message;
+            this.overlayMessageCooldown = messageTime;
+            this.overlayMessageTinted = tinted;
+        }
+        if (titles) {
+            this.title = realTitle;
+            this.subtitle = realSubtitle;
+            this.titleTime = time;
+            this.titleFadeInTime = fadeIn;
+            this.titleDuration = stay;
+            this.titleFadeOutTime = fadeOut;
+        }
+    }
+
+    // the held item name sits behind a video setting as well as its own timer
+    @ModifyExpressionValue(method = "render", at = @At(value = "FIELD",
+            target = "Lnet/minecraft/client/options/GameOptions;itemInHandTooltips:Z", opcode = Opcodes.GETFIELD))
+    private boolean tgvanillahud$forceItemNameEnabled(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+
+    @WrapMethod(method = "renderSelectedItemName")
+    private void tgvanillahud$forceItemName(Window window, Operation<Void> original) {
+        if (!tgvanillahud$editing()) {
+            original.call(window);
+            return;
+        }
+        ItemStack item = this.selectedItem;
+        int timer = this.itemSelectedTimer;
+        this.selectedItem = Huds.INSTANCE.getHeldItemTooltip().previewItem();
+        this.itemSelectedTimer = 100;
+        original.call(window);
+        this.selectedItem = item;
+        this.itemSelectedTimer = timer;
+    }
+
+    // vanilla drops the name by 14 when the status bars are hidden, so the preview keeps the
+    // in game offset the same way the newer versions force canHurtPlayer
+    @ModifyExpressionValue(method = "renderSelectedItemName", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/ClientPlayerInteractionManager;hasStatusBars()Z"))
+    private boolean tgvanillahud$forceItemNameOffset(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+
+    // the bottom cluster: the status bars and the experience bar are gated on the game mode,
+    // and the armour row, the air row and the level only draw when the player has them
+    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/ClientPlayerInteractionManager;hasStatusBars()Z"))
+    private boolean tgvanillahud$forceStatusBars(boolean original) {
+        return tgvanillahud$statusBars() || original;
+    }
+
+    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/ClientPlayerInteractionManager;hasXpBar()Z"))
+    private boolean tgvanillahud$forceXpBar(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/player/Player;getArmorProtection()I"))
+    private int tgvanillahud$forceArmor(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("armor", original, original > 0, 20) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/player/Player;getHealth()F"))
+    private float tgvanillahud$forceHealth(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("health", original, original > 0, 20F) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/entity/living/attribute/EntityAttributeInstance;get()D"))
+    private double tgvanillahud$forceMaxHealth(double original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("maxHealth", original, original > 0, 20.0) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/player/Player;getAbsorption()F"))
+    private float tgvanillahud$forceAbsorption(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("absorption", original, true, 0F) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/player/Player;hasStatusEffect(Lnet/minecraft/entity/living/effect/StatusEffect;)Z"))
+    private boolean tgvanillahud$forceNoEffects(boolean original) {
+        return !tgvanillahud$editing() && original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/entity/living/player/HungerManager;getFoodLevel()I"))
+    private int tgvanillahud$forceFood(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("food", original, original > 0, 20) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/entity/living/player/HungerManager;getLastFoodLevel()I"))
+    private int tgvanillahud$forceLastFood(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("lastFood", original, original > 0, 20) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/entity/living/player/HungerManager;getSaturationLevel()F"))
+    private float tgvanillahud$forceSaturation(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("saturation", original, true, 5F) : original;
+    }
+
+    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/player/LocalPlayer;isRidingRideableMob()Z"))
+    private boolean tgvanillahud$forceNoJumpBar(boolean original) {
+        return !tgvanillahud$editing() && original;
+    }
+
+    @ModifyExpressionValue(method = "renderXpBar", at = @At(value = "FIELD",
+            target = "Lnet/minecraft/client/player/LocalPlayer;xpProgress:F", opcode = Opcodes.GETFIELD))
+    private float tgvanillahud$forceXpProgress(float original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("xpProgress", original, original > 0, 0.5F) : original;
+    }
+
+    @ModifyExpressionValue(method = "renderItemSlot", at = @At(value = "FIELD",
+            target = "Lnet/minecraft/entity/living/player/PlayerInventory;items:[Lnet/minecraft/world/item/ItemStack;", opcode = Opcodes.GETFIELD))
+    private ItemStack[] tgvanillahud$forceHotbarItems(ItemStack[] original) {
+        return Huds.INSTANCE.getHotbar().showsDemo() ? DemoData.demoHotbar() : original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/player/Player;isSubmergedIn(Lnet/minecraft/block/material/Material;)Z"))
+    private boolean tgvanillahud$forceAirVisible(boolean original) {
+        return tgvanillahud$editing() || original;
+    }
+
+    @ModifyExpressionValue(method = "renderStatusBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/player/LocalPlayer;getBreath()I"))
+    private int tgvanillahud$forceAir(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("air", original, original > 0 && original < 300, 299) : original;
+    }
+
+    // both reads gate the level text, so neither carries an ordinal on purpose
+    @ModifyExpressionValue(method = "renderXpBar", at = @At(value = "FIELD",
+            target = "Lnet/minecraft/client/player/LocalPlayer;xpLevel:I", opcode = Opcodes.GETFIELD))
+    private int tgvanillahud$forceXpLevel(int original) {
+        return tgvanillahud$editing() ? tgvanillahud$held("xpLevel", original, original > 0, 30) : original;
+    }
+
+    // the tab list is hidden unless the key is held, and hidden again on a single player
+    // integrated server with no tab objective
+    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/options/KeyBinding;isPressed()Z"))
+    private boolean tgvanillahud$forceTabListKey(boolean original) {
+        return VanillaHud.previewing() || original;
+    }
+
+    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/Minecraft;isIntegratedServerRunning()Z"))
+    private boolean tgvanillahud$forceTabListLocal(boolean original) {
+        return !VanillaHud.previewing() && original;
+    }
+
+    // ordinal 1 is the sidebar lookup: 0 is the team coloured slot and 2 feeds the tab list
+    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/scoreboard/Scoreboard;getDisplayObjective(I)Lnet/minecraft/scoreboard/ScoreboardObjective;",
+            ordinal = 1))
+    private ScoreboardObjective tgvanillahud$forceScoreboard(ScoreboardObjective original) {
+        return tgvanillahud$editing() ? Huds.INSTANCE.getScoreboard().previewObjective() : original;
+    }
+
+    // the one 1.8.9 boss bar is static state the server owns and the method decrements its
+    // timer, so the preview swaps the values in around the call instead of writing over them
+    @WrapMethod(method = "renderBossBars")
+    private void tgvanillahud$forceBossBar(Operation<Void> original) {
+        if (!tgvanillahud$editing()) {
+            original.call();
+            return;
+        }
+        String name = BossBar.name;
+        int timer = BossBar.timer;
+        float health = BossBar.health;
+        BossBar.name = Huds.INSTANCE.getBossBar().previewBossName();
+        BossBar.timer = 100;
+        BossBar.health = tgvanillahud$held("bossHealth", health, name != null && !name.isEmpty() && timer > 0, 0.67F);
+        try {
+            original.call();
+        } finally {
+            BossBar.name = name;
+            BossBar.timer = timer;
+            BossBar.health = health;
+        }
+    }
+}
+*///?}

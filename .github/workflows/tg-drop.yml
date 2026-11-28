@@ -1,0 +1,74 @@
+name: TG Drop (build TG VanillaHUD 1.21.11 jar)
+on:
+  push:
+    branches: [mods/vanillahud]
+permissions:
+  contents: write
+concurrency:
+  group: tg-drop-vanillahud
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Checkout TG OneConfig (sibling branch)
+        uses: actions/checkout@v6
+        with:
+          ref: mods/oneconfig
+          path: oneconfig-src
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build + publish TG OneConfig to mavenLocal
+        shell: bash
+        run: |
+          cd oneconfig-src
+          chmod +x ./gradlew
+          ./gradlew -p modules publishToMavenLocal
+          ./gradlew ":minecraft:1.21.11-fabric:publishToMavenLocal"
+      - name: Build TG VanillaHUD 1.21.11
+        shell: bash
+        run: |
+          chmod +x ./gradlew
+          ./gradlew ":1.21.11:build"
+      - name: Collect jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p drop
+          mapfile -t jars < <(find "versions/1.21.11/build/libs" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | sort)
+          echo "jars: ${jars[@]}"
+          cp "${jars[@]}" drop/
+          ls -la drop
+
+      - name: Debug log on failure
+        if: failure()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan tg-debug
+          git rm -rf --cached . -q
+          mkdir -p debug
+          find . -path ./.git -prune -o -type f \( -name "*.log" -o -name "*.txt" \) -path "*/build/*" -print0 2>/dev/null | head -z -n 20 | xargs -0 -I{} sh -c 'cp --parents "{}" debug/ 2>/dev/null || true'
+          echo "run ${{ github.run_id }} sha ${{ github.sha }}" > debug/run.txt
+          git add debug 2>/dev/null || true
+          git commit -qm "debug log ${{ github.run_id }}" || true
+          git push --force origin tg-debug || true
+      - name: Push jars to tg-drop-vanillahud
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan tg-drop-vanillahud
+          git rm -rf --cached . -q
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name drop -exec rm -rf {} +
+          git add drop
+          git commit -m "TG VanillaHUD 1.21.11 jar from ${{ github.sha }}"
+          git push --force origin tg-drop-vanillahud

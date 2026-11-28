@@ -1,0 +1,43 @@
+package org.tg.tgvanillahud.mixin;
+
+//? if > 1.8.9 {
+//? if > 1.8.9
+import net.minecraft.client.DeltaTracker;
+//? if > 1.8.9
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?}
+//? if >=26.2 {
+import net.minecraft.client.gui.Hud;
+//?} elif > 1.8.9 {
+/*import net.minecraft.client.gui.Gui;
+*///?} else {
+/*import net.minecraft.client.gui.GameGui;
+*///?}
+import org.tg.tgvanillahud.hud.VanillaHud;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+//? if >=26.2 {
+@Mixin(Hud.class)
+//?} elif > 1.8.9 {
+/*@Mixin(Gui.class)
+*///?} else {
+/*@Mixin(GameGui.class)
+*///?}
+public class GuiFrameMixin {
+
+    // 1.8.9 starts the frame in GuiEditorMixin's render wrapper
+    //? if <26 && >1.8.9 {
+    /*@Inject(method = "render", at = @At("HEAD"))
+    private void tgvanillahud$beginFrame(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo ci) {
+        VanillaHud.beginFrame(graphics);
+    }
+    *///?} elif >=26 {
+    @Inject(method = "extractRenderState", at = @At("HEAD"))
+    private void tgvanillahud$beginFrame(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo ci) {
+        VanillaHud.beginFrame(graphics);
+    }
+    //?}
+}

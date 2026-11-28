@@ -1,0 +1,237 @@
+package org.tg.tgvanillahud.mixin.elements;
+
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.Minecraft;
+//? if > 1.8.9
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//? if > 1.8.9 {
+import net.minecraft.client.gui.components.BossHealthOverlay;
+import net.minecraft.client.gui.components.LerpingBossEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.BossEvent;
+//?} else {
+/*import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import net.minecraft.client.gui.BossBar;
+import net.minecraft.client.gui.GameGui;
+import org.tg.tgvanillahud.compat.LegacyDrawContext;
+import org.tg.tgvanillahud.render.HudTransform;
+*///?}
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.BossBarHud;
+import org.tg.tgvanillahud.render.TextBackdrop;
+//? if > 1.8.9
+import org.tg.tgvanillahud.hook.TextShadowHook;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+//? if >=1.21.8 {
+import org.tg.tgvanillahud.render.ForeignTransform;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+//?}
+
+//? if > 1.8.9
+import java.util.Collection;
+
+//? if <1.21.4 && >1.8.9 {
+/*import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import org.tg.tgvanillahud.render.HudTransform;
+*///?}
+
+//? if > 1.8.9 {
+@Mixin(BossHealthOverlay.class)
+//?} else {
+/*@Mixin(GameGui.class)
+*///?}
+public class BossHealthOverlayMixin {
+    //? if >=1.21.8 {
+    @Inject(
+            //? if >=26 {
+            method = "extractRenderState",
+            //?} else {
+            /*method = "render",
+            *///?}
+            at = @At("HEAD")
+    )
+    private void tgvanillahud$foreignProbe(GuiGraphicsExtractor graphics, CallbackInfo ci) {
+        ForeignTransform.probe(graphics);
+    }
+    //?}
+
+    //? if > 1.8.9 {
+    //? if <1.21.4 && >1.8.9 {
+    /*@WrapMethod(method = "render")
+    private void tgvanillahud$boss(GuiGraphicsExtractor graphics, Operation<Void> original) {
+        if (!Huds.INSTANCE.getBossBar().shouldDraw()) return;
+
+        HudTransform.begin(graphics, Huds.INSTANCE.getBossBar());
+        original.call(graphics);
+        HudTransform.end(graphics);
+    }
+    *///?}
+
+    @WrapOperation(
+            //? if >=26 {
+            method = "extractRenderState",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/components/BossHealthOverlay;extractBar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IILnet/minecraft/world/BossEvent;)V"
+            )
+            //?} else {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/components/BossHealthOverlay;drawBar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IILnet/minecraft/world/BossEvent;)V"
+            )
+            *///?}
+    )
+    private void tgvanillahud$bossHealth(BossHealthOverlay self, GuiGraphicsExtractor graphics, int x, int y, BossEvent event, Operation<Void> original) {
+        BossBarHud hud = Huds.INSTANCE.getBossBar();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(self, graphics, x, y, event);
+        } else if (hud.getRenderHealth()) {
+            int offset = hud.barOffset(Minecraft.getInstance().font.width(event.getName()));
+            original.call(self, graphics, x + offset, y, event);
+        }
+    }
+
+    @WrapOperation(
+            //? if >=26 {
+            method = "extractRenderState",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"
+            )
+            //?} elif >=1.21.6 {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"
+            )
+            *///?} else {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I"
+            )
+            *///?}
+    )
+            //? if <1.21.6 && >1.8.9 {
+    /*private int tgvanillahud$bossText(GuiGraphicsExtractor graphics, Font font, Component name, int x, int y, int color, Operation<Integer> original) {
+        BossBarHud hud = Huds.INSTANCE.getBossBar();
+        if (hud.isDrawnAsVanilla()) return original.call(graphics, font, name, x, y, color);
+        if (!hud.getRenderText()) return 0;
+        TextBackdrop.draw(graphics, hud, x, y, font.width(name), 9, color);
+        TextShadowHook.push(hud.getTextShadow());
+        try {
+            return original.call(graphics, font, name, x, y, color);
+        } finally {
+            TextShadowHook.pop();
+        }
+    }
+    *///?} else {
+    private void tgvanillahud$bossText(GuiGraphicsExtractor graphics, Font font, Component name, int x, int y, int color, Operation<Void> original) {
+        BossBarHud hud = Huds.INSTANCE.getBossBar();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, font, name, x, y, color);
+            return;
+        }
+        if (!hud.getRenderText()) return;
+        TextBackdrop.draw(graphics, hud, x, y, font.width(name), 9, color);
+        TextShadowHook.push(hud.getTextShadow());
+        try {
+            original.call(graphics, font, name, x, y, color);
+        } finally {
+            TextShadowHook.pop();
+        }
+    }
+    //?}
+
+    @ModifyExpressionValue(
+            //? if >= 26 {
+            method = "extractRenderState",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/Map;isEmpty()Z"
+            )
+            //?} else {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/Map;isEmpty()Z"
+            )
+            *///?}
+    )
+    private boolean tgvanillahud$editing(boolean empty) {
+        return !Huds.INSTANCE.getBossBar().getPreviewing() && empty;
+    }
+
+    @ModifyExpressionValue(
+            //? if >= 26 {
+            method = "extractRenderState",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/Map;values()Ljava/util/Collection;"
+            )
+            //?} else {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/Map;values()Ljava/util/Collection;"
+            )
+            *///?}
+    )
+    private Collection<LerpingBossEvent> tgvanillahud$demo(Collection<LerpingBossEvent> original) {
+        if (!Huds.INSTANCE.getBossBar().getPreviewing()) {
+            return original;
+        }
+
+        return Huds.INSTANCE.getBossBar().previewBossEvents();
+    }
+    //?} else {
+    /*
+    @WrapMethod(method = "renderBossBars")
+    private void tgvanillahud$boss(Operation<Void> original) {
+        BossBarHud hud = Huds.INSTANCE.getBossBar();
+        if ((BossBar.name == null || BossBar.timer <= 0) && !hud.getPreviewing()) return;
+
+        if (!hud.shouldDraw()) return;
+
+        HudTransform.begin(LegacyDrawContext.INSTANCE, hud);
+        original.call();
+        HudTransform.end(LegacyDrawContext.INSTANCE);
+    }
+
+    @WrapOperation(method = "renderBossBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GameGui;drawTexture(IIIIII)V"))
+    private void tgvanillahud$bossHealth(GameGui self, int x, int y, int u, int v, int width, int height,
+                                       Operation<Void> original) {
+        BossBarHud hud = Huds.INSTANCE.getBossBar();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(self, x, y, u, v, width, height);
+            return;
+        }
+        if (!hud.getRenderHealth()) return;
+        if (v == 79 && hud.getSmoothHealth()) {
+            width = (int) (hud.smoothedHealth(BossBar.health) * 183);
+            if (width <= 0) return;
+        }
+        int offset = hud.barOffset(Minecraft.getInstance().font.width(BossBar.name));
+        original.call(self, x + offset, y, u, v, width, height);
+    }
+
+    @WrapOperation(method = "renderBossBars", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/Font;drawWithShadow(Ljava/lang/String;FFI)I"))
+    private int tgvanillahud$bossText(Font font, String text, float x, float y, int color,
+                                    Operation<Integer> original) {
+        BossBarHud hud = Huds.INSTANCE.getBossBar();
+        if (hud.isDrawnAsVanilla()) return original.call(font, text, x, y, color);
+        if (!hud.getRenderText()) return 0;
+        TextBackdrop.draw(LegacyDrawContext.INSTANCE, hud, (int) x, (int) y, font.width(text), 9, color);
+        return font.draw(text, x, y, color, hud.getTextShadow());
+    }
+    *///?}
+}

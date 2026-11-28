@@ -1,0 +1,152 @@
+package org.tg.tgvanillahud.util
+
+import org.tg.tgoneconfig.api.config.v1.ConfigManager
+import org.tg.tgoneconfig.api.hud.v1.HudManager
+import org.tg.tgvanillahud.hud.VanillaHud
+import java.nio.file.Files
+import java.nio.file.Path
+
+object ForceDefaultPosition {
+    private const val FILE = "tgvanillahud-customized"
+
+    private const val RETRY_AFTER_NANOS = 1_000_000_000L
+
+    @Volatile
+    internal var nanos: () -> Long = System::nanoTime
+
+    private val file: Path get() = ConfigManager.active().folder.resolve(FILE)
+
+    private data class Customized(val file: Path, val ids: MutableSet<String>)
+
+    private var cache: Customized? = null
+
+    private var failedAt: Long? = null
+
+    /** ids queued this launch so each HUD is only forced once per profile */
+    private val forced = HashSet<String>()
+
+    private val unwritten = LinkedHashSet<String>()
+
+    private var unwrittenFile: Path? = null
+
+    private var retriedAt: Long? = null
+
+    private var flushedAt: Long? = null
+
+    private val customized: Customized?
+        get() {
+            cache?.let { return it }
+            if (throttled(failedAt)) return null
+            val read = read()
+            if (read == null) {
+                failedAt = nanos()
+            } else {
+                read.ids.addAll(unwritten)
+                cache = read
+            }
+            return read
+        }
+
+    @Synchronized
+    private fun throttled(stamp: Long?) = stamp != null && nanos() - stamp < RETRY_AFTER_NANOS
+
+    fun invalidate() {
+        cache = null
+        failedAt = null
+        flushedAt = null
+        forced.clear()
+    }
+
+    @Synchronized
+    fun customized(hud: VanillaHud): Boolean? = customized?.ids?.contains(hud.hudId)
+
+    private fun markCustomized(hud: VanillaHud) {
+        hud.cancelForceDefault()
+        val state = customized ?: run {
+            unwritten.add(hud.hudId)
+            return
+        }
+        val known = state.ids
+        if (!known.add(hud.hudId)) {
+            if (unwritten.isEmpty()) return
+            if (throttled(retriedAt)) return
+            retriedAt = nanos()
+        }
+        if (write(state)) {
+            unwritten.clear()
+            retriedAt = null
+        } else {
+            unwritten.add(hud.hudId)
+        }
+    }
+
+    private fun unmarkCustomized(hud: VanillaHud) {
+        unwritten.remove(hud.hudId)
+        val state = customized ?: return
+        if (state.ids.remove(hud.hudId)) write(state)
+    }
+
+    private fun flushBacklog() {
+        if (unwritten.isEmpty()) return
+        if (throttled(flushedAt)) return
+        val state = customized ?: return
+        if (unwritten.isEmpty()) return
+        flushedAt = nanos()
+        if (write(state)) {
+            unwritten.clear()
+            flushedAt = null
+        }
+    }
+
+    @Synchronized
+    fun tick() {
+        flushBacklog()
+        VanillaHud.keepOverlapsOrdered()
+        val huds = HudManager.activeInstances
+        for (i in 0 until huds.size) {
+            val hud = huds[i] as? VanillaHud ?: continue
+            hud.restoreDefaultAnchor()
+            val moved = hud.movedByUser
+            hud.movedByUser = false
+            if (hud.anchoredByHand || (moved && !hud.backAtDefault)) {
+                markCustomized(hud)
+                continue
+            }
+            if (moved) unmarkCustomized(hud)
+            if (customized(hud) != false) continue
+            if (forced.add(hud.hudId)) hud.queueForceDefault()
+        }
+    }
+
+    private fun read(): Customized? = try {
+        val p = file
+        if (unwrittenFile != p) {
+            unwrittenFile = p
+            unwritten.clear()
+        }
+        val ids = if (Files.isRegularFile(p)) {
+            Files.readAllLines(p).mapNotNullTo(LinkedHashSet()) { it.trim().ifEmpty { null } }
+        } else {
+            LinkedHashSet()
+        }
+        Customized(p, ids)
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun write(state: Customized): Boolean {
+        return try {
+            if (file != state.file) {
+                cache = null
+                failedAt = null
+                false
+            } else {
+                Files.createDirectories(state.file.parent)
+                Files.write(state.file, state.ids.sorted())
+                true
+            }
+        } catch (_: Throwable) {
+            false
+        }
+    }
+}

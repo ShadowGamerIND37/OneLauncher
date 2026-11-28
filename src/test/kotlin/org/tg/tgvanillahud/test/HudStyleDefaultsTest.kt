@@ -1,0 +1,241 @@
+package org.tg.tgvanillahud.test
+
+//? if > 1.8.9
+import net.minecraft.SharedConstants
+import net.minecraft.server.Bootstrap
+import com.google.gson.JsonParser
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.tg.tgoneconfig.api.config.v1.ConfigManager
+import org.tg.tgoneconfig.api.hud.v1.Font
+import org.tg.tgvanillahud.hud.ActionBarHud
+import org.tg.tgvanillahud.hud.BossBarHud
+import org.tg.tgvanillahud.hud.HealthHud
+import org.tg.tgvanillahud.hud.HeldItemTooltipHud
+import org.tg.tgvanillahud.hud.HotbarHud
+import org.tg.tgvanillahud.hud.ScoreboardHud
+import org.tg.tgvanillahud.hud.SubtitleHud
+import org.tg.tgvanillahud.hud.TitleHud
+import org.tg.tgvanillahud.hud.VanillaHud
+import org.tg.tgvanillahud.render.fontColor
+import org.tg.tgvanillahud.util.HudConfigMigrator
+import java.nio.file.Files
+
+class HudStyleDefaultsTest {
+    companion object {
+        @JvmStatic
+        @BeforeAll
+        fun boot() {
+            //? if > 1.8.9 {
+            SharedConstants.tryDetectVersion()
+            Bootstrap.bootStrap()
+            //?} else
+            //LegacyBootstrap.once()
+        }
+    }
+
+    private fun assertVanillaBox(hud: VanillaHud) {
+        assertEquals(0f, hud.bgRadius, "${hud.title} radius")
+        assertEquals(Font.Minecraft, hud.font, "${hud.title} font")
+        assertEquals(-1, hud.textColor, "${hud.title} text colour")
+        assertFalse(hud.staticWidth, "${hud.title} static size")
+        assertEquals(hud.width, hud.boxWidth, "${hud.title} box width")
+        assertEquals(hud.height, hud.boxHeight, "${hud.title} box height")
+        assertEquals(0f, hud.contentOffsetX, "${hud.title} content x")
+        assertEquals(0f, hud.contentOffsetY, "${hud.title} content y")
+    }
+
+    @Test
+    fun `elements vanilla draws bare have no background and keep their box`() {
+        for (hud in listOf(HotbarHud(), HealthHud(), BossBarHud())) {
+            assertFalse(hud.showBackground, "${hud.title} background")
+            assertVanillaBox(hud)
+        }
+    }
+
+    @Test
+    fun `text boxes hug the letters and leave the shadow to the right and bottom padding`() {
+        for ((hud, shadow) in listOf(ActionBarHud() to 1f, HeldItemTooltipHud() to 1f, TitleHud() to 4f, SubtitleHud() to 2f)) {
+            assertFalse(hud.showBackground, "${hud.title} background")
+            assertEquals(7f * hud.innerScale, hud.height, "${hud.title} height stops at the baseline")
+            assertEquals(hud.width + shadow, hud.boxWidth, "${hud.title} box width")
+            assertEquals(hud.height + shadow, hud.boxHeight, "${hud.title} box height")
+            assertEquals(0f, hud.contentOffsetX, "${hud.title} content x")
+            assertEquals(0f, hud.contentOffsetY, "${hud.title} content y")
+        }
+    }
+
+    @Test
+    fun `vanilla's own backgrounds, shadows and title sizes are the defaults`() {
+        val board = ScoreboardHud()
+        assertEquals(0x4C000000, board.bodyBgColor)
+        assertFalse(board.textShadow)
+        assertVanillaBox(board)
+        assertEquals(true, ActionBarHud().textShadow)
+        assertEquals(true, HotbarHud().showShadow)
+        assertEquals(4f, TitleHud().titleScale)
+        assertEquals(2f, SubtitleHud().subtitleScale)
+    }
+
+    @Test
+    fun `the designer's size scales the whole box, except a title which already sizes itself`() {
+        val hud = ActionBarHud()
+        val natural = hud.height
+        hud.padTop = 2f
+        hud.padBottom = 3f
+        assertEquals(natural + 5f, hud.boxHeight, "padding counts without a background too")
+        assertEquals(2f, hud.contentOffsetY)
+        hud.textScale = 2f
+        assertEquals((natural + 5f) * 2f, hud.boxHeight)
+        assertEquals(4f, hud.contentOffsetY)
+
+        val title = TitleHud()
+        val before = title.elementScale
+        title.textScale = 6f
+        assertEquals(before, title.elementScale)
+    }
+
+    @Test
+    fun `a title's box stays on its text at any size`() {
+        val w = 640
+        val h = 360
+        // the game draws these lines at -10 and 5 under the scale, so the size moves them too
+        for ((hud, fontY) in listOf(TitleHud() to -10f, SubtitleHud() to 5f)) {
+            val defaultY = hud.vanillaOriginY(w, h)
+            for (scale in listOf(1f, 2.65f, 4f, 7.5f)) {
+                hud.textScale = scale
+                assertEquals(h / 2 + fontY * scale, hud.vanillaOriginY(w, h), 1e-3f, "${hud.title} y at size $scale")
+            }
+            hud.textScale = if (hud is TitleHud) 4f else 2f
+            assertEquals(defaultY, hud.vanillaOriginY(w, h), "${hud.title} default y")
+        }
+        assertEquals(140f, TitleHud().vanillaOriginY(w, h), "the title's default is vanilla's")
+        assertEquals(190f, SubtitleHud().vanillaOriginY(w, h), "the subtitle's default is vanilla's")
+    }
+
+    @Test
+    fun `a title's padding grows with its text so the box stays a pixel past the letters`() {
+        for (hud in listOf(TitleHud(), SubtitleHud())) {
+            for (scale in listOf(1f, 2.65f, 8f)) {
+                hud.textScale = scale
+                assertEquals(hud.width + scale, hud.boxWidth, 1e-3f, "${hud.title} box width at size $scale")
+                assertEquals(hud.height + scale, hud.boxHeight, 1e-3f, "${hud.title} box height at size $scale")
+            }
+        }
+    }
+
+    @Test
+    fun `stored title padding keeps its box but untouched padding follows the text`() {
+        val folder = ConfigManager.active().folder
+        val huds = folder.resolve("huds")
+        Files.createDirectories(huds)
+        val stamp = folder.resolve("tgvanillahud-migration")
+        val stampWas = if (Files.exists(stamp)) Files.readString(stamp) else null
+        val title = huds.resolve("tgvanillahud-title.json")
+        val subtitle = huds.resolve("tgvanillahud-subtitle.json")
+        try {
+            Files.writeString(stamp, "14")
+            Files.writeString(title, """{"textScale":1.0,"padLeft":3.0,"padRight":4.0,"padBottom":6.0}""")
+            Files.writeString(subtitle, """{"textScale":2.0,"padLeft":3.0,"padRight":5.0}""")
+
+            HudConfigMigrator.migrate()
+
+            val t = JsonParser.parseString(Files.readString(title)).asJsonObject
+            assertEquals(12f, t.get("padLeft").asFloat, "still 3 once it's drawn at a quarter of the default size")
+            assertEquals(24f, t.get("padBottom").asFloat)
+            assertEquals(4f, t.get("padRight").asFloat, "the shadow's default was never chosen for this size")
+            val s = JsonParser.parseString(Files.readString(subtitle)).asJsonObject
+            assertEquals(3f, s.get("padLeft").asFloat, "the default size already measures the same")
+            assertEquals(5f, s.get("padRight").asFloat)
+        } finally {
+            for (p in listOf(title, subtitle)) Files.deleteIfExists(p)
+            if (stampWas != null) Files.writeString(stamp, stampWas) else Files.deleteIfExists(stamp)
+        }
+    }
+
+    @Test
+    fun `text keeps the opacity the game's font would give it`() {
+        assertEquals(0xFFFFFFFF.toInt(), fontColor(0x00FFFFFF, blending = true), "the 1.8.9 boss bar passes no alpha")
+        assertEquals(0xFFFFFFFF.toInt(), fontColor(0x20FFFFFF, blending = false), "the 1.8.9 scoreboard draws with blending off")
+        assertEquals(0xFFFFFFFF.toInt(), fontColor(0x20FFFFFF, blending = true), "nor does the editor's preview change that")
+        assertEquals(0x80FFFFFF.toInt(), fontColor(0x80FFFFFF.toInt(), blending = true), "a fade keeps its alpha")
+    }
+
+    @Test
+    fun `stored options move onto the designer's keys and its stored defaults give way to vanilla's`() {
+        val folder = ConfigManager.active().folder
+        val huds = folder.resolve("huds")
+        Files.createDirectories(huds)
+        val stamp = folder.resolve("tgvanillahud-migration")
+        val stampWas = if (Files.exists(stamp)) Files.readString(stamp) else null
+        val board = huds.resolve("tgvanillahud-scoreboard.json")
+        val bar = huds.resolve("tgvanillahud-actionbar.json")
+        val hotbar = huds.resolve("tgvanillahud-hotbar.json")
+        try {
+            Files.writeString(stamp, "8")
+            Files.writeString(board, """{"showBackground":true,"bgRadius":4.0,"rounded":true,"cornerRadius":3.0,"textType":1,"backgroundColor":{"value":[1,2,3,64],"class":"org.tg.compose.render.PolyColor"},"font":{"class":"org.tg.tgoneconfig.api.hud.v1.Font","value":"Poppins"}}""")
+            Files.writeString(bar, """{"showBackground":true,"bgRadius":4.0,"background":false,"paddingX":5.0}""")
+            Files.writeString(hotbar, """{"id":"tgvanillahud-hotbar.json","showBackground":true,"bgRadius":4.0,"style":1}""")
+
+            HudConfigMigrator.migrate()
+
+            val b = JsonParser.parseString(Files.readString(board)).asJsonObject
+            assertEquals(0x40010203, b.get("bgColor").asInt)
+            assertEquals(3f, b.get("bgRadius").asFloat)
+            assertEquals(true, b.get("showShadow").asBoolean)
+            assertEquals("Minecraft", b.getAsJsonObject("font").get("value").asString)
+            assertFalse(b.has("backgroundColor"))
+
+            val a = JsonParser.parseString(Files.readString(bar)).asJsonObject
+            assertEquals(false, a.get("showBackground").asBoolean)
+            assertEquals(0f, a.get("bgRadius").asFloat)
+            assertEquals(0f, a.get("padLeft").asFloat, "no background to pad, so it must not move the HUD")
+
+            val h = JsonParser.parseString(Files.readString(hotbar)).asJsonObject
+            assertEquals(false, h.get("showBackground").asBoolean)
+            assertFalse(h.has("style"))
+        } finally {
+            for (p in listOf(board, bar, hotbar)) Files.deleteIfExists(p)
+            if (stampWas != null) Files.writeString(stamp, stampWas) else Files.deleteIfExists(stamp)
+        }
+    }
+
+    @Test
+    fun `a hud TGOneConfig saved back over its migration is given the designer migration again`() {
+        val folder = ConfigManager.active().folder
+        val huds = folder.resolve("huds")
+        Files.createDirectories(huds)
+        val stamp = folder.resolve("tgvanillahud-migration")
+        val stampWas = if (Files.exists(stamp)) Files.readString(stamp) else null
+        val title = huds.resolve("tgvanillahud-title.json")
+        val board = huds.resolve("tgvanillahud-scoreboard.json")
+        try {
+            Files.writeString(stamp, "13")
+            // what 1.8.9 left behind: the old title's TGOneConfig defaults, still locked to its vanilla origin
+            Files.writeString(title, """{"showBackground":true,"bgColor":-2147483648,"bgRadius":4.0,"showShadow":false,"textScale":1.0,"padRight":0.0,"padBottom":0.0,"locked":true,"relativeX":-0.5,"relativeY":-40.0,"hudClass":"org.tg.tgvanillahud.hud.TitleHud"}""")
+            // a background the user picked themselves
+            Files.writeString(board, """{"showBackground":true,"bgColor":-2147483648,"bgRadius":4.0,"showShadow":true,"locked":true}""")
+
+            HudConfigMigrator.migrate()
+
+            val t = JsonParser.parseString(Files.readString(title)).asJsonObject
+            assertEquals(4f, t.get("textScale").asFloat)
+            assertEquals(false, t.get("showBackground").asBoolean)
+            assertEquals(0f, t.get("bgRadius").asFloat)
+            assertEquals(true, t.get("showShadow").asBoolean)
+            assertEquals(4f, t.get("padRight").asFloat, "the title's shadow sits in its padding")
+            assertEquals(4f, t.get("padBottom").asFloat)
+            assertEquals(false, t.get("locked").asBoolean, "a locked title cannot be dragged")
+            assertEquals(-40f, t.get("relativeY").asFloat, "its position stays")
+
+            val b = JsonParser.parseString(Files.readString(board)).asJsonObject
+            assertEquals(4f, b.get("bgRadius").asFloat)
+            assertEquals(true, b.get("locked").asBoolean)
+        } finally {
+            for (p in listOf(title, board)) Files.deleteIfExists(p)
+            if (stampWas != null) Files.writeString(stamp, stampWas) else Files.deleteIfExists(stamp)
+        }
+    }
+}

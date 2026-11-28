@@ -1,0 +1,439 @@
+package org.tg.tgvanillahud.mixin.elements;
+
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.client.gui.Font;
+//? if > 1.8.9
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//? if >=26.2 {
+import net.minecraft.client.gui.Hud;
+//?} elif > 1.8.9 {
+/*import net.minecraft.client.gui.Gui;
+*///?} else {
+/*import net.minecraft.client.gui.GameGui;
+*///?}
+//? if > 1.8.9 {
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.numbers.BlankFormat;
+import net.minecraft.network.chat.numbers.NumberFormat;
+import net.minecraft.network.chat.numbers.StyledFormat;
+import net.minecraft.world.scores.Objective;
+//?} else {
+/*import net.minecraft.client.gui.GameGui;
+import net.minecraft.client.render.Window;
+import net.minecraft.scoreboard.ScoreboardObjective;
+import net.minecraft.scoreboard.ScoreboardScore;
+import org.tg.tgvanillahud.compat.LegacyDrawContext;
+import org.tg.tgvanillahud.hud.ScoreboardHud;
+import org.tg.tgvanillahud.render.HudCapture;
+import org.tg.tgvanillahud.render.HudTransform;
+import org.tg.tgvanillahud.render.ScoreboardBackground;
+import org.tg.tgvanillahud.render.TextBackdrop;
+*///?}
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.render.ForeignTransform;
+//? if > 1.8.9 {
+import org.tg.tgvanillahud.hud.ScoreboardHud;
+import org.tg.tgvanillahud.render.ScoreboardBackground;
+import org.tg.tgvanillahud.render.TextBackdrop;
+//?}
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+//? if <1.21.4 && >1.8.9 {
+/*import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import net.minecraft.client.DeltaTracker;
+import org.tg.tgvanillahud.render.HudTransform;
+*///?}
+
+//? if >=26.2 {
+@Mixin(Hud.class)
+//?} elif > 1.8.9 {
+/*@Mixin(Gui.class)
+*///?} else {
+/*@Mixin(GameGui.class)
+*///?}
+public class GuiMixinScoreboard {
+    //? if > 1.8.9 {
+    @Unique
+    private int tgvanillahud$scoreboardTop = Integer.MIN_VALUE;
+
+    @Unique
+    private int tgvanillahud$titleX0, tgvanillahud$titleX1, tgvanillahud$titleY1;
+
+    @Unique
+    private boolean tgvanillahud$showScorePoints;
+
+    @Unique
+    private static void tgvanillahud$fill(Operation<Void> original, GuiGraphicsExtractor graphics, ScoreboardHud hud, int x0, int y0, int x1, int y1, int color,
+                                        boolean roundTop, boolean roundBottom) {
+        if ((color >>> 24) == 0) return;
+        TextBackdrop.roundedSegment(graphics, x0, y0, x1, y1, hud.getRadius(), roundTop, roundBottom,
+                (a, b, c, d) -> original.call(graphics, a, b, c, d, color));
+    }
+
+    //? if <1.21.4 && >1.8.9 {
+    /*@WrapMethod(method = "renderScoreboardSidebar")
+    private void tgvanillahud$scoreboard(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, Operation<Void> original) {
+        if (!Huds.INSTANCE.getScoreboard().shouldDraw()) return;
+
+        HudTransform.begin(graphics, Huds.INSTANCE.getScoreboard());
+        original.call(graphics, deltaTracker);
+        HudTransform.end(graphics);
+    }
+    *///?}
+
+    //? if >=1.21.8 {
+    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"))
+    private void tgvanillahud$foreignProbe(GuiGraphicsExtractor graphics, Objective objective, CallbackInfo ci) {
+        ForeignTransform.probe(graphics);
+    }
+    //?}
+
+    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"), cancellable = true)
+    private void tgvanillahud$scoreboard$persistent(GuiGraphicsExtractor graphics, Objective objective, CallbackInfo ci) {
+        this.tgvanillahud$scoreboardTop = Integer.MIN_VALUE;
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) return;
+        hud.refreshSidebar(objective);
+        if (!hud.getSidebarHasRows() && !(hud.getPersistentTitle() && hud.getScoreboardTitle())) {
+            ci.cancel();
+            return;
+        }
+        this.tgvanillahud$showScorePoints = hud.getSidebarShowsPoints();
+    }
+
+    @Unique
+    private StyledFormat tgvanillahud$pointsFormat;
+
+    @Unique
+    private int tgvanillahud$pointsArgb;
+
+    @ModifyExpressionValue(
+            method = "displayScoreboardSidebar",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/scores/Objective;numberFormatOrDefault(Lnet/minecraft/network/chat/numbers/NumberFormat;)Lnet/minecraft/network/chat/numbers/NumberFormat;")
+    )
+    private NumberFormat tgvanillahud$scoreboard$scorePoints(NumberFormat original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) return original;
+        if (!this.tgvanillahud$showScorePoints) {
+            return BlankFormat.INSTANCE;
+        }
+        int argb = hud.getScorePointsColor().getArgb();
+        if (this.tgvanillahud$pointsFormat == null || argb != this.tgvanillahud$pointsArgb) {
+            this.tgvanillahud$pointsFormat = new StyledFormat(Style.EMPTY.withColor(argb));
+            this.tgvanillahud$pointsArgb = argb;
+        }
+        return this.tgvanillahud$pointsFormat;
+    }
+
+    @WrapOperation(
+            //? if <1.21.4 && >1.8.9 {
+            /*method = "method_55440",
+            *///?} else {
+            method = "displayScoreboardSidebar",
+            //?}
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V",
+                    ordinal = 0
+            )
+    )
+    private void tgvanillahud$scoreboard$titleBackground(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, x0, y0, x1, y1, color);
+            return;
+        }
+        //? if >=1.21.8
+        ForeignTransform.observeY(graphics, hud, y0, hud.expectedTitleTop(ForeignTransform.realGuiHeight(graphics)));
+        if (!hud.getScoreboardTitle()) return;
+        this.tgvanillahud$scoreboardTop = y0;
+        if (hud.getHasCustomBackground()) {
+            this.tgvanillahud$titleX0 = x0;
+            this.tgvanillahud$titleX1 = x1;
+            this.tgvanillahud$titleY1 = y1;
+            return;
+        }
+        tgvanillahud$fill(original, graphics, hud, x0, y0, x1, y1, hud.getTitleBgColor(), true, false);
+    }
+
+    @WrapOperation(
+            //? if <1.21.4 && >1.8.9 {
+            /*method = "method_55440",
+            *///?} else {
+            method = "displayScoreboardSidebar",
+            //?}
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V",
+                    ordinal = 1
+            )
+    )
+    private void tgvanillahud$scoreboard$background(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, x0, y0, x1, y1, color);
+            return;
+        }
+        if (hud.getHasCustomBackground()) {
+            boolean hasTitle = this.tgvanillahud$scoreboardTop != Integer.MIN_VALUE;
+            int top = hasTitle ? this.tgvanillahud$scoreboardTop : y0;
+            boolean drew = ScoreboardBackground.render(graphics, hud.imageX0(x0), hud.imageY0(top), hud.imageX1(x1), hud.imageY1(y1), hud.getBackgroundImagePath(), hud.getBackgroundImageMode());
+            if (hasTitle && (hud.getKeepBackgroundColor() || !drew)) {
+                tgvanillahud$fill(original, graphics, hud, this.tgvanillahud$titleX0, top, this.tgvanillahud$titleX1, this.tgvanillahud$titleY1, hud.getTitleBgColor(), true, false);
+            }
+            if (drew && !hud.getKeepBackgroundColor()) return;
+        }
+        boolean titled = this.tgvanillahud$scoreboardTop != Integer.MIN_VALUE && (hud.getTitleBgColor() >>> 24) != 0;
+        tgvanillahud$fill(original, graphics, hud, x0, y0, x1, y1, hud.getBodyBgColor(), !titled, true);
+    }
+
+    @WrapOperation(
+            //? if <1.21.4 && >1.8.9 {
+            /*method = "method_55440",
+            *///?} else {
+            method = "displayScoreboardSidebar",
+            //?}
+            at = @At(
+                    value = "INVOKE",
+                    //? if >=26 {
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V",
+                    //?} elif >=1.21.6 {
+                    /*target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V",
+                    *///?} else {
+                    /*target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)I",
+                    *///?}
+                    ordinal = 0
+            )
+    )
+    //? if <1.21.6 && >1.8.9 {
+    /*private int tgvanillahud$scoreboard$title(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int color, boolean dropShadow, Operation<Integer> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (!hud.isDrawnAsVanilla() && !hud.getScoreboardTitle()) return 0;
+        return original.call(graphics, font, text, x, y, color, dropShadow);
+    }
+    *///?} else {
+    private void tgvanillahud$scoreboard$title(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int color, boolean dropShadow, Operation<Void> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (!hud.isDrawnAsVanilla() && !hud.getScoreboardTitle()) return;
+        original.call(graphics, font, text, x, y, color, dropShadow);
+    }
+    //?}
+
+    @ModifyArg(
+            //? if <1.21.4 && >1.8.9 {
+            /*method = "method_55440",
+            *///?} else {
+            method = "displayScoreboardSidebar",
+            //?}
+            at = @At(
+                    value = "INVOKE",
+                    //? if >=26 {
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V"
+                    //?} elif >=1.21.6 {
+                    /*target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V"
+                    *///?} else {
+                    /*target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)I"
+                    *///?}
+            ),
+            index = 5
+    )
+    private boolean tgvanillahud$scoreboard$textShadow(boolean dropShadow) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        return hud.isDrawnAsVanilla() ? dropShadow : hud.getTextShadow();
+    }
+    //?} else {
+    /*// 1.8.9 renders the whole sidebar in GameGui.renderScoreboardObjective, one row at a time,
+    // and draws the title in the last iteration. Read off the bytecode, the calls in there are:
+    //   fill   0 = row background, 1 = title background, 2 = the strip between title and rows
+    //   draw   0 = entry name,     1 = score points,     2 = title
+    @Unique
+    private boolean tgvanillahud$drewBackground;
+
+    // getScores builds a new sorted list, so check once per sidebar
+    @Unique
+    private boolean tgvanillahud$showScorePoints;
+
+    @Inject(method = "renderScoreboardObjective", at = @At("HEAD"))
+    private void tgvanillahud$scorePointsOnce(ScoreboardObjective objective, Window window, CallbackInfo ci) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        hud.refreshSidebar(objective);
+        this.tgvanillahud$showScorePoints = hud.getSidebarShowsPoints();
+        this.tgvanillahud$rowsLeft = hud.getSidebarRows();
+        this.tgvanillahud$firstRow = true;
+        this.tgvanillahud$radius = hud.getRadius();
+    }
+
+    // wraps the call so argentum's deferred batch still draws inside the transform
+    @WrapOperation(method = "render", order = 2000, at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GameGui;renderScoreboardObjective(Lnet/minecraft/scoreboard/ScoreboardObjective;Lnet/minecraft/client/render/Window;)V"))
+    private void tgvanillahud$scoreboard(GameGui gui, ScoreboardObjective objective, Window window, Operation<Void> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (!hud.shouldDraw()) return;
+
+        HudTransform.begin(LegacyDrawContext.INSTANCE, hud);
+        this.tgvanillahud$drewBackground = tgvanillahud$backgroundImage(hud);
+        try {
+            original.call(gui, objective, window);
+        } finally {
+            HudTransform.end(LegacyDrawContext.INSTANCE);
+        }
+    }
+
+    @Unique
+    private static boolean tgvanillahud$backgroundImage(ScoreboardHud hud) {
+        if (hud.isDrawnAsVanilla() || !hud.getHasCustomBackground()) return false;
+        int screenWidth = LegacyDrawContext.INSTANCE.guiWidth();
+        int screenHeight = LegacyDrawContext.INSTANCE.guiHeight();
+        int x0 = (int) hud.vanillaOriginX(screenWidth, screenHeight);
+        int y0 = (int) hud.vanillaOriginY(screenWidth, screenHeight);
+        return ScoreboardBackground.render(
+                LegacyDrawContext.INSTANCE,
+                hud.imageX0(x0), hud.imageY0(y0),
+                hud.imageX1(x0 + (int) hud.getUnrotatedWidth()),
+                hud.imageY1(y0 + (int) hud.getUnrotatedHeight()),
+                hud.getBackgroundImagePath(),
+                hud.getBackgroundImageMode()
+        );
+    }
+
+    @Unique
+    private boolean tgvanillahud$solidHidden(ScoreboardHud hud) {
+        return this.tgvanillahud$drewBackground && !hud.getKeepBackgroundColor();
+    }
+
+    @Unique
+    private static void tgvanillahud$fill(Operation<Void> original, int radius, int x0, int y0, int x1, int y1, int color,
+                                        boolean roundTop, boolean roundBottom) {
+        if ((color >>> 24) == 0) return;
+        TextBackdrop.roundedSegment(LegacyDrawContext.INSTANCE, x0, y0, x1, y1, radius,
+                roundTop, roundBottom, (a, b, c, d) -> {
+                    if (!HudCapture.fill(LegacyDrawContext.INSTANCE, a, b, c, d, color)) original.call(a, b, c, d, color);
+                });
+    }
+
+    // rows are drawn bottom first, so the top one is found by counting down the rows vanilla
+    // will draw (no "#" owners, at most 15)
+    @Unique
+    private int tgvanillahud$rowsLeft;
+    @Unique
+    private boolean tgvanillahud$firstRow;
+    @Unique
+    private int tgvanillahud$radius;
+
+    // a legacy colour code in the string wins over the colour argument, so it has to go before
+    // the configured score colour can take effect
+    @Unique
+    private static String tgvanillahud$stripLeadingColor(String text) {
+        String out = text;
+        while (out.length() >= 2 && out.charAt(0) == '\u00a7') {
+            out = out.substring(2);
+        }
+        return out;
+    }
+
+    @Unique
+    private int tgvanillahud$draw(Font font, String text, int x, int y, int color, Operation<Integer> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (!hud.isDrawnAsVanilla() && hud.getTextShadow()) {
+            return font.drawWithShadow(text, (float) x, (float) y, color);
+        }
+        return original.call(font, text, x, y, color);
+    }
+
+    @WrapOperation(method = "renderScoreboardObjective", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GameGui;fill(IIIII)V", ordinal = 0))
+    private void tgvanillahud$rowBackground(int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(x0, y0, x1, y1, color);
+            return;
+        }
+        if (tgvanillahud$solidHidden(hud)) return;
+        boolean bottom = this.tgvanillahud$firstRow;
+        this.tgvanillahud$firstRow = false;
+        boolean top = --this.tgvanillahud$rowsLeft == 0;
+        boolean shown = hud.getBackgroundStyle().showBackground;
+        boolean titled = hud.getScoreboardTitle() && shown && (hud.getTitleColor().getArgb() >>> 24) != 0;
+        // with no title, the top row also covers the 1px gap so its corners round cleanly
+        if (top && !titled) y0--;
+        tgvanillahud$fill(original, this.tgvanillahud$radius, x0, y0, x1, y1, shown ? hud.getBgArgb() : 0, top && !titled, bottom);
+    }
+
+    @WrapOperation(method = "renderScoreboardObjective", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GameGui;fill(IIIII)V", ordinal = 1))
+    private void tgvanillahud$titleBackground(int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(x0, y0, x1, y1, color);
+            return;
+        }
+        if (!hud.getScoreboardTitle()) return;
+        if (tgvanillahud$solidHidden(hud)) return;
+        tgvanillahud$fill(original, this.tgvanillahud$radius, x0, y0, x1, y1, hud.getTitleBgColor(), true, false);
+    }
+
+    @WrapOperation(method = "renderScoreboardObjective", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GameGui;fill(IIIII)V", ordinal = 2))
+    private void tgvanillahud$titleGap(int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(x0, y0, x1, y1, color);
+            return;
+        }
+        if (tgvanillahud$solidHidden(hud)) return;
+        if (!hud.getScoreboardTitle() || (hud.getTitleBgColor() >>> 24) == 0) return;
+        tgvanillahud$fill(original, this.tgvanillahud$radius, x0, y0, x1, y1, hud.getBodyBgColor(), false, false);
+    }
+
+    // vanilla folds ": <score>" into every row when it sizes the sidebar, so hiding the score
+    // points left a dead column on the right. width 1 is the sizing loop: 0 is the title, 2 right
+    // aligns the drawn score and 3 centres the title.
+    @WrapOperation(method = "renderScoreboardObjective", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/Font;width(Ljava/lang/String;)I", ordinal = 1))
+    private int tgvanillahud$entryWidth(Font font, String text, Operation<Integer> original,
+                                      @Local ScoreboardScore score) {
+        if (this.tgvanillahud$showScorePoints || Huds.INSTANCE.getScoreboard().isDrawnAsVanilla()) {
+            return original.call(font, text);
+        }
+        // the colour code vanilla splices in front of the number measures zero, so the suffix
+        // is exactly what ": " plus the digits take up
+        return original.call(font, text) - font.width(": " + score.get());
+    }
+
+    @WrapOperation(method = "renderScoreboardObjective", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/Font;draw(Ljava/lang/String;III)I", ordinal = 0))
+    private int tgvanillahud$entryName(Font font, String text, int x, int y, int color,
+                                     Operation<Integer> original) {
+        return tgvanillahud$draw(font, text, x, y, color, original);
+    }
+
+    @WrapOperation(method = "renderScoreboardObjective", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/Font;draw(Ljava/lang/String;III)I", ordinal = 1))
+    private int tgvanillahud$scorePoints(Font font, String text, int x, int y, int color,
+                                       Operation<Integer> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (hud.isDrawnAsVanilla()) return original.call(font, text, x, y, color);
+        if (!this.tgvanillahud$showScorePoints) return 0;
+        return tgvanillahud$draw(font, tgvanillahud$stripLeadingColor(text), x, y,
+                hud.getScorePointsColor().getArgb(), original);
+    }
+
+    @WrapOperation(method = "renderScoreboardObjective", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/Font;draw(Ljava/lang/String;III)I", ordinal = 2))
+    private int tgvanillahud$title(Font font, String text, int x, int y, int color,
+                                 Operation<Integer> original) {
+        ScoreboardHud hud = Huds.INSTANCE.getScoreboard();
+        if (!hud.isDrawnAsVanilla() && !hud.getScoreboardTitle()) return 0;
+        return tgvanillahud$draw(font, text, x, y, color, original);
+    }
+    *///?}
+}

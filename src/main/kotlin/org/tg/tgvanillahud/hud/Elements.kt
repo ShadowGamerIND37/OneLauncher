@@ -1,0 +1,1742 @@
+@file:OptIn(ExperimentalTGOneConfigUiApi::class)
+
+package org.tg.tgvanillahud.hud
+
+//? if > 1.8.9 {
+import net.minecraft.client.gui.components.LerpingBossEvent
+import net.minecraft.client.multiplayer.PlayerInfo
+import net.minecraft.network.chat.Component
+import net.minecraft.tags.FluidTags
+import net.minecraft.world.effect.MobEffectInstance
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.scores.DisplaySlot
+import net.minecraft.world.scores.Objective
+import net.minecraft.world.scores.PlayerScoreEntry
+import net.minecraft.world.scores.PlayerTeam
+//?} else {
+/*import net.minecraft.block.material.Material
+import net.minecraft.client.gui.BossBar
+import net.minecraft.entity.living.LivingEntity
+import net.minecraft.client.network.PlayerInfo
+import net.minecraft.scoreboard.ScoreboardObjective
+import net.minecraft.scoreboard.ScoreboardScore
+import net.minecraft.scoreboard.team.Team
+import net.minecraft.text.Text
+import org.tg.tgvanillahud.compat.SoundFixCaptions
+import org.tg.tgvanillahud.mixin.compat.soundfix.ISubtitleEntry
+*///?}
+import net.minecraft.world.item.ItemStack
+import org.tg.compose.minecraft.mc.McHeadStyle
+import org.tg.compose.render.PolyColor
+import org.tg.tgoneconfig.api.config.v1.Tree
+import org.tg.tgoneconfig.api.config.v1.annotations.*
+import org.tg.tgoneconfig.api.config.v1.showWhen
+import org.tg.tgoneconfig.api.hud.v1.Hud
+import org.tg.tgoneconfig.api.hud.v1.HudAnchor
+import org.tg.tgoneconfig.api.hud.v1.HudManager
+import org.tg.tgoneconfig.api.hud.v1.previewValue
+import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
+import org.tg.tgoneconfig.utils.v1.dsl.mc
+import org.tg.tgvanillahud.compat.PolytoneXpColor
+import org.tg.tgvanillahud.compat.TabListCompat
+import org.tg.tgvanillahud.mixin.access.IBossHealthOverlay
+import org.tg.tgvanillahud.mixin.access.IPlayerTabOverlay
+import org.tg.tgvanillahud.mixin.access.ISubtitle
+import org.tg.tgvanillahud.mixin.access.ISubtitleOverlay
+import org.tg.tgvanillahud.render.HudCapture
+import org.tg.tgvanillahud.render.HudTransform
+import org.tg.tgvanillahud.util.DemoData
+import org.tg.tgvanillahud.util.TabListManager
+import kotlin.math.roundToInt
+
+class ActionBarHud : BackdropHud("tgvanillahud-actionbar.json", "Action Bar", Category.INFO) {
+    @Switch(
+        title = "Use Jukebox Rainbow Timer Color",
+        description = "Use the rainbow timer color when a jukebox begins playing."
+    )
+    var rainbowTimer = true
+
+    init {
+        padForShadow(1f)
+    }
+
+    override val hugsGlyphs get() = true
+    override val naturalWidth get() = 60f
+    override val naturalHeight get() = GLYPH_HEIGHT.toFloat()
+    // vanilla centres the font width, which is a pixel wider than the letters
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = half(screenWidth) - half(width.toInt() + 1)
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = screenHeight - 72f
+    override val anchorX get() = 0.5f
+    override val anchorY get() = 1f
+
+    //? if > 1.8.9 {
+    override fun hasLiveData() = hudAccessor?.let { it.overlay != null && it.overlayMessageTime > 0 } == true
+
+    fun previewMessage(): Component =
+        previewValue("actionBar", { hudAccessor?.overlay?.takeIf { hasLiveData() } }, null) ?: Component.literal("Action Bar")
+
+    override val exampleText get() = previewMessage().string
+    //?} else {
+    /*override fun hasLiveData() = hudAccessor?.let { !it.overlayText.isNullOrEmpty() && it.overlayMessageCooldown > 0 } == true
+
+    fun previewMessage(): String =
+        previewValue("actionBar", { hudAccessor?.overlayText?.takeIf { hasLiveData() } }, null) ?: "Action Bar"
+
+    override val exampleText get() = previewMessage()
+    *///?}
+
+    override fun hasContent() = previewing || hudAccessor == null || hasLiveData()
+
+    override fun measuredWidth(): Float = fontWidth() - 1f
+
+    private fun fontWidth(): Float {
+        if (previewing) return super.measuredWidth()
+        //? if > 1.8.9 {
+        return measureOnce({ mix(0L, hudAccessor?.overlay) }) { textWidth { hudAccessor?.overlay?.string } }
+            ?: naturalWidth
+        //?} else {
+        /*return measureOnce({ mix(0L, hudAccessor?.overlayText) }) { textWidth { hudAccessor?.overlayText } }
+            ?: naturalWidth
+        *///?}
+    }
+}
+
+class BossBarHud : BackdropHud("tgvanillahud-bossbar.json", "Boss Bar", Category.COMBAT, 0x78000000) {
+    @Switch(title = "Render Text")
+    var renderText = true
+
+    @Switch(title = "Render Health")
+    var renderHealth = true
+
+    @Switch(title = "Smooth Health", description = "Lerps the health bar to make it smoother.")
+    var smoothHealth = true
+
+    @Slider(title = "Lerp Speed", description = "How long the health bar takes to catch up, in milliseconds.", min = 1f, max = 1000f)
+    var lerpSpeed = 100f
+
+    //? if <= 1.8.9 {
+    /*    private var lerpFrom = 1f
+    private var lerpTarget = 1f
+    private var lerpStart = 0L
+
+    fun smoothedHealth(health: Float): Float {
+        val now = System.currentTimeMillis()
+        if (health != lerpTarget) {
+            lerpFrom = lerp(now)
+            lerpTarget = health
+            lerpStart = now
+        }
+        return lerp(now)
+    }
+
+    private fun lerp(now: Long): Float {
+        val t = ((now - lerpStart) / lerpSpeed).coerceIn(0f, 1f)
+        return lerpFrom + (lerpTarget - lerpFrom) * t
+    }
+    *///?}
+
+    @Slider(
+        title = "Bar Position",
+        description = "Where the bar sits under text wider than it. 0 is the left edge, 100 the right.",
+        min = 0f, max = 100f
+    )
+    var barPosition = 50f
+
+    fun barOffset(textWidth: Int): Int {
+        if (!renderText || textWidth <= 182) return 0
+        return ((textWidth - 182) * (barPosition / 100f - 0.5f)).toInt()
+    }
+
+    override val naturalWidth get() = 182f
+    override val naturalHeight get() = 30f
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = half(screenWidth) - half(width.toInt())
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = if (renderText) 3f else 12f
+
+    override fun Tree.addDependencies() {
+        backdropDependencies()
+        showWhen("smoothHealth", "lerpSpeed")
+    }
+    override val anchorX get() = 0.5f
+    override val anchorY get() = 0f
+
+    //? if > 1.8.9 {
+    private fun liveBossEvents(): Collection<LerpingBossEvent> = try {
+        //? if >=26.2 {
+        (mc.gui.hud.bossOverlay as IBossHealthOverlay).events.values
+        //?} else {
+        /*(mc.gui.bossOverlay as IBossHealthOverlay).events.values
+        *///?}
+    } catch (_: Throwable) {
+        emptyList()
+    }
+
+    private fun bossEvents(): Collection<LerpingBossEvent> =
+        if (previewing) previewBossEvents() else liveBossEvents()
+
+    fun previewBossEvents(): Collection<LerpingBossEvent> =
+        previewValue("bossBar", { liveBossEvents().toList().ifEmpty { null } }, null) ?: DemoData.demoBossEvents()
+
+    override fun hasLiveData() = liveBossEvents().isNotEmpty()
+    //?} else {
+    /*// 1.8.9 shows at most one bar, and only for as long as the server keeps refreshing its timer
+    private fun liveBossNames(): List<String> = try {
+        val name = BossBar.name
+        if (name.isNullOrEmpty() || BossBar.timer <= 0) emptyList() else listOf(name)
+    } catch (_: Throwable) {
+        emptyList()
+    }
+
+    private fun bossNames(): List<String> =
+        if (previewing) listOf(previewBossName()) else liveBossNames()
+
+    fun previewBossName(): String =
+        previewValue("bossBar", { liveBossNames().firstOrNull() }, null) ?: DemoData.demoBossName()
+
+    override fun hasLiveData() = liveBossNames().isNotEmpty()
+    *///?}
+
+    override fun hasContent() = previewing || hasLiveData()
+
+    private class Size(val width: Float, val height: Float)
+
+    private fun size(): Size? = measureOnce({
+        var h = mix(0L, renderText)
+        //? if > 1.8.9 {
+        for (e in bossEvents()) h = mix(mix(h, e), e.name)
+        //?} else
+        //for (n in bossNames()) h = mix(h, n)
+        h
+    }) { measureSize() }
+
+    //? if > 1.8.9 {
+    private fun measureSize(): Size {
+        val events = bossEvents()
+        val width = if (events.isEmpty() || !renderText) naturalWidth
+        else events.fold(naturalWidth) { acc, e -> maxOf(acc, mc.font.width(e.name).toFloat()) }
+        val n = events.size
+        val height = if (n == 0) naturalHeight else ((n - 1) * 19 + if (renderText) 14 else 5).toFloat()
+        return Size(width, height)
+    }
+    //?} else {
+    /*private fun measureSize(): Size {
+        val names = bossNames()
+        val width = if (names.isEmpty() || !renderText) naturalWidth
+        else names.fold(naturalWidth) { acc, n -> maxOf(acc, mc.font.width(n).toFloat()) }
+        val height = if (names.isEmpty()) naturalHeight else (if (renderText) 14 else 5).toFloat()
+        return Size(width, height)
+    }
+    *///?}
+
+    override fun measuredWidth(): Float = try {
+        size()?.width ?: naturalWidth
+    } catch (_: Throwable) {
+        naturalWidth
+    }
+
+    override fun measuredHeight(): Float = try {
+        size()?.height ?: naturalHeight
+    } catch (_: Throwable) {
+        naturalHeight
+    }
+}
+
+/** an element that can dock to any screen edge, rotating a quarter turn for the left and right ones */
+abstract class RotatableHud(hudId: String, title: String) : VanillaHud(hudId, title, Category.PLAYER) {
+    override val composeBackground get() = true
+
+    override fun hasContent() = previewing || hasLiveData()
+
+    @Dropdown(
+        title = "Side",
+        description = "Which screen edge the element docks against. Left and Right rotate it a quarter turn.",
+        options = ["Bottom", "Left", "Top", "Right"]
+    )
+    var side = BOTTOM
+
+    @Switch(title = "Reverse Direction", description = "Reverse the order of the element's contents.")
+    var reverseDirection = false
+
+    protected abstract val homeAnchorX: Float
+    protected abstract val homeAnchorY: Float
+
+    override val quarterTurns get() = side.coerceIn(BOTTOM, RIGHT)
+
+    override val mirrored: Boolean
+        get() {
+            val turns = quarterTurns
+            return reverseDirection != (turns == TOP || turns == RIGHT)
+        }
+
+    // the distance from the bottom edge becomes the distance from the docked edge, and the offset
+    // from the screen centre carries over to the free axis so a rotated cluster keeps its layout
+    override fun defaultOriginX(screenWidth: Int, screenHeight: Int) = when (quarterTurns) {
+        LEFT -> fromBottom(screenWidth, screenHeight)
+        RIGHT -> screenWidth - unrotatedHeight - fromBottom(screenWidth, screenHeight)
+        else -> vanillaOriginX(screenWidth, screenHeight)
+    }
+
+    override fun defaultOriginY(screenWidth: Int, screenHeight: Int) = when (quarterTurns) {
+        TOP -> fromBottom(screenWidth, screenHeight)
+        BOTTOM -> vanillaOriginY(screenWidth, screenHeight)
+        else -> half(screenHeight) + vanillaOriginX(screenWidth, screenHeight) - half(screenWidth)
+    }
+
+    private fun fromBottom(screenWidth: Int, screenHeight: Int) =
+        screenHeight - vanillaOriginY(screenWidth, screenHeight) - unrotatedHeight
+
+    // pinned against the docked edge and centred along the free axis
+    override val anchorX get() = when (quarterTurns) {
+        LEFT -> 0f
+        RIGHT -> 1f
+        else -> homeAnchorX
+    }
+
+    override val anchorY get() = when (quarterTurns) {
+        TOP -> 0f
+        BOTTOM -> homeAnchorY
+        else -> 0.5f
+    }
+
+    companion object {
+        const val BOTTOM = 0
+        const val LEFT = 1
+        const val TOP = 2
+        const val RIGHT = 3
+    }
+}
+
+class HotbarHud : RotatableHud("tgvanillahud-hotbar.json", "Hotbar") {
+    init {
+        showShadow = true
+    }
+
+    @Switch(
+        title = "Animation",
+        description = "Slide the selected-slot highlight between positions instead of snapping."
+    )
+    var animation = false
+
+    override val naturalWidth get() = 182f
+
+    override val naturalHeight get() = 22f
+
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = half(screenWidth) - naturalWidth / 2f
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = screenHeight - naturalHeight
+
+    override val homeAnchorX get() = 0.5f
+    override val homeAnchorY get() = 1f
+
+    override fun hasLiveData() = mc.player?.isSpectator == false
+
+    fun showsDemo(): Boolean = previewing && previewValue("hotbar", { hasItems().takeIf { it } }, null) == null
+
+    private fun hasItems(): Boolean {
+        val inventory = mc.player?.takeIf { hasLiveData() }?.inventory ?: return false
+        //? if > 1.8.9 {
+        for (i in 0..8) if (!inventory.getItem(i).isEmpty) return true
+        return false
+        //?} else
+        //return inventory.items.take(9).any { it != null }
+    }
+}
+
+private fun activeHotbar(): HotbarHud? = activeOf<HotbarHud>()
+
+private inline fun <reified T : Hud> activeOf(): T? {
+    val huds = HudManager.activeInstances
+    for (i in 0 until huds.size) {
+        val hud = huds[i]
+        if (hud is T) return hud
+    }
+    return null
+}
+
+/** the active [T] this bar hangs from, unless either of them is rotated since a rotated bar docks to its own screen edge */
+private inline fun <reified T : RotatableHud> RotatableHud.dockedTo(): T? {
+    if (quarterTurns != RotatableHud.BOTTOM) return null
+    return activeOf<T>()?.takeIf { it.quarterTurns == RotatableHud.BOTTOM }
+}
+
+//? if > 1.8.9 {
+private fun statusBarsShown() = mc.gameMode?.canHurtPlayer() == true
+private fun experienceShown() = mc.gameMode?.hasExperience() == true
+//?} else {
+/*private fun statusBarsShown() = mc.interactionManager?.hasStatusBars() == true
+private fun experienceShown() = mc.interactionManager?.hasXpBar() == true
+*///?}
+
+abstract class StatBarHud(
+    hudId: String,
+    title: String,
+    // 1.8.9 draws every bar in one pass so it has no alignment hook
+    @Suppress("UNUSED_PARAMETER") defaultAlignment: Int,
+    private val rightSide: Boolean,
+    private val aboveFirstRow: Boolean,
+) : RotatableHud(hudId, title) {
+    //? if >1.8.9 {
+    @Dropdown(title = "Alignment", description = "Which side the icons fill from.", options = ["Left", "Right"])
+    var fillSide = defaultAlignment
+    //?}
+
+    override val naturalWidth get() = 81f
+    override val naturalHeight get() = 9f
+
+    /** how far the game lifts this bar's content above its first row, as it stacks another row below it */
+    protected abstract fun rise(): Float
+
+    /** how much taller than a single row the bar's own content gets */
+    protected abstract fun stack(): Float
+
+    override fun measuredHeight() = naturalHeight + stack()
+
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) =
+        half(screenWidth) + if (rightSide) 10f else -91f
+
+    // the origin follows the content the game lifts, so a bar that is not itself taller keeps its place
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) =
+        screenHeight - (if (aboveFirstRow) 49f else 39f) - rise()
+
+    override fun seedOrigin(screenWidth: Int, screenHeight: Int) = vanillaOriginY(screenWidth, screenHeight)
+
+    override val homeAnchorX get() = if (rightSide) 1f else 0f
+    override val homeAnchorY get() = 1f
+
+    // the bottom corner on the side it sits hangs from the matching top corner of what is below it
+    abstract override val defaultAnchorTarget: VanillaHud?
+
+    override val defaultAnchorPoint get() = if (rightSide) HudAnchor.BottomRight else HudAnchor.BottomLeft
+    override val defaultAnchorTargetPoint get() = if (rightSide) HudAnchor.TopRight else HudAnchor.TopLeft
+
+    companion object {
+        const val ALIGN_LEFT = 0
+        const val ALIGN_RIGHT = 1
+    }
+}
+
+class HealthHud : StatBarHud("tgvanillahud-health.json", "Health", StatBarHud.ALIGN_LEFT, rightSide = false, aboveFirstRow = false) {
+    @Switch(title = "Animation", description = "Animate the health bar when taking damage / healing.")
+    var animation = true
+
+    @RadioButton(title = "Hardcore Hearts", description = "When to render hardcore hearts.", options = arrayOf("Default", "Always Hardcore", "Always Regular"))
+    var hardcoreHearts = 0
+
+    override fun hasLiveData() = statusBarsShown()
+
+    // every extra row of hearts stacks above the first, so the box has to hold them
+    override fun rise() = StatRows.healthRise(previewing)
+    override fun stack() = StatRows.healthRise(previewing)
+
+    override val defaultAnchorTarget: VanillaHud? get() = dockedTo<ExperienceBarHud>()
+}
+
+class ArmorHud : StatBarHud("tgvanillahud-armor.json", "Armor", StatBarHud.ALIGN_LEFT, rightSide = false, aboveFirstRow = true) {
+    //? if > 1.8.9 {
+    override fun hasLiveData() = statusBarsShown() && (mc.player?.armorValue ?: 0) > 0
+    //?} else
+    //override fun hasLiveData() = statusBarsShown() && (mc.player?.armorProtection ?: 0) > 0
+
+    // the game draws the armor above the topmost row of hearts, which Health's box already holds
+    override fun rise() = StatRows.healthRise(previewing)
+    override fun stack() = 0f
+
+    override val defaultAnchorTarget: VanillaHud? get() = dockedTo<HealthHud>()
+}
+
+/** Whether Hunger's slot is drawn: its food, or the mount's hearts that take its place. */
+internal fun hungerShown(statusBarsShown: Boolean, riding: Boolean, ridingLiving: Boolean, mountHeartRows: Int): Boolean =
+    //? if > 1.8.9 {
+    mountHeartRows > 0 || (statusBarsShown && !ridingLiving)
+    //?} else
+    //statusBarsShown && (!riding || mountHeartRows > 0)
+
+class HungerHud : StatBarHud("tgvanillahud-hunger.json", "Hunger", StatBarHud.ALIGN_RIGHT, rightSide = true, aboveFirstRow = false) {
+    @Switch(title = "Animation", description = "Animate the hunger bar when it shakes.")
+    var animation = true
+
+    override fun hasLiveData() = mc.player?.let {
+        hungerShown(statusBarsShown(), it.vehicle != null, it.vehicle is LivingEntity, StatRows.mountRows())
+    } == true
+
+    // a mount's hearts take this bar's place and stack above it, so the topmost row is where the content starts
+    override fun rise() = StatRows.mountRise()
+    override fun stack() = StatRows.mountRise()
+
+    override val defaultAnchorTarget: VanillaHud? get() = dockedTo<ExperienceBarHud>()
+}
+
+class AirHud : StatBarHud("tgvanillahud-air.json", "Air", StatBarHud.ALIGN_RIGHT, rightSide = true, aboveFirstRow = true) {
+    //? if > 1.8.9 {
+    override fun hasLiveData() = statusBarsShown() &&
+        mc.player?.let { it.isEyeInFluid(FluidTags.WATER) || it.airSupply < it.maxAirSupply } == true
+    //?} else
+    //override fun hasLiveData() = statusBarsShown() && mc.player?.isSubmergedIn(Material.WATER) == true
+
+    // 1.8.9 draws the bubbles on the armor row, so they follow the hearts instead of the mount
+    //? if > 1.8.9 {
+    override fun rise() = StatRows.mountRise()
+    //?} else
+    //override fun rise() = StatRows.healthRise(previewing)
+    override fun stack() = 0f
+
+    override val defaultAnchorTarget: VanillaHud? get() = dockedTo<HungerHud>()
+}
+
+class ExperienceBarHud : RotatableHud("tgvanillahud-experience.json", "Experience Bar") {
+    //? if >=1.21.6 {
+    @Switch(
+        title = "Overlay Locator Bar",
+        description = "Draw the locator bar's waypoints over the experience / jump bar instead of replacing it."
+    )
+    var overlayLocatorBar = false
+    //?}
+
+    override val naturalWidth get() = 182f
+    override val naturalHeight get() = 5f
+
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = half(screenWidth) - naturalWidth / 2f
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = screenHeight - 29f
+
+    //? if >=1.21.6 {
+    override fun hasLiveData() = experienceShown() || mc.player?.let {
+        it.jumpableVehicle() != null || it.connection.waypointManager.hasWaypoints()
+    } == true
+    //?} elif > 1.8.9 {
+    /*override fun hasLiveData() = experienceShown() || mc.player?.jumpableVehicle() != null
+    *///?} else
+    //override fun hasLiveData() = experienceShown() || mc.player?.isRidingRideableMob == true
+
+    override val homeAnchorX get() = 0.5f
+    override val homeAnchorY get() = 1f
+
+    override val defaultAnchorTarget: VanillaHud? get() = dockedTo<HotbarHud>()
+    override val defaultAnchorPoint get() = HudAnchor.Bottom
+    override val defaultAnchorTargetPoint get() = HudAnchor.Top
+}
+
+class ExperienceLevelHud : RotatableHud("tgvanillahud-experience-level.json", "Experience Level") {
+    init {
+        showShadow = true
+        fullShadow = true
+        textColor = 0xFF80FF20.toInt()
+        shadowColor = 0xFF000000.toInt()
+    }
+
+    override val managesTextColor get() = PolytoneXpColor.packSetsColor
+
+    override val naturalWidth get() = 18f
+    override val naturalHeight get() = 9f
+
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = half(screenWidth) - naturalWidth / 2f
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = screenHeight - 35f
+
+    //? if > 1.8.9 {
+    override fun hasLiveData() = experienceShown() && (mc.player?.experienceLevel ?: 0) > 0
+    //?} else
+    //override fun hasLiveData() = experienceShown() && (mc.player?.xpLevel ?: 0) > 0
+
+    override val homeAnchorX get() = 0.5f
+    override val homeAnchorY get() = 1f
+
+    override val defaultAnchorTarget: VanillaHud? get() = dockedTo<ExperienceBarHud>()
+    override val defaultAnchorPoint get() = HudAnchor.Bottom
+    override val defaultAnchorTargetPoint get() = HudAnchor.Top
+}
+
+class HeldItemTooltipHud : BackdropHud("tgvanillahud-itemtooltip.json", "Held Item Tooltip", Category.INFO) {
+    @Switch(title = "Fade Out")
+    var fadeOut: Boolean = true
+
+    @Switch(title = "Instant Fade")
+    var instantFade: Boolean = false
+
+    init {
+        padForShadow(1f)
+    }
+
+    override val hugsGlyphs get() = true
+    override val naturalWidth get() = 70f
+    override val naturalHeight get() = GLYPH_HEIGHT.toFloat()
+    // vanilla centres the font width, which is a pixel wider than the letters
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = ((screenWidth - width.toInt() - 1) / 2).toFloat()
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = screenHeight - 59f + vanillaDrop
+    override val anchorX get() = 0.5f
+    override val anchorY get() = 1f
+
+    override val defaultAnchorTarget: VanillaHud?
+        get() = activeHotbar()?.takeIf { it.quarterTurns == RotatableHud.BOTTOM }
+    override val defaultAnchorPoint get() = HudAnchor.Bottom
+    override val defaultAnchorTargetPoint get() = HudAnchor.Top
+
+    private val vanillaDrop get() = if (previewing || statusBarsShown()) 0f else 14f
+
+    // how much of vanilla's creative drop anchorOffsetY already holds, saved with it so a restart doesn't add it again
+    @Include
+    var appliedDrop = 0f
+
+    override fun restoreDefaultAnchor() {
+        val drop = vanillaDrop
+        if (drop != appliedDrop && isAnchored && !anchoredByHand) anchorOffsetY += drop - appliedDrop
+        appliedDrop = drop
+        super.restoreDefaultAnchor()
+    }
+
+    //? if > 1.8.9 {
+    override fun hasLiveData() = hudAccessor?.let {
+        mc.player?.isSpectator == false && !it.lastToolHighlight.isEmpty && (!fadeOut || it.toolHighlightTimer > 0)
+    } == true
+
+    fun previewItem(): ItemStack =
+        previewValue("heldItem", { hudAccessor?.lastToolHighlight?.takeIf { hasLiveData() } }, null) ?: DemoData.demoHotbarItem(0)
+
+    override val exampleText get() = previewItem().hoverName.string
+    //?} else {
+    /*// 1.8.9 leaves selectedItem null rather than holding an empty stack
+    override fun hasLiveData() = hudAccessor?.let {
+        it.lastToolHighlight != null && (!fadeOut || it.itemSelectedTimer > 0)
+    } == true
+
+    fun previewItem(): ItemStack =
+        previewValue("heldItem", { hudAccessor?.lastToolHighlight?.takeIf { hasLiveData() } }, null) ?: DemoData.demoHotbar()[0]!!
+
+    override val exampleText get() = previewItem().legacyHoverName
+    *///?}
+
+    override fun hasContent() = previewing || hudAccessor == null || hasLiveData()
+
+    override fun measuredWidth(): Float = fontWidth() - 1f
+
+    private fun fontWidth(): Float {
+        if (previewing) return super.measuredWidth()
+        //? if > 1.8.9 {
+        return measureOnce({ mix(0L, hudAccessor?.lastToolHighlight) }) {
+            textWidth { hudAccessor?.lastToolHighlight?.takeUnless { s -> s.isEmpty }?.hoverName?.string }
+        } ?: naturalWidth
+        //?} else {
+        /*return measureOnce({ mix(0L, hudAccessor?.lastToolHighlight) }) {
+            textWidth { hudAccessor?.lastToolHighlight?.legacyHoverName }
+        } ?: naturalWidth
+        *///?}
+    }
+}
+
+class ScoreboardHud : VanillaHud("tgvanillahud-scoreboard.json", "Scoreboard", Category.INFO) {
+    init {
+        showBackground = true
+        bgColor = 0x4C000000
+    }
+
+    val radius: Int get() = layoutStyle.bgRadius.roundToInt()
+
+    override fun hasBorder() = false
+
+    @Dropdown(
+        title = "Show Score Points",
+        subcategory = "Score Points",
+        options = ["Hide", "Hide Only if Consecutive", "Show Always"]
+    )
+    var scoreboardPoints: Int = 1
+
+    @Switch(
+        title = "Hide Repeating Scores",
+        subcategory = "Score Points",
+        description = "Hide score points when every visible score shows the same number."
+    )
+    var hideRepeatingScores: Boolean = true
+
+    @Color(title = "Score Points Color", subcategory = "Score Points")
+    var scorePointsColor = PolyColor(0xFFFF5555.toInt())
+
+    @Switch(title = "Scoreboard Title")
+    var scoreboardTitle: Boolean = true
+
+    @Switch(
+        title = "Persistent Scoreboard Title",
+        description = "Keep rendering the scoreboard title even when there are no score lines."
+    )
+    var persistentTitle: Boolean = false
+
+    @Color(title = "Title Background Color")
+    var titleColor = PolyColor(0x66000000)
+
+    @Switch(
+        title = "Keep Background Colour",
+        subcategory = "Background Image",
+        description = "Draw the solid background colours on top of the image instead of replacing them."
+    )
+    var keepBackgroundColor: Boolean = false
+
+    @File(
+        title = "Image",
+        subcategory = "Background Image",
+        description = "The PNG image file to use as the scoreboard background.",
+        types = ["png"],
+        filterName = "PNG Images",
+        placeholder = "No image selected"
+    )
+    var backgroundImagePath: String = ""
+
+    @Dropdown(
+        title = "Image Scaling",
+        subcategory = "Background Image",
+        description = "Stretch distorts the image to the scoreboard, Fill scales it to cover and crops the overflow, Fit scales it to fit inside, Crop draws it at its original size, centred.",
+        options = ["Stretch", "Fill", "Fit", "Crop"]
+    )
+    var backgroundImageMode: Int = 0
+
+    override val stretchesBackground get() = true
+
+    val titleBgColor: Int get() = if (backgroundStyle.showBackground) titleColor.argb else 0
+
+    val bodyBgColor: Int get() = if (backgroundStyle.showBackground) bgArgb else 0
+
+    val hasCustomBackground: Boolean get() = backgroundImagePath.isNotBlank()
+
+    private val imageScale: Float get() = elementScale.coerceAtLeast(0.001f)
+
+    fun imageX0(x: Int): Int = x - (contentOffsetX / imageScale).roundToInt()
+
+    fun imageY0(y: Int): Int = y - (contentOffsetY / imageScale).roundToInt()
+
+    fun imageX1(x: Int): Int = imageX0(x - width.roundToInt()) + (boxWidth / imageScale).roundToInt()
+
+    fun imageY1(y: Int): Int = imageY0(y - height.roundToInt()) + (boxHeight / imageScale).roundToInt()
+
+    val textShadow: Boolean get() = textStyle.showShadow
+
+    //? if > 1.8.9 {
+    fun showScorePoints(scores: Collection<PlayerScoreEntry>): Boolean {
+    //?} else
+    //fun showScorePoints(scores: Collection<ScoreboardScore>): Boolean {
+        if (hideRepeatingScores && areScoresRepeating(scores)) return false
+        return scoreboardPoints == 2 || (scoreboardPoints == 1 && !areScoresConsecutive(scores))
+    }
+
+    //? if > 1.8.9 {
+    fun areScoresRepeating(scores: Collection<PlayerScoreEntry>): Boolean {
+        val values = scores
+            .filter { !it.isHidden }
+            .map { it.value }
+    //?} else {
+    /*fun areScoresRepeating(scores: Collection<ScoreboardScore>): Boolean {
+        val values = scores.map { it.get() }
+    *///?}
+
+        if (values.size < 2) return false
+        return values.all { it == values[0] }
+    }
+
+    //? if > 1.8.9 {
+    fun areScoresConsecutive(scores: Collection<PlayerScoreEntry>): Boolean {
+        val values = scores
+            .filter { !it.isHidden }
+            .map { it.value }
+            .sorted()
+    //?} else {
+    /*fun areScoresConsecutive(scores: Collection<ScoreboardScore>): Boolean {
+        val values = scores.map { it.get() }.sorted()
+    *///?}
+
+        if (values.isEmpty()) return false
+
+        for (i in 0 until values.size - 1) {
+            if (values[i] + 1 != values[i + 1]) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private var sidebarObjective: Any? = null
+    private var sidebarValid = false
+    private var sidebarRevision = 0
+    private var sidebarEpoch = 0L
+    private var sidebarPointsMode = 0
+    private var sidebarHideRepeating = false
+
+    var sidebarShowsPoints = false
+        private set
+
+    var sidebarHasRows = false
+        private set
+
+    var sidebarRows = 0
+        private set
+
+    //? if > 1.8.9 {
+    fun refreshSidebar(objective: Objective) {
+    //?} else
+    //fun refreshSidebar(objective: ScoreboardObjective) {
+        val revision = HudInternals.scoreboardRevision
+        val epoch = clock() shr 10
+        if (sidebarValid && objective === sidebarObjective && revision == sidebarRevision && epoch == sidebarEpoch &&
+            scoreboardPoints == sidebarPointsMode && hideRepeatingScores == sidebarHideRepeating
+        ) return
+        //? if > 1.8.9 {
+        val scores = objective.scoreboard.listPlayerScores(objective)
+        sidebarHasRows = scores.any { !it.isHidden }
+        //?} else {
+        /*val scores = objective.scoreboard.getScores(objective)
+        var rows = 0
+        for (score in scores) {
+            val owner = score.owner
+            if (owner != null && !owner.startsWith("#")) rows++
+        }
+        sidebarRows = minOf(rows, 15)
+        *///?}
+        sidebarShowsPoints = showScorePoints(scores)
+        sidebarObjective = objective
+        sidebarRevision = revision
+        sidebarEpoch = epoch
+        sidebarPointsMode = scoreboardPoints
+        sidebarHideRepeating = hideRepeatingScores
+        sidebarValid = true
+    }
+
+    override val naturalWidth get() = 90f
+    override val naturalHeight get() = 90f
+    override fun Tree.addDependencies() {
+        showWhen("scoreboardPoints", "scorePointsColor") { it != 0 }
+        showWhen("scoreboardPoints", "hideRepeatingScores") { it == 1 }
+        showWhen("scoreboardTitle", "persistentTitle", "titleColor")
+        showWhen("backgroundImagePath", "keepBackgroundColor") { !(it as String?).isNullOrEmpty() }
+        showWhen("backgroundImagePath", "backgroundImageMode") { !(it as String?).isNullOrEmpty() }
+    }
+
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = screenWidth - width - 1f
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int): Float {
+        val s = try {
+            size()
+        } catch (_: Throwable) {
+            null
+        } ?: return half(screenHeight) - naturalHeight / 2f
+        return half(screenHeight) - s.scores * 6f - if (s.title) 10f else 1f
+    }
+
+    /** NaN while the size can't be measured */
+    fun expectedTitleTop(screenHeight: Int): Float {
+        val s = try {
+            size()
+        } catch (_: Throwable) {
+            null
+        } ?: return Float.NaN
+        return half(screenHeight) - s.scores * 6f - 10f
+    }
+    override val anchorX get() = 1f
+    override val anchorY get() = 0.5f
+
+    //? if > 1.8.9 {
+    override fun hasContent(): Boolean {
+        if (previewing) return true
+        val scoreboard = mc.level?.scoreboard ?: return true
+        val player = mc.player ?: return true
+        return scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) != null ||
+            scoreboard.getPlayersTeam(player.scoreboardName) != null
+    }
+
+    override fun hasLiveData() = mc.level?.scoreboard?.getDisplayObjective(DisplaySlot.SIDEBAR) != null
+
+    fun previewObjective(): Objective? =
+        previewValue("scoreboard", { mc.level?.scoreboard?.getDisplayObjective(DisplaySlot.SIDEBAR) }, null)
+            ?: DemoData.demoScoreboardObjective()
+    //?} else {
+    /*override fun hasContent(): Boolean {
+        if (previewing) return true
+        val scoreboard = mc.level?.scoreboard ?: return true
+        val player = mc.player ?: return true
+        return scoreboard.getDisplayObjective(SIDEBAR_SLOT) != null ||
+            scoreboard.getTeamOfMember(player.name) != null
+    }
+
+    override fun hasLiveData() = mc.level?.scoreboard?.getDisplayObjective(SIDEBAR_SLOT) != null
+
+    fun previewObjective(): ScoreboardObjective? =
+        previewValue("scoreboard", { mc.level?.scoreboard?.getDisplayObjective(SIDEBAR_SLOT) }, null)
+            ?: DemoData.demoScoreboardObjective()
+    *///?}
+
+    private class Size(val width: Float, val scores: Int, val title: Boolean)
+
+    private fun size(): Size? = measureOnce({
+        var h = HudInternals.scoreboardRevision.toLong()
+        //? if > 1.8.9 {
+        h = mix(h, mc.level?.scoreboard?.getDisplayObjective(DisplaySlot.SIDEBAR))
+        //?} else
+        //h = mix(h, mc.level?.scoreboard?.getDisplayObjective(SIDEBAR_SLOT))
+        h = mix(h, scoreboardPoints)
+        h = mix(h, hideRepeatingScores)
+        h = mix(h, scoreboardTitle)
+        mix(h, persistentTitle)
+    }) { measureSize() }
+
+    //? if > 1.8.9 {
+    private fun measureSize(): Size? {
+        val objective = (if (previewing) previewObjective()
+        else mc.level?.scoreboard?.getDisplayObjective(DisplaySlot.SIDEBAR)) ?: return null
+        val font = mc.font
+        val scoreboard = objective.scoreboard
+        val scores = scoreboard.listPlayerScores(objective)
+            .filter { !it.isHidden }
+            .sortedByDescending { it.value }
+            .take(15)
+        val showTitle = scoreboardTitle
+        if (scores.isEmpty() && !(persistentTitle && showTitle)) return null
+
+        val spaceWidth = font.width(": ")
+        val showPoints = showScorePoints(scores)
+        var maxWidth = font.width(objective.displayName)
+        for (s in scores) {
+            val name = PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(s.owner()), s.ownerName())
+            var line = font.width(name)
+            if (showPoints) {
+                val scoreWidth = font.width(s.value.toString())
+                if (scoreWidth > 0) line += spaceWidth + scoreWidth
+            }
+            maxWidth = maxOf(maxWidth, line)
+        }
+
+        return Size((maxWidth + 4).toFloat(), scores.size, showTitle)
+    }
+    //?} else {
+    /*private fun measureSize(): Size? {
+        val objective = (if (previewing) previewObjective()
+        else mc.level?.scoreboard?.getDisplayObjective(SIDEBAR_SLOT)) ?: return null
+        val font = mc.font
+        val scoreboard = objective.scoreboard
+        val scores = scoreboard.getScores(objective)
+            .sortedByDescending { it.get() }
+            .take(15)
+        val showTitle = scoreboardTitle
+        if (scores.isEmpty() && !(persistentTitle && showTitle)) return null
+
+        val spaceWidth = font.width(": ")
+        val showPoints = showScorePoints(scores)
+        var maxWidth = font.width(objective.displayName)
+        for (s in scores) {
+            val name = Team.getMemberDisplayName(scoreboard.getTeamOfMember(s.owner), s.owner)
+            var line = font.width(name)
+            if (showPoints) {
+                val scoreWidth = font.width(s.get().toString())
+                if (scoreWidth > 0) line += spaceWidth + scoreWidth
+            }
+            maxWidth = maxOf(maxWidth, line)
+        }
+
+        return Size((maxWidth + 4).toFloat(), scores.size, showTitle)
+    }
+
+    private companion object {
+        // 1.8.9 addresses display slots by index; 1 is the sidebar
+        const val SIDEBAR_SLOT = 1
+    }
+    *///?}
+
+    override fun measuredWidth(): Float = try {
+        size()?.width ?: naturalWidth
+    } catch (_: Throwable) {
+        naturalWidth
+    }
+
+    override fun measuredHeight(): Float = try {
+        val s = size() ?: return naturalHeight
+        (s.scores * 9 + if (s.title) 10 else 1).toFloat()
+    } catch (_: Throwable) {
+        naturalHeight
+    }
+}
+
+class TabListHud : VanillaHud("tgvanillahud-tab.json", "Tab List", Category.INFO) {
+    init {
+        showBackground = true
+        showShadow = true
+        bgColor = 0x80000000.toInt()
+        TabListManager.ensureLoaded()
+    }
+
+    override fun hasBorder() = false
+
+    @Slider(
+        title = "Tab Player Limit",
+        description = "How many players can display on the tab list.",
+        min = 10f,
+        max = 120f
+    )
+    var playerLimit = 80
+
+    @Dropdown(title = "Mode", options = ["Held", "Toggle"])
+    var displayMode = 0
+
+    @Switch(title = "Animation", description = "Slide the tab list open and closed instead of snapping.")
+    var animation = true
+
+    @Slider(
+        title = "Animation Duration",
+        description = "How long the open / close animation takes, in milliseconds.",
+        min = 50f,
+        max = 1000f
+    )
+    var animationDuration = 400f
+
+    @Switch(title = "Fix TabList Entry Width", description = "Stop long names from being squashed when the tab list is wider than the screen.")
+    var fixWidth: Boolean = false
+
+    @Switch(title = "Show Header")
+    var showHeader: Boolean = true
+
+    @Switch(title = "Show Footer")
+    var showFooter: Boolean = true
+
+    @Switch(title = "Show Self At Top")
+    var selfAtTop: Boolean = false
+
+    @Switch(title = "Show Player's Head")
+    var showHead: Boolean = true
+
+    @Switch(title = "Show 3D Heads", description = "Show the hat layer in 3D.")
+    var betterHatLayer: Boolean = true
+
+    @Switch(title = "Show Player's Ping")
+    var showPing: Boolean = true
+
+    @Switch(title = "Use Number Ping")
+    var numberPing: Boolean = true
+
+    @Dropdown(title = "Ping Text", options = ["Small", "Full"])
+    var pingType = 1
+
+    @Switch(
+        title = "Hide False Ping",
+        description = "Hides falsified ping numbers such as a ping of 0 or 1 when on Hypixel"
+    )
+    var hideFalsePing: Boolean = true
+
+    @Color(title = "Ping Between 0 and 75")
+    var pingLevelOne = PolyColor(0xFF55FF55.toInt())
+
+    @Color(title = "Ping Between 75 and 145")
+    var pingLevelTwo = PolyColor(0xFF00AA00.toInt())
+
+    @Color(title = "Ping Between 145 and 200")
+    var pingLevelThree = PolyColor(0xFFFFFF55.toInt())
+
+    @Color(title = "Ping Between 200 and 300")
+    var pingLevelFour = PolyColor(0xFFFFAA00.toInt())
+
+    @Color(title = "Ping Between 300 and 400")
+    var pingLevelFive = PolyColor(0xFFFF5555.toInt())
+
+    @Color(title = "Ping Above 400")
+    var pingLevelSix = PolyColor(0xFFAA0000.toInt())
+
+    @Color(title = "Tab Widget Color")
+    var tabWidgetColor = PolyColor(0x20FFFFFF.toInt())
+
+    @Color(title = "Header Background Color")
+    var headerBgColor = PolyColor(0x80000000.toInt())
+
+    @Color(title = "Footer Background Color")
+    var footerBgColor = PolyColor(0x80000000.toInt())
+
+    val radius: Int get() = layoutStyle.bgRadius.roundToInt()
+
+    override val stretchesBackground get() = true
+
+    val tabWidgetArgb: Int get() = tabWidgetColor.argb
+    val headerBgArgb: Int get() = if (showBackground) headerBgColor.argb else 0
+    val bodyBgArgb: Int get() = if (backgroundStyle.showBackground) bgArgb else 0
+    val footerBgArgb: Int get() = if (showBackground) footerBgColor.argb else 0
+
+    fun hidesPing(ping: Int): Boolean {
+        if (previewing) return false
+        return hideFalsePing && (ping <= 1 || ping >= 999)
+    }
+
+    fun pingColor(ping: Int): Int = when {
+        ping >= 400 -> pingLevelSix
+        ping >= 300 -> pingLevelFive
+        ping >= 200 -> pingLevelFour
+        ping >= 145 -> pingLevelThree
+        ping >= 75 -> pingLevelTwo
+        else -> pingLevelOne
+    }.argb
+
+    fun headStyle(hat: Boolean): McHeadStyle = when {
+        !hat -> McHeadStyle.FACE
+        betterHatLayer -> McHeadStyle.LAYERED
+        else -> McHeadStyle.FLAT
+    }
+
+    override val naturalWidth get() = 200f
+    override val naturalHeight get() = 100f
+    // the background is a pixel wider than the text on each side, which vanilla centres
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = half(screenWidth) - half(width.toInt() - 2) - 1f
+    // vanilla starts the text at 10 and its background a line above that
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = 9f
+
+    override fun Tree.addDependencies() {
+        showWhen("animation", "animationDuration")
+        showWhen("showHead", "betterHatLayer")
+        val pingColors = arrayOf("pingLevelOne", "pingLevelTwo", "pingLevelThree", "pingLevelFour", "pingLevelFive", "pingLevelSix")
+        showWhen("showPing", "numberPing", "pingType", "hideFalsePing", *pingColors)
+        showWhen("numberPing", "pingType", *pingColors)
+    }
+    override val anchorX get() = 0.5f
+    override val anchorY get() = 0f
+
+    private var animOpen = false
+    private var animStart = 0L
+    private var animFrom = 0f
+    private var animTo = 0f
+
+    private fun easeOutQuart(x: Float): Float {
+        val t = 1f - x
+        return 1f - t * t * t * t
+    }
+
+    fun updateOpen(open: Boolean) {
+        if (open == animOpen) return
+        animOpen = open
+        animFrom = clipFraction()
+        animTo = if (open) 1f else 0f
+        animStart = System.currentTimeMillis()
+    }
+
+    fun resetOpen() {
+        animOpen = false
+        animFrom = 0f
+        animTo = 0f
+        animStart = 0L
+    }
+
+    fun clipFraction(): Float {
+        if (!animation) return if (animOpen) 1f else 0f
+        val dur = animationDuration.coerceAtLeast(1f)
+        val t = ((System.currentTimeMillis() - animStart).toFloat() / dur).coerceIn(0f, 1f)
+        return animFrom + (animTo - animFrom) * easeOutQuart(t)
+    }
+
+    fun isRendering(): Boolean = animOpen || clipFraction() > 0.001f
+
+    // the open state only updates partway through vanilla's render, after the transform has already measured,
+    // so the held key covers the frame the list opens on
+    //? if > 1.8.9 {
+    override fun shouldShow() = previewing() || isRendering() || mc.options.keyPlayerList.isDown
+
+    override fun hasLiveData() = mc.connection?.listedOnlinePlayers?.let { it.size > 1 || it.isNotEmpty() && !mc.isLocalServer } == true
+    //?} else {
+    /*override fun shouldShow() = previewing() || isRendering() || mc.options.playerListKey.isPressed
+
+    override fun hasLiveData() = mc.networkHandler?.onlinePlayers?.let { it.size > 1 || it.isNotEmpty() && !mc.isIntegratedServerRunning } == true
+    *///?}
+
+    override fun hasContent() = shouldShow()
+
+    fun foreignBounds(): TabListCompat.Bounds? {
+        if (previewing) return null
+        return try {
+            val overlay = tabOverlay()
+            TabListCompat.bounds(overlay?.header, overlay?.footer)
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private fun tabOverlay(): IPlayerTabOverlay? = try {
+        //? if >=26.2 {
+        mc.gui.hud.tabList as IPlayerTabOverlay
+        //?} elif > 1.8.9 {
+        /*mc.gui.tabList as IPlayerTabOverlay
+        *///?} else {
+        /*mc.gui.playerTabOverlay as IPlayerTabOverlay
+        *///?}
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun players(): List<PlayerInfo> = try {
+        //? if > 1.8.9 {
+        val overlay = tabOverlay()
+        if (mc.player == null || overlay == null) {
+            if (previewing) previewPlayers(emptyList()) else emptyList()
+        } else overlay.invokeGetPlayerInfos()
+        //?} else {
+        /*val real = IPlayerTabOverlay.getPlayerOrdering().sortedCopy(mc.networkHandler?.onlinePlayers ?: emptyList())
+        if (previewing) previewPlayers(real) else real
+        *///?}
+    } catch (_: Throwable) {
+        emptyList()
+    }
+
+    //? if > 1.8.9 {
+    private fun displayName(info: PlayerInfo): Component {
+        info.tabListDisplayName?.let { return it }
+        val name = try {
+            //? if >=1.21.9 {
+            info.profile.name() ?: ""
+            //?} else {
+            /*info.profile.name ?: ""
+            *///?}
+        } catch (_: Throwable) {
+            ""
+        }
+        return PlayerTeam.formatNameForTeam(info.team, Component.literal(name))
+    }
+    //?} else {
+    /*// 1.8.9 formats tab list names as legacy strings rather than components
+    private fun displayName(info: PlayerInfo): String {
+        info.displayName?.let { return it.formattedString }
+        val name = try {
+            info.profile.name ?: ""
+        } catch (_: Throwable) {
+            ""
+        }
+        return Team.getMemberDisplayName(info.team, name)
+    }
+    *///?}
+
+    //? if > 1.8.9 {
+    private fun tabText(editing: (Component?) -> Component, live: () -> Component?, show: Boolean): Component? {
+    //?} else
+    //private fun tabText(editing: (Text?) -> Text, live: () -> Text?, show: Boolean): Text? {
+        if (!show) return null
+        val text = try { live() } catch (_: Throwable) { null }
+        return if (previewing) editing(text) else text
+    }
+
+    fun previewPlayers(live: List<PlayerInfo>): List<PlayerInfo> {
+        val limit = minOf(playerLimit, PREVIEW_PLAYER_LIMIT)
+        return previewValue("tabPlayers", { live.takeIf { hasLiveData() } }, null)?.take(limit) ?: TabListManager.previewInfo(limit)
+    }
+
+    //? if > 1.8.9 {
+    fun previewHeader(live: Component?): Component = previewValue("tabHeader", { live }, null) ?: PREVIEW_HEADER
+    fun previewFooter(live: Component?): Component = previewValue("tabFooter", { live }, null) ?: PREVIEW_FOOTER
+    //?} else {
+    /*fun previewHeader(live: Text?): Text = previewValue("tabHeader", { live }, null) ?: PREVIEW_HEADER
+    fun previewFooter(live: Text?): Text = previewValue("tabFooter", { live }, null) ?: PREVIEW_FOOTER
+    *///?}
+
+    //? if > 1.8.9 {
+    private var hfHeader: Component? = null
+    private var hfFooter: Component? = null
+    //?} else {
+    /*private var hfHeader: Text? = null
+    private var hfFooter: Text? = null
+    *///?}
+    private var hfScreenWidth = -1
+    private var hfWidth = 0
+    private var hfHeight = 0
+
+    //? if > 1.8.9 {
+    private fun measureHeaderFooter(header: Component?, footer: Component?, screenWidth: Int) {
+    //?} else
+    //private fun measureHeaderFooter(header: Text?, footer: Text?, screenWidth: Int) {
+        if (!HudManager.isEditing && header == hfHeader && footer == hfFooter && screenWidth == hfScreenWidth) return
+        val font = mc.font
+        var width = 0
+        var height = 0
+        for (text in arrayOf(header, footer)) {
+            if (text == null) continue
+            //? if > 1.8.9 {
+            val lines = font.split(text, screenWidth - 50)
+            //?} else
+            //val lines = font.split(text.formattedString, screenWidth - 50)
+            for (l in lines) width = maxOf(width, font.width(l))
+            height += lines.size * font.lineHeight + 1
+        }
+        hfHeader = header
+        hfFooter = footer
+        hfScreenWidth = screenWidth
+        hfWidth = width
+        hfHeight = height
+    }
+
+    private fun size(): Pair<Float, Float>? = measureOnce({ sizeKey() }) { if (shouldShow()) measureSize() else null }
+
+    private fun sizeKey(): Long {
+        if (!shouldShow()) return Long.MIN_VALUE
+        var h = HudInternals.scoreboardRevision.toLong()
+        val overlay = tabOverlay()
+        h = mix(h, overlay?.header)
+        h = mix(h, overlay?.footer)
+        var n = 0
+        //? if > 1.8.9 {
+        for (p in mc.connection?.listedOnlinePlayers ?: emptyList()) {
+            n++
+            h = mix(mix(h, p), p.tabListDisplayName)
+        }
+        //?} else {
+        /*for (p in mc.networkHandler?.onlinePlayers ?: emptyList()) {
+            n++
+            h = mix(mix(h, p), p.displayName)
+        }
+        *///?}
+        h = mix(h, n)
+        h = mix(h, playerLimit)
+        h = mix(h, showHead)
+        h = mix(h, showPing)
+        h = mix(h, numberPing)
+        h = mix(h, pingType)
+        h = mix(h, showHeader)
+        return mix(h, showFooter)
+    }
+
+    private fun measureSize(): Pair<Float, Float>? {
+        val list = players()
+        if (list.isEmpty()) return null
+        val font = mc.font
+        val line = font.lineHeight
+        val screenWidth = HudManager.guiScreenWidth.toInt().coerceAtLeast(1)
+
+        var maxName = 0
+        for (p in list) maxName = maxOf(maxName, font.width(displayName(p)))
+
+        val count = minOf(list.size, playerLimit)
+        var rows = count
+        var columns = 1
+        while (rows > 20) {
+            columns++
+            rows = (count + columns - 1) / columns
+        }
+
+        val headWidth = if (showHead) 9 else 0
+        val pingReserve = if (showPing && numberPing && pingType == 1) font.width("999") + 3 else 0
+        val cellWidth = headWidth + maxName + maxOf(13, pingReserve)
+        val slotWidth = minOf(columns * cellWidth, screenWidth - 50) / columns
+        var width = slotWidth * columns + (columns - 1) * 5
+        var height = rows * line
+
+        val overlay = tabOverlay()
+        val header = tabText(::previewHeader, { overlay?.header }, showHeader)
+        val footer = tabText(::previewFooter, { overlay?.footer }, showFooter)
+        measureHeaderFooter(header, footer, screenWidth)
+        width = maxOf(width, hfWidth)
+        height += hfHeight
+
+        // the background reaches a pixel past the text on each side but only one line above the rows
+        return (width + 2).toFloat() to (height + 1).toFloat()
+    }
+
+    override fun measuredWidth(): Float = try {
+        size()?.first ?: naturalWidth
+    } catch (_: Throwable) {
+        naturalWidth
+    }
+
+    override fun measuredHeight(): Float = try {
+        size()?.second ?: naturalHeight
+    } catch (_: Throwable) {
+        naturalHeight
+    }
+
+    private companion object {
+        const val PREVIEW_PLAYER_LIMIT = 20
+
+        // Stable instances so the header/footer measure cache also hits while previewing.
+        //? if > 1.8.9 {
+        val PREVIEW_HEADER: Component = Component.literal("Tab List")
+        val PREVIEW_FOOTER: Component = Component.literal("TG VanillaHUD")
+        //?} else {
+        /*val PREVIEW_HEADER: Text = DemoData.demoTabHeader()
+        val PREVIEW_FOOTER: Text = DemoData.demoTabFooter()
+        *///?}
+    }
+}
+
+abstract class TitleLineHud(hudId: String, title: String) : BackdropHud(hudId, title, Category.INFO) {
+    override val ownScale get() = 1f
+
+    override val innerScale get() = scale.coerceAtLeast(0.001f)
+
+    /** the size vanilla draws this line at, which stored padding is measured against */
+    protected abstract val defaultScale: Float
+
+    // the box is otherwise only ever grown by the text, leaving the shadow's padding at its default size
+    override val padScale get() = innerScale / defaultScale
+
+    abstract val instantFade: Boolean
+    abstract val autoTitleScale: Boolean
+    abstract val scale: Float
+    protected abstract val placeholder: String
+    //? if > 1.8.9 {
+    protected abstract fun live(): Component?
+
+    private var textSource: Component? = null
+    private var textFrame = -1L
+    private var textValue: String? = null
+
+    private fun text(): String? {
+        val source = live() ?: return null
+        if (source === textSource && textFrame == frame) return textValue
+        val value = source.string
+        textSource = source
+        textFrame = frame
+        textValue = value
+        return value
+    }
+
+    fun previewText(): Component =
+        previewValue(hudId, { live()?.takeIf { active() && it.string.isNotEmpty() } }, null) ?: Component.literal(placeholder)
+
+    private fun previewString(): String = previewText().string
+    //?} else {
+    /*protected abstract fun live(): String?
+    private fun text(): String? = live()
+
+    fun previewText(): String = previewValue(hudId, { live()?.takeIf { active() && it.isNotEmpty() } }, null) ?: placeholder
+
+    private fun previewString(): String = previewText()
+    *///?}
+    /** where vanilla draws the line from the screen centre, before [scale] applies to it as it does to the text */
+    protected abstract val fontY: Float
+
+    override val hugsGlyphs get() = true
+    override val naturalWidth get() = 120f
+    override val naturalHeight get() = GLYPH_HEIGHT * scale
+    // vanilla halves the font width, a pixel wider than the letters, before scaling it
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) =
+        half(screenWidth) - half((width / scale).roundToInt() + 1) * scale
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = half(screenHeight) + fontY * scale
+    override val anchorX get() = 0.5f
+    override val anchorY get() = 0.5f
+    override val positionAnchorY get() = 0f
+    override val sectionAnchorY get() = 0.5f
+
+    private fun active(): Boolean {
+        //? if > 1.8.9 {
+        return hudAccessor?.let { it.title != null && it.titleTime > 0 } == true
+        //?} else
+        //return hudAccessor?.let { it.titleText != null && it.titleTime > 0 } == true
+    }
+
+    override fun hasLiveData() = active()
+
+    override fun shouldShow() = previewing || (active() && !text().isNullOrEmpty())
+
+    override fun hasContent() = shouldShow()
+
+    private fun width(): Float? = measureOnce({
+        if (!shouldShow()) Long.MIN_VALUE
+        else mix(mix(mix(0L, previewing), scale.toBits()), text()?.hashCode() ?: 0)
+    }) { (mc.font.width(if (previewing) previewString() else text() ?: placeholder) - 1) * scale }
+
+    override fun measuredWidth(): Float = try {
+        width() ?: naturalWidth
+    } catch (_: Throwable) {
+        naturalWidth
+    }
+
+    override fun measuredHeight(): Float = GLYPH_HEIGHT * scale
+}
+
+class TitleHud : TitleLineHud("tgvanillahud-title.json", "Title") {
+    init {
+        textScale = defaultScale
+        // a shadow pixel at the title's size
+        padForShadow(defaultScale)
+    }
+
+    override val defaultScale get() = 4f
+
+    val titleScale: Float get() = textScale
+
+    @Switch(title = "Instant Fade", description = "Skip the fade in and fade out of the title.")
+    override var instantFade = false
+
+    @Switch(
+        title = "Auto Scale",
+        description = "Shrink the title so it always fits within the screen width."
+    )
+    override var autoTitleScale = false
+
+    override val scale get() = textScale
+    override val placeholder get() = "Title"
+    override val fontY get() = -10f
+
+    //? if > 1.8.9 {
+    override fun live(): Component? = hudAccessor?.title
+    //?} else
+    //override fun live(): String? = hudAccessor?.titleText
+}
+
+class SubtitleHud : TitleLineHud("tgvanillahud-subtitle.json", "Subtitle") {
+    init {
+        textScale = defaultScale
+        // a shadow pixel at the subtitle's size
+        padForShadow(defaultScale)
+    }
+
+    override val defaultScale get() = 2f
+
+    val subtitleScale: Float get() = textScale
+
+    @Switch(title = "Instant Fade", description = "Skip the fade in and fade out of the subtitle.")
+    override var instantFade = false
+
+    @Switch(
+        title = "Auto Scale",
+        description = "Shrink the subtitle so it always fits within the screen width."
+    )
+    override var autoTitleScale = false
+
+    override val scale get() = textScale
+    override val placeholder get() = "Subtitle"
+    override val fontY get() = 5f
+
+    //? if > 1.8.9 {
+    override fun live(): Component? = hudAccessor?.subtitle
+    //?} else
+    //override fun live(): String? = hudAccessor?.subtitleText
+}
+
+//? if > 1.8.9 {
+class StatusEffectsHud : VanillaHud("tgvanillahud-statuseffects.json", "Status Effects", Category.PLAYER) {
+    override val composeBackground get() = true
+
+    override val naturalWidth get() = 50f
+    override val naturalHeight get() = 50f
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = screenWidth - width
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = 1f
+    override val anchorX get() = 1f
+    override val anchorY get() = 0f
+
+    override fun hasLiveData() = mc.player?.activeEffects?.isNotEmpty() == true
+
+    override fun hasContent() = previewing || mc.player == null || hasLiveData()
+
+    fun previewEffects(): Collection<MobEffectInstance> =
+        previewValue("effects", { mc.player?.activeEffects?.toList()?.ifEmpty { null } }, null) ?: DemoData.demoEffects()
+
+    private class Counts(val beneficial: Int, val harmful: Int)
+
+    private fun counts(): Counts? = measureOnce({ frame }) { measureCounts() }
+
+    private fun measureCounts(): Counts? {
+        val real = mc.player?.activeEffects ?: emptyList()
+        val effects = if (previewing) previewEffects() else real
+        var beneficial = 0
+        var harmful = 0
+        for (effect in effects) {
+            if (!effect.showIcon()) continue
+            if (effect.effect.value().isBeneficial) beneficial++ else harmful++
+        }
+        if (beneficial == 0 && harmful == 0) return null
+        return Counts(beneficial, harmful)
+    }
+
+    override fun measuredWidth(): Float = try {
+        val c = counts() ?: return naturalWidth
+        (25 * maxOf(c.beneficial, c.harmful)).toFloat()
+    } catch (_: Throwable) {
+        naturalWidth
+    }
+
+    override fun measuredHeight(): Float = try {
+        val c = counts() ?: return naturalHeight
+        if (c.harmful > 0 && c.beneficial > 0) 50f else 24f
+    } catch (_: Throwable) {
+        naturalHeight
+    }
+
+    fun rowShiftX(rowY: Int): Int = try {
+        val c = counts() ?: return 0
+        val rowCount = if (rowY >= HARMFUL_ROW_Y) c.harmful else c.beneficial
+        val gap = 25 * (maxOf(c.beneficial, c.harmful) - rowCount)
+        val fx: Float? = frameX
+        val screenWidth = HudManager.guiScreenWidth
+        val centre = if (fx == null || screenWidth <= 0f) 1f else (fx + width * frameScale / 2f) / screenWidth
+        when {
+            centre < 0.25f -> -gap
+            centre < 0.75f -> -gap / 2
+            else -> 0
+        }
+    } catch (_: Throwable) {
+        0
+    }
+
+    fun rowShiftY(rowY: Int): Int = try {
+        val c = counts() ?: return 0
+        if (rowY >= HARMFUL_ROW_Y && c.beneficial == 0) -26 else 0
+    } catch (_: Throwable) {
+        0
+    }
+
+    private companion object {
+        const val HARMFUL_ROW_Y = 27
+    }
+}
+//?}
+
+class ClosedCaptionsHud : VanillaHud("tgvanillahud-closedcaptions.json", "Closed Captioning", Category.INFO) {
+    init {
+        showBackground = true
+        showShadow = true
+        bgColor = 0xCC000000.toInt()
+    }
+
+    override fun hasBorder() = false
+
+    override val managesTextColor get() = true
+
+    override val stretchesBackground get() = true
+
+    override val everyFillIsBackground get() = true
+
+    val captionBgArgb: Int get() = if (backgroundStyle.showBackground) bgArgb else 0
+
+    val textShadow: Boolean get() = textStyle.showShadow
+
+    fun captionTextArgb(vanilla: Int): Int {
+        val fade = vanilla and 0xFF
+        val argb = captionTextRgb(fade)
+        return if (textChroma) HudCapture.captionTint(this, fade, argb, faded(textColor, fade)) else argb
+    }
+
+    fun captionTextRgb(fade: Int): Int {
+        val argb = textColor
+        return faded(if (textChroma) PolyColor(argb, true, textChromaSpeed).argb else argb, fade)
+    }
+
+    private fun faded(color: Int, fade: Int): Int {
+        val a = color ushr 24 and 0xFF
+        val r = (color ushr 16 and 0xFF) * fade / 255
+        val g = (color ushr 8 and 0xFF) * fade / 255
+        val b = (color and 0xFF) * fade / 255
+        return (a shl 24) or (r shl 16) or (g shl 8) or b
+    }
+
+    override val naturalWidth get() = 90f
+    override val naturalHeight get() = 50f
+
+    override fun vanillaOriginX(screenWidth: Int, screenHeight: Int) = screenWidth - width - 1f
+    override fun vanillaOriginY(screenWidth: Int, screenHeight: Int) = screenHeight - 30f - height
+    override val anchorX get() = 1f
+    override val anchorY get() = 1f
+
+    //? if > 1.8.9 {
+    private fun texts(): List<Component> {
+        val overlay = hudAccessor?.subtitleOverlay as? ISubtitleOverlay ?: return emptyList()
+        return overlay.audibleSubtitles.mapNotNull { (it as? ISubtitle)?.subtitleText }
+    }
+
+    private fun textsKey(): Long {
+        val subtitles = (hudAccessor?.subtitleOverlay as? ISubtitleOverlay)?.audibleSubtitles ?: return mix(0L, 0)
+        var h = 0L
+        var n = 0
+        for (subtitle in subtitles) {
+            val text = (subtitle as? ISubtitle)?.subtitleText ?: continue
+            h = mix(h, text)
+            n++
+        }
+        return mix(h, n)
+    }
+
+    override fun hasLiveData() = mc.options.showSubtitles().get() &&
+        (hudAccessor?.subtitleOverlay as? ISubtitleOverlay)?.subtitles?.isNotEmpty() == true
+    //?} else {
+    /*private fun texts(): List<String> = SoundFixCaptions.texts()
+
+    private fun textsKey(): Long {
+        val subtitles = SoundFixCaptions.audible() ?: return mix(0L, 0)
+        var h = 0L
+        var n = 0
+        for (subtitle in subtitles) {
+            val text = (subtitle as? ISubtitleEntry)?.subtitleText ?: continue
+            h = mix(h, text)
+            n++
+        }
+        return mix(h, n)
+    }
+
+    override fun hasLiveData() = SoundFixCaptions.hasLiveData()
+
+    // TGOneConfig recreates a HUD from its saved config even when it was never registered
+    override fun setup() {
+        if (!SoundFixCaptions.loaded) HudManager.removeHud(this)
+    }
+    *///?}
+
+    private class Size(val width: Float, val height: Float)
+
+    private fun size(): Size? = measureOnce({ textsKey() }) { measureSize() }
+
+    private fun measureSize(): Size {
+        val texts = texts()
+        if (texts.isEmpty()) return Size(naturalWidth, naturalHeight)
+        val font = mc.font
+        val row = texts.maxOf { font.width(it) } +
+            font.width("<") + font.width(" ") + font.width(">") + font.width(" ")
+        return Size((row / 2 * 2 + 2).toFloat(), (texts.size * CAPTION_ROW).toFloat())
+    }
+
+    override fun measuredWidth(): Float = try {
+        size()?.width ?: naturalWidth
+    } catch (_: Throwable) {
+        naturalWidth
+    }
+
+    override fun measuredHeight(): Float = try {
+        size()?.height ?: naturalHeight
+    } catch (_: Throwable) {
+        naturalHeight
+    }
+
+    private companion object {
+        const val CAPTION_ROW = 10
+    }
+}
+
+object Huds {
+    private val hotbarProvider = HotbarHud()
+    private val healthProvider = HealthHud()
+    private val armorProvider = ArmorHud()
+    private val hungerProvider = HungerHud()
+    private val airProvider = AirHud()
+    private val experienceBarProvider = ExperienceBarHud()
+    private val experienceLevelProvider = ExperienceLevelHud()
+    private val actionBarProvider = ActionBarHud()
+    private val heldItemTooltipProvider = HeldItemTooltipHud()
+    private val titleProvider = TitleHud()
+    private val subtitleProvider = SubtitleHud()
+    private val scoreboardProvider = ScoreboardHud()
+    private val tabListProvider = TabListHud()
+    private val bossBarProvider = BossBarHud()
+    //? if > 1.8.9
+    private val statusEffectsProvider = StatusEffectsHud()
+    private val closedCaptionsProvider = ClosedCaptionsHud()
+
+    val hotbar: HotbarHud get() = HudTransform.live(hotbarProvider)
+    val health: HealthHud get() = HudTransform.live(healthProvider)
+    val armor: ArmorHud get() = HudTransform.live(armorProvider)
+    val hunger: HungerHud get() = HudTransform.live(hungerProvider)
+    val air: AirHud get() = HudTransform.live(airProvider)
+    val experienceBar: ExperienceBarHud get() = HudTransform.live(experienceBarProvider)
+    val experienceLevel: ExperienceLevelHud get() = HudTransform.live(experienceLevelProvider)
+    val actionBar: ActionBarHud get() = HudTransform.live(actionBarProvider)
+    val heldItemTooltip: HeldItemTooltipHud get() = HudTransform.live(heldItemTooltipProvider)
+    val title: TitleHud get() = HudTransform.live(titleProvider)
+    val subtitle: SubtitleHud get() = HudTransform.live(subtitleProvider)
+    val scoreboard: ScoreboardHud get() = HudTransform.live(scoreboardProvider)
+    val tabList: TabListHud get() = HudTransform.live(tabListProvider)
+    val bossBar: BossBarHud get() = HudTransform.live(bossBarProvider)
+    //? if > 1.8.9
+    val statusEffects: StatusEffectsHud get() = HudTransform.live(statusEffectsProvider)
+    val closedCaptions: ClosedCaptionsHud get() = HudTransform.live(closedCaptionsProvider)
+
+    val all: Array<VanillaHud>
+        //? if > 1.8.9 {
+        get() = arrayOf(
+            hotbarProvider, healthProvider, armorProvider, hungerProvider, airProvider,
+            experienceBarProvider, experienceLevelProvider, actionBarProvider, heldItemTooltipProvider, titleProvider,
+            subtitleProvider,
+            scoreboardProvider, tabListProvider, bossBarProvider, statusEffectsProvider,
+            closedCaptionsProvider,
+        )
+        //?} else {
+        /*get() = listOfNotNull(
+            hotbarProvider, healthProvider, armorProvider, hungerProvider, airProvider,
+            experienceBarProvider, experienceLevelProvider, actionBarProvider, heldItemTooltipProvider,
+            titleProvider, subtitleProvider, scoreboardProvider, tabListProvider, bossBarProvider,
+            closedCaptionsProvider.takeIf { SoundFixCaptions.loaded },
+        ).toTypedArray()
+        *///?}
+}

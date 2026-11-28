@@ -1,0 +1,61 @@
+package org.tg.tgvanillahud.mixin.elements;
+
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.HungerHud;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+//? if <1.21.6 && >1.8.9 {
+/*import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.entity.player.Player;
+import org.tg.tgvanillahud.render.HudTransform;
+*///?}
+
+//? if >=26.2 {
+import net.minecraft.client.gui.Hud;
+//?} elif > 1.8.9 {
+/*import net.minecraft.client.gui.Gui;
+*///?} else {
+/*import net.minecraft.client.gui.GameGui;
+*///?}
+
+//? if >=26.2 {
+@Mixin(Hud.class)
+//?} elif > 1.8.9 {
+/*@Mixin(Gui.class)
+*///?} else {
+/*@Mixin(GameGui.class)
+*///?}
+public class GuiMixinHunger {
+    //? if <1.21.6 && >1.8.9 {
+    /*@WrapMethod(method = "renderFood")
+    private void tgvanillahud$hunger(
+            GuiGraphicsExtractor graphics, Player player, int yLineBase, int xRight, Operation<Void> original) {
+        if (!Huds.INSTANCE.getHunger().shouldDraw()) return;
+
+        HudTransform.beginIcons(graphics, Huds.INSTANCE.getHunger());
+        original.call(graphics, player, yLineBase, xRight);
+        HudTransform.endIcons(graphics);
+    }
+    *///?}
+
+    // 1.8.9 shakes the food icons from inside renderStatusBars, where the call cannot be told
+    // apart from the heart jitter, so the toggle has no hook there yet
+    //? if > 1.8.9 {
+    @ModifyExpressionValue(
+            //? if < 26 {
+            /*method = "renderFood",
+            *///?} else {
+            method = "extractFood",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/util/RandomSource;nextInt(I)I")
+    )
+    private int tgvanillahud$hungerShake(int original) {
+        HungerHud hud = Huds.INSTANCE.getHunger();
+        return hud.isDrawnAsVanilla() || hud.getAnimation() ? original : 1;
+    }
+    //?}
+}

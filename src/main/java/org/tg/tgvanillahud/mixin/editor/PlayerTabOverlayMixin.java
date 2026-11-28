@@ -1,0 +1,83 @@
+package org.tg.tgvanillahud.mixin.editor;
+
+//? if > 1.8.9 {
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import net.minecraft.client.gui.components.PlayerTabOverlay;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.network.chat.Component;
+import org.objectweb.asm.Opcodes;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.TabListHud;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+import java.util.List;
+
+@Mixin(PlayerTabOverlay.class)
+public abstract class PlayerTabOverlayMixin {
+    @ModifyReturnValue(method = "getPlayerInfos", at = @At("RETURN"))
+    private List<PlayerInfo> tgvanillahud$demoPlayers(List<PlayerInfo> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (!hud.getPreviewing()) return original;
+        return hud.previewPlayers(original);
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;header:Lnet/minecraft/network/chat/Component;", opcode = Opcodes.GETFIELD)
+    )
+    private Component tgvanillahud$header(Component header) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) return header;
+        if (!hud.getShowHeader()) return null;
+        if (hud.getPreviewing()) return hud.previewHeader(header);
+        return header;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;footer:Lnet/minecraft/network/chat/Component;", opcode = Opcodes.GETFIELD)
+    )
+    private Component tgvanillahud$footer(Component footer) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) return footer;
+        if (!hud.getShowFooter()) return null;
+        if (hud.getPreviewing()) return hud.previewFooter(footer);
+        return footer;
+    }
+}
+//?} else {
+/*// 1.8.9 sorts the live player list into a local at the top of render rather than handing it
+// out from a method of its own, so the demo list goes in where that sorted copy is produced.
+// The previewed header and footer are picked in the element mixin, next to the show toggles.
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.google.common.collect.Ordering;
+import net.minecraft.client.gui.overlay.PlayerTabOverlay;
+import net.minecraft.client.network.PlayerInfo;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.TabListHud;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+import java.util.List;
+
+@Mixin(PlayerTabOverlay.class)
+public abstract class PlayerTabOverlayMixin {
+    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE",
+            target = "Lcom/google/common/collect/Ordering;sortedCopy(Ljava/lang/Iterable;)Ljava/util/List;"))
+    private List<PlayerInfo> tgvanillahud$demoPlayers(List<PlayerInfo> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (!hud.getPreviewing()) return original;
+        return hud.previewPlayers(original);
+    }
+}
+*///?}

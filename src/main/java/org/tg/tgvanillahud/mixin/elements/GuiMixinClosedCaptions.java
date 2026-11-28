@@ -1,0 +1,171 @@
+package org.tg.tgvanillahud.mixin.elements;
+
+//? if > 1.8.9 {
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.client.gui.Font;
+//? if > 1.8.9
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.SubtitleOverlay;
+import net.minecraft.network.chat.Component;
+import org.tg.tgvanillahud.hud.ClosedCaptionsHud;
+import org.tg.tgvanillahud.hud.Huds;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+//? if >=1.21.8 {
+import org.tg.tgvanillahud.render.ForeignTransform;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+//?}
+
+//? if <1.21.4 && >1.8.9 {
+/*import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import org.tg.tgvanillahud.render.HudTransform;
+*///?}
+
+@Mixin(SubtitleOverlay.class)
+public class GuiMixinClosedCaptions {
+    //? if <1.21.4 && >1.8.9 {
+    /*@WrapMethod(method = "render")
+    private void tgvanillahud$closedCaptions(GuiGraphicsExtractor graphics, Operation<Void> original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        if (!hud.shouldDraw()) return;
+
+        HudTransform.begin(graphics, hud);
+        original.call(graphics);
+        HudTransform.end(graphics);
+    }
+    *///?}
+
+    //? if >=1.21.8 {
+    @Inject(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At("HEAD")
+    )
+    private void tgvanillahud$foreignProbe(GuiGraphicsExtractor graphics, CallbackInfo ci) {
+        ForeignTransform.probe(graphics);
+    }
+    //?}
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Options;getBackgroundColor(F)I")
+    )
+    private int tgvanillahud$closedCaptions$background(int original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        return hud.isDrawnAsVanilla() ? original : hud.getCaptionBgArgb();
+    }
+
+    @WrapOperation(
+            //? if >=26 {
+            method = "extractRenderState",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"
+            )
+            //?} elif >=1.21.6 {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"
+            )
+            *///?} else {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I"
+            )
+            *///?}
+    )
+    //? if <1.21.6 && >1.8.9 {
+    /*private int tgvanillahud$closedCaptions$text(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int color, Operation<Integer> original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        if (hud.isDrawnAsVanilla()) return original.call(graphics, font, text, x, y, color);
+        return graphics.drawString(font, text, x, y, hud.captionTextArgb(color), hud.getTextShadow());
+    }
+    *///?} elif <26 {
+    /*private void tgvanillahud$closedCaptions$text(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int color, Operation<Void> original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, font, text, x, y, color);
+            return;
+        }
+        graphics.drawString(font, text, x, y, hud.captionTextArgb(color), hud.getTextShadow());
+    }
+    *///?} else {
+    private void tgvanillahud$closedCaptions$text(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int color, Operation<Void> original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, font, text, x, y, color);
+            return;
+        }
+        graphics.text(font, text, x, y, hud.captionTextArgb(color), hud.getTextShadow());
+    }
+    //?}
+
+    @WrapOperation(
+            //? if >=26 {
+            method = "extractRenderState",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V"
+            )
+            //?} elif >=1.21.6 {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V"
+            )
+            *///?} else {
+            /*method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)I"
+            )
+            *///?}
+    )
+    //? if <1.21.6 && >1.8.9 {
+    /*private int tgvanillahud$closedCaptions$arrow(GuiGraphicsExtractor graphics, Font font, String text, int x, int y, int color, Operation<Integer> original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        if (hud.isDrawnAsVanilla()) return original.call(graphics, font, text, x, y, color);
+        return graphics.drawString(font, text, x, y, hud.captionTextArgb(color), hud.getTextShadow());
+    }
+    *///?} elif <26 {
+    /*private void tgvanillahud$closedCaptions$arrow(GuiGraphicsExtractor graphics, Font font, String text, int x, int y, int color, Operation<Void> original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, font, text, x, y, color);
+            return;
+        }
+        graphics.drawString(font, text, x, y, hud.captionTextArgb(color), hud.getTextShadow());
+    }
+    *///?} else {
+    private void tgvanillahud$closedCaptions$arrow(GuiGraphicsExtractor graphics, Font font, String text, int x, int y, int color, Operation<Void> original) {
+        ClosedCaptionsHud hud = Huds.INSTANCE.getClosedCaptions();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, font, text, x, y, color);
+            return;
+        }
+        graphics.text(font, text, x, y, hud.captionTextArgb(color), hud.getTextShadow());
+    }
+    //?}
+}
+//?} else {
+/*// 1.8.9 has no subtitles
+import net.minecraft.client.gui.GameGui;
+import org.spongepowered.asm.mixin.Mixin;
+
+@Mixin(GameGui.class)
+public class GuiMixinClosedCaptions {
+}
+*///?}

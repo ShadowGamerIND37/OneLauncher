@@ -1,0 +1,160 @@
+package org.tg.tgvanillahud.mixin.elements;
+
+//? if > 1.8.9 {
+import org.spongepowered.asm.mixin.Mixin;
+
+//? if >=1.21.6 {
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.client.Minecraft;
+//? if > 1.8.9
+import net.minecraft.client.DeltaTracker;
+//? if > 1.8.9
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.contextualbar.ContextualBar;
+//? if >=26.2 {
+import net.minecraft.client.gui.contextualbar.ExperienceBar;
+import net.minecraft.client.gui.contextualbar.LocatorBar;
+//?} else {
+/*import net.minecraft.client.gui.contextualbar.ExperienceBarRenderer;
+import net.minecraft.client.gui.contextualbar.LocatorBarRenderer;
+*///?}
+import net.minecraft.client.player.LocalPlayer;
+import org.tg.tgvanillahud.compat.HudElementCompat;
+import org.tg.tgvanillahud.hud.ExperienceBarHud;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.render.HudCapture;
+import org.tg.tgvanillahud.render.HudTransform;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+//?}
+
+//? if >=26.2 {
+import net.minecraft.client.gui.Hud;
+//?} elif > 1.8.9 {
+/*import net.minecraft.client.gui.Gui;
+*///?} else {
+/*import net.minecraft.client.gui.GameGui;
+*///?}
+
+//? if >=26.2 {
+@Mixin(Hud.class)
+//?} elif > 1.8.9 {
+/*@Mixin(Gui.class)
+*///?} else {
+/*@Mixin(GameGui.class)
+*///?}
+public class GuiMixinLocatorBar {
+    //? if >=1.21.6 {
+    @WrapOperation(
+            //? if >=26 {
+            method = "extractHotbarAndDecorations",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/contextualbar/ContextualBar;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V")
+            //?} else {
+            /*method = "renderHotbarAndDecorations",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/contextualbar/ContextualBar;render(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V")
+            *///?}
+    )
+    private void tgvanillahud$locatorBar(ContextualBar bar, GuiGraphicsExtractor graphics, DeltaTracker delta, Operation<Void> original) {
+        ExperienceBarHud hud = Huds.INSTANCE.getExperienceBar();
+        if (!hud.shouldDraw()) return;
+        if (HudElementCompat.INSTANCE.getInfoBarForegroundWrapped()) {
+            original.call(bar, graphics, delta);
+            return;
+        }
+
+        HudCapture.locatorDrawn = false;
+        HudTransform.begin(graphics, hud, 1);
+        original.call(bar, graphics, delta);
+        HudTransform.end(graphics);
+        //? if >=26.2 {
+        if (bar instanceof LocatorBar && !HudCapture.locatorDrawn) HudCapture.skipped(hud, 1);
+        //?} else
+        //if (bar instanceof LocatorBarRenderer && !HudCapture.locatorDrawn) HudCapture.skipped(hud, 1);
+    }
+
+    @Unique private ContextualBar tgvanillahud$locator;
+
+    @Unique
+    private void tgvanillahud$drawLocatorOverlay(ExperienceBarHud hud, GuiGraphicsExtractor graphics, DeltaTracker delta) {
+        if (!tgvanillahud$overlaysLocator(hud)
+                || !Minecraft.getInstance().player.connection.getWaypointManager().hasWaypoints()) return;
+        boolean nested = HudCapture.isCapturing(hud);
+        if (!nested) HudTransform.begin(graphics, hud, 1);
+        if (tgvanillahud$locator == null) {
+            //? if >=26.2 {
+            tgvanillahud$locator = new LocatorBar(Minecraft.getInstance());
+            //?} else
+            //tgvanillahud$locator = new LocatorBarRenderer(Minecraft.getInstance());
+        }
+        //? if >=26 {
+        tgvanillahud$locator.extractRenderState(graphics, delta);
+        //?} else
+        //tgvanillahud$locator.render(graphics, delta);
+        if (!nested) HudTransform.end(graphics);
+    }
+
+    @Unique
+    private static boolean tgvanillahud$overlaysLocator(ExperienceBarHud hud) {
+        if (!hud.getOverlayLocatorBar() || hud.getPreviewing() || hud.isDrawnAsVanilla()) return false;
+        Minecraft minecraft = Minecraft.getInstance();
+        return minecraft.player.jumpableVehicle() != null || minecraft.gameMode.hasExperience();
+    }
+
+    @ModifyExpressionValue(method = "nextContextualInfoState", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/waypoints/ClientWaypointManager;hasWaypoints()Z"))
+    private boolean tgvanillahud$keepBarUnderLocator(boolean original) {
+        if (!original) return false;
+        ExperienceBarHud hud = Huds.INSTANCE.getExperienceBar();
+        return !hud.getPreviewing() && !tgvanillahud$overlaysLocator(hud);
+    }
+
+    @ModifyExpressionValue(method = "nextContextualInfoState", at = @At(value = "INVOKE",
+            //? if >=26.2 {
+            target = "Lnet/minecraft/client/gui/Hud;willPrioritizeExperienceInfo()Z"
+            //?} else {
+            /*target = "Lnet/minecraft/client/gui/Gui;willPrioritizeExperienceInfo()Z"
+            *///?}
+    ))
+    private boolean tgvanillahud$prioritizeExperience(boolean original) {
+        return original && Huds.INSTANCE.getExperienceBar().shouldDraw();
+    }
+
+    @WrapOperation(
+            //? if >=26 {
+            method = "extractHotbarAndDecorations",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/contextualbar/ContextualBar;extractBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V")
+            //?} else {
+            /*method = "renderHotbarAndDecorations",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/contextualbar/ContextualBar;renderBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V")
+            *///?}
+    )
+    private void tgvanillahud$experienceBar(ContextualBar bar, GuiGraphicsExtractor graphics, DeltaTracker delta, Operation<Void> original) {
+        ExperienceBarHud hud = Huds.INSTANCE.getExperienceBar();
+        //? if >=26.2 {
+        if (bar instanceof ExperienceBar && !hud.shouldDraw()) return;
+        //?} else
+        //if (bar instanceof ExperienceBarRenderer && !hud.shouldDraw()) return;
+        if (!hud.getPreviewing()) {
+            original.call(bar, graphics, delta);
+            tgvanillahud$drawLocatorOverlay(hud, graphics, delta);
+            return;
+        }
+        LocalPlayer player = Minecraft.getInstance().player;
+        float progress = player.experienceProgress;
+        player.experienceProgress = 0.5F;
+        original.call(bar, graphics, delta);
+        player.experienceProgress = progress;
+    }
+    //?}
+}
+//?} else {
+/*// the locator bar arrived in 1.21.6
+import net.minecraft.client.gui.GameGui;
+import org.spongepowered.asm.mixin.Mixin;
+
+@Mixin(GameGui.class)
+public class GuiMixinLocatorBar {
+}
+*///?}

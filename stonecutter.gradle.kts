@@ -1,0 +1,53 @@
+plugins {
+    id("dev.kikugie.stonecutter")
+}
+
+stonecutter active "26.3" /* [SC] DO NOT EDIT */
+
+stonecutter parameters {
+    swaps["mod_version"] = "\"${property("mod.version")}\";"
+    swaps["minecraft"] = "\"${node.metadata.version}\";"
+    constants["release"] = property("mod.id") != "template"
+    constants["skyblock"] = eval(current.version, ">= 26.1")
+
+    // the 1.8.9 Ornithe node has no Fabric API
+    if (current.version != "1.8.9") {
+        dependencies["fapi"] = node.project.property("deps.fabric_api") as String
+    }
+
+    replacements {
+        string(current.parsed >= "1.21.6" || current.version == "1.8.9") {
+            replace("pushPose", "pushMatrix")
+            replace("popPose", "popMatrix")
+        }
+
+        string(current.parsed < "1.21.11") {
+            replace("net.minecraft.Util", "net.minecraft.util.Util")
+        }
+
+        string(current.parsed >= "1.21.11") {
+            replace("ResourceLocation", "Identifier")
+        }
+
+        string(current.parsed >= "26") {
+            replace("net.minecraft.client.gui.GuiGraphics", "net.minecraft.client.gui.GuiGraphicsExtractor")
+            replace("GuiGraphics", "GuiGraphicsExtractor")
+        }
+
+        string(current.parsed >= "26.2") {
+            replace("ContextualBarRenderer", "ContextualBar")
+        }
+
+        string(current.parsed >= "26.3") {
+            replace("com.mojang.blaze3d.pipeline.RenderPipeline", "com.mojang.renderpearl.api.pipeline.RenderPipeline")
+            replace("com/mojang/blaze3d/pipeline/RenderPipeline", "com/mojang/renderpearl/api/pipeline/RenderPipeline")
+            replace("com.mojang.blaze3d.textures", "com.mojang.renderpearl.api.textures")
+            replace("com/mojang/blaze3d/textures", "com/mojang/renderpearl/api/textures")
+        }
+    }
+}
+
+stonecutter tasks {
+    order("publishModrinth")
+    order("publishCurseforge")
+}

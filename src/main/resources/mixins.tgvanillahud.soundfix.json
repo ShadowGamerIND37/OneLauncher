@@ -1,0 +1,11 @@
+{
+    "required": false,
+    "minVersion": "0.8",
+    "package": "org.tg.tgvanillahud.mixin.compat.soundfix",
+    "compatibilityLevel": "${java}",
+    "client": [
+        "ISubtitleEntry",
+        "ISubtitlesHud",
+        "SubtitlesHudMixin"
+    ]
+}

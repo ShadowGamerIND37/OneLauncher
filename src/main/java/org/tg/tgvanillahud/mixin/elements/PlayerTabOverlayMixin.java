@@ -1,0 +1,678 @@
+package org.tg.tgvanillahud.mixin.elements;
+
+//? if > 1.8.9 {
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.PlayerTabOverlay;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import org.tg.tgvanillahud.hook.TextShadowHook;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.TabListHud;
+import org.tg.tgvanillahud.mixin.access.IPlayerTabOverlay;
+import org.tg.tgvanillahud.render.HudCapture;
+import org.tg.tgvanillahud.render.TextBackdrop;
+//? if >=1.21.8 {
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.Scoreboard;
+import org.tg.tgvanillahud.render.ForeignTransform;
+//?}
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.*;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+//? if >=1.21.6 {
+import org.joml.Matrix3x2fStack;
+//?}
+//? if <1.21.6 {
+/*import com.mojang.blaze3d.vertex.PoseStack;
+*///?}
+//? if <1.21.4 {
+/*import com.mojang.blaze3d.systems.RenderSystem;
+*///?}
+
+@Mixin(value = PlayerTabOverlay.class, priority = 1100)
+public abstract class PlayerTabOverlayMixin {
+    @Final
+    @Shadow
+    private Minecraft minecraft;
+
+    @WrapOperation(
+            method = "getPlayerInfos",
+            at = @At(value = "INVOKE", target = "Ljava/util/stream/Stream;limit(J)Ljava/util/stream/Stream;")
+    )
+    private Stream<PlayerInfo> tgvanillahud$selfAtTopAndLimit(Stream<PlayerInfo> stream, long original,
+                                                           Operation<Stream<PlayerInfo>> op) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) return op.call(stream, original);
+        long limit = hud.getPlayerLimit();
+        if (hud.getSelfAtTop() && this.minecraft.player != null) {
+            UUID self = this.minecraft.player.getUUID();
+            List<PlayerInfo> list = stream.collect(Collectors.toList());
+            for (int i = 0; i < list.size(); i++) {
+                //? if >=1.21.9 {
+                UUID id = list.get(i).getProfile().id();
+                //?} else {
+                /*UUID id = list.get(i).getProfile().getId();
+                *///?}
+                if (self.equals(id)) {
+                    list.addFirst(list.remove(i));
+                    break;
+                }
+            }
+            return list.stream().limit(limit);
+        }
+        return op.call(stream, limit);
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Options;getBackgroundColor(I)I")
+    )
+    private int tgvanillahud$widgetColor(int original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        return hud.isDrawnAsVanilla() ? original : hud.getTabWidgetArgb();
+    }
+
+    @Unique
+    private int tgvanillahud$shapeX0, tgvanillahud$shapeX1, tgvanillahud$shapeTop, tgvanillahud$shapeBottom;
+
+    @Unique
+    private boolean tgvanillahud$shapeRoundTop, tgvanillahud$shapeRoundBottom;
+
+    @Unique
+    private void tgvanillahud$markShape(int x0, int y0, int x1, int y1, boolean header, boolean footer) {
+        this.tgvanillahud$shapeX0 = x0;
+        this.tgvanillahud$shapeX1 = x1;
+        this.tgvanillahud$shapeTop = y0;
+        this.tgvanillahud$shapeBottom = y1;
+        this.tgvanillahud$shapeRoundTop = !header;
+        this.tgvanillahud$shapeRoundBottom = !footer;
+    }
+
+    @Unique
+    private boolean tgvanillahud$headerDrawn;
+
+    @Unique
+    private boolean tgvanillahud$footerPending(TabListHud hud) {
+        return hud.getShowFooter() && (hud.getPreviewing() || ((IPlayerTabOverlay) (Object) this).getFooter() != null);
+    }
+
+    @Unique
+    private static void tgvanillahud$fill(Operation<Void> original, GuiGraphicsExtractor graphics, TabListHud hud, int x0, int y0, int x1, int y1, int color,
+                                        boolean roundTop, boolean roundBottom) {
+        if ((color >>> 24) == 0) return;
+        TextBackdrop.roundedSegment(graphics, x0, y0, x1, y1, hud.getRadius(), roundTop, roundBottom,
+                (a, b, c, d) -> original.call(graphics, a, b, c, d, color));
+    }
+
+    @WrapOperation(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V",
+                    ordinal = 0)
+    )
+    private void tgvanillahud$headerBg(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, x0, y0, x1, y1, color);
+            return;
+        }
+        int argb = hud.getHeaderBgArgb();
+        this.tgvanillahud$headerDrawn = (argb >>> 24) != 0;
+        tgvanillahud$fill(original, graphics, hud, x0, y0, x1, y1, argb, true, false);
+    }
+
+    @WrapOperation(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V",
+                    ordinal = 1)
+    )
+    private void tgvanillahud$bodyBg(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, x0, y0, x1, y1, color);
+            return;
+        }
+        boolean header = this.tgvanillahud$headerDrawn;
+        this.tgvanillahud$headerDrawn = false;
+        boolean footer = tgvanillahud$footerPending(hud);
+        tgvanillahud$markShape(x0, y0, x1, y1, header, footer);
+        tgvanillahud$fill(original, graphics, hud, x0, y0, x1, y1, hud.getBodyBgArgb(), !header, !footer);
+    }
+
+    @WrapOperation(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V",
+                    ordinal = 3)
+    )
+    private void tgvanillahud$footerBg(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, x0, y0, x1, y1, color);
+            return;
+        }
+        tgvanillahud$fill(original, graphics, hud, x0, y0, x1, y1, hud.getFooterBgArgb(), false, true);
+    }
+
+    //? if >=1.21.8 {
+    @Inject(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At("HEAD")
+    )
+    private void tgvanillahud$foreignProbe(GuiGraphicsExtractor graphics, int width, Scoreboard scoreboard, Objective objective, CallbackInfo ci) {
+        ForeignTransform.probe(graphics);
+    }
+    //?}
+
+    @Inject(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At("HEAD")
+    )
+    private void tgvanillahud$pushTextShadow(CallbackInfo ci) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (!hud.isDrawnAsVanilla()) TextShadowHook.push(hud.getShowShadow());
+    }
+
+    @Inject(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At("RETURN")
+    )
+    private void tgvanillahud$popTextShadow(CallbackInfo ci) {
+        if (!Huds.INSTANCE.getTabList().isDrawnAsVanilla()) TextShadowHook.pop();
+    }
+
+    @ModifyVariable(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At("STORE"), ordinal = 0
+    )
+    private boolean tgvanillahud$showHead(boolean original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        return original && (hud.isDrawnAsVanilla() || hud.getShowHead());
+    }
+
+    @Unique
+    private int tgvanillahud$pingReserve() {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (!hud.isDrawnAsVanilla() && hud.getShowPing() && hud.getNumberPing() && hud.getPingType() == 1) {
+            return this.minecraft.font.width("999") + 3;
+        }
+        return 0;
+    }
+
+    @ModifyExpressionValue(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "CONSTANT", args = "intValue=13"))
+    private int tgvanillahud$pingReserveWidth(int original) {
+        int reserve = tgvanillahud$pingReserve();
+        return reserve > 0 ? Math.max(original, reserve) : original;
+    }
+
+    @WrapOperation(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "INVOKE", target = "Ljava/lang/Math;min(II)I", ordinal = 0))
+    private int tgvanillahud$fixWidth(int a, int b, Operation<Integer> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        return !hud.isDrawnAsVanilla() && hud.getFixWidth() ? a : original.call(a, b);
+    }
+
+    // captures each slot right edge so the name clip below knows where the ping sits
+    @WrapOperation(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V",
+                    ordinal = 2))
+    private void tgvanillahud$captureSlotRight(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2, int color,
+                                             Operation<Void> original,
+                                             @Share("vhTabSlotRight") LocalIntRef slotRight) {
+        slotRight.set(x2);
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(graphics, x1, y1, x2, y2, color);
+            return;
+        }
+        if ((color >>> 24) == 0) return;
+        TextBackdrop.roundedClip(graphics, x1, y1, x2, y2, tgvanillahud$shapeX0, tgvanillahud$shapeTop, tgvanillahud$shapeX1, tgvanillahud$shapeBottom,
+                hud.getRadius(), tgvanillahud$shapeRoundTop, tgvanillahud$shapeRoundBottom,
+                (a, b, c, d) -> original.call(graphics, a, b, c, d, color));
+    }
+
+    // at clamped GUI scales names overflow their column into the numeric ping so clip them
+    @WrapOperation(
+            //? if <1.21.6 {
+            /*method = "render",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I", ordinal = 0)
+            *///?} else if <26 {
+            /*method = "render",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V", ordinal = 0)
+            *///?} else {
+            method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V", ordinal = 0)
+            //?}
+    )
+    //? if <1.21.6 {
+    /*private int tgvanillahud$clipName(GuiGraphicsExtractor graphics, Font font, Component name, int x, int y, int color,
+                                   Operation<Integer> original, @Share("vhTabSlotRight") LocalIntRef slotRight) {
+        int reserve = tgvanillahud$pingReserve();
+        int clipRight = slotRight.get() - reserve;
+        boolean clip = reserve > 0 && clipRight > x && x + this.minecraft.font.width(name) > clipRight;
+        if (clip) graphics.enableScissor(x, y - 1, clipRight, y + 9);
+        int r = original.call(graphics, font, name, x, y, color);
+        if (clip) graphics.disableScissor();
+        return r;
+    }
+    *///?} else {
+    private void tgvanillahud$clipName(GuiGraphicsExtractor graphics, Font font, Component name, int x, int y, int color,
+                                     Operation<Void> original, @Share("vhTabSlotRight") LocalIntRef slotRight) {
+        int reserve = tgvanillahud$pingReserve();
+        int clipRight = slotRight.get() - reserve;
+        boolean clip = reserve > 0 && clipRight > x && x + this.minecraft.font.width(name) > clipRight;
+        if (clip) graphics.enableScissor(x, y - 1, clipRight, y + 9);
+        original.call(graphics, font, name, x, y, color);
+        if (clip) graphics.disableScissor();
+    }
+    //?}
+
+    @Inject(
+            //? if <26 {
+            /*method = "renderPingIcon",
+            *///?} else {
+            method = "extractPingIcon",
+            //?}
+            at = @At("HEAD"), cancellable = true
+    )
+    private void tgvanillahud$ping(GuiGraphicsExtractor graphics, int slotWidth, int xo, int yo, PlayerInfo info,
+                                 CallbackInfo ci) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) return;
+        if (!hud.getShowPing()) {
+            ci.cancel();
+            return;
+        }
+        if (hud.getNumberPing()) {
+            int ping = info.getLatency();
+            if (hud.hidesPing(ping)) {
+                ci.cancel();
+                return;
+            }
+            int color = hud.pingColor(ping);
+            String str = String.valueOf(ping);
+            int w = this.minecraft.font.width(str);
+            boolean full = hud.getPingType() == 1;
+            int fullX = xo + slotWidth - w - 1;
+            int scaledX = 2 * (xo + slotWidth) - w - 2;
+            int scaledY = 2 * yo + 4;
+            //? if >=26 {
+            Component text = Component.literal(str);
+            if (full) {
+                graphics.text(this.minecraft.font, text, fullX, yo, color);
+            } else {
+                Matrix3x2fStack pose = graphics.pose();
+                pose.pushMatrix();
+                pose.scale(0.5f, 0.5f);
+                graphics.text(this.minecraft.font, text, scaledX, scaledY, color);
+                pose.popMatrix();
+            }
+            //?} else if >=1.21.6 {
+            /*if (full) {
+                graphics.drawString(this.minecraft.font, str, fullX, yo, color);
+            } else {
+                Matrix3x2fStack pose = graphics.pose();
+                pose.pushMatrix();
+                pose.scale(0.5f, 0.5f);
+                graphics.drawString(this.minecraft.font, str, scaledX, scaledY, color);
+                pose.popMatrix();
+            }
+            *///?} else {
+            /*if (full) {
+                graphics.drawString(this.minecraft.font, str, fullX, yo, color);
+            } else {
+                PoseStack pose = graphics.pose();
+                pose.pushMatrix();
+                pose.scale(0.5f, 0.5f, 1.0f);
+                graphics.drawString(this.minecraft.font, str, scaledX, scaledY, color);
+                pose.popMatrix();
+            }
+            *///?}
+            ci.cancel();
+        }
+    }
+
+    @WrapWithCondition(
+            //? if <26 {
+            /*method = "render",
+            *///?} else {
+            method = "extractRenderState",
+            //?}
+            at = @At(
+                    value = "INVOKE",
+                    //? if >= 26.1 {
+                    target = "Lnet/minecraft/client/gui/components/PlayerFaceExtractor;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZI)V"
+                    //?} else if >= 1.21.11 {
+                    /*target = "Lnet/minecraft/client/gui/components/PlayerFaceRenderer;draw(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZI)V"
+                    *///?} else if >= 1.21.4 {
+                    /*target = "Lnet/minecraft/client/gui/components/PlayerFaceRenderer;draw(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZI)V"
+                    *///?} else {
+                    /*target = "Lnet/minecraft/client/gui/components/PlayerFaceRenderer;draw(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZ)V"
+                    *///?}
+            )
+    )
+    private boolean tgvanillahud$head(GuiGraphicsExtractor graphics, Identifier texture, int x, int y, int size, boolean hat, boolean flip /*? if >= 1.21.4 {*/, int color /*?}*/) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        return hud.isDrawnAsVanilla() || !HudCapture.head(graphics, texture, x, y, size, hud.headStyle(hat), flip, /*? if >= 1.21.4 {*/ color /*?} else {*/ /*tgvanillahud$shaderTint() *//*?}*/);
+    }
+
+    //? if <1.21.4 {
+    /*@Unique
+    private static int tgvanillahud$shaderTint() {
+        float[] c = RenderSystem.getShaderColor();
+        return ((int) (c[3] * 255f) << 24) | ((int) (c[0] * 255f) << 16) | ((int) (c[1] * 255f) << 8) | (int) (c[2] * 255f);
+    }
+    *///?}
+}
+//?} else {
+/*
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.overlay.PlayerTabOverlay;
+import net.minecraft.client.network.PlayerInfo;
+import net.minecraft.client.render.model.PlayerModelPart;
+import net.minecraft.scoreboard.Scoreboard;
+import net.minecraft.scoreboard.ScoreboardObjective;
+import net.minecraft.text.Text;
+import net.minecraft.world.entity.player.Player;
+import org.objectweb.asm.Opcodes;
+import org.tg.tgvanillahud.compat.LegacyDrawContext;
+import org.tg.tgvanillahud.hud.Huds;
+import org.tg.tgvanillahud.hud.TabListHud;
+import org.tg.tgvanillahud.render.HudCapture;
+import org.tg.tgvanillahud.render.TextBackdrop;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(value = PlayerTabOverlay.class, priority = 1100)
+public abstract class PlayerTabOverlayMixin {
+    @Unique
+    private static void tgvanillahud$fill(Operation<Void> original, TabListHud hud, int x0, int y0, int x1, int y1, int color) {
+        tgvanillahud$fill(original, hud, x0, y0, x1, y1, color, false, false);
+    }
+
+    @Unique
+    private static void tgvanillahud$fill(Operation<Void> original, TabListHud hud, int x0, int y0, int x1, int y1, int color,
+                                        boolean roundTop, boolean roundBottom) {
+        if ((color >>> 24) == 0) return;
+        TextBackdrop.roundedSegment(LegacyDrawContext.INSTANCE, x0, y0, x1, y1, hud.getRadius(), roundTop, roundBottom,
+                (a, b, c, d) -> original.call(a, b, c, d, color));
+    }
+
+    @Unique
+    private int tgvanillahud$shapeX0, tgvanillahud$shapeX1, tgvanillahud$shapeTop, tgvanillahud$shapeBottom;
+
+    @Unique
+    private boolean tgvanillahud$shapeRoundTop, tgvanillahud$shapeRoundBottom;
+
+    @Unique
+    private void tgvanillahud$markShape(int x0, int y0, int x1, int y1, boolean header, boolean footer) {
+        this.tgvanillahud$shapeX0 = x0;
+        this.tgvanillahud$shapeX1 = x1;
+        this.tgvanillahud$shapeTop = y0;
+        this.tgvanillahud$shapeBottom = y1;
+        this.tgvanillahud$shapeRoundTop = !header;
+        this.tgvanillahud$shapeRoundBottom = !footer;
+    }
+
+    @Unique
+    private boolean tgvanillahud$headerDrawn;
+
+    @Unique
+    private boolean tgvanillahud$hasFooter;
+
+    @ModifyExpressionValue(method = "render", at = @At(value = "CONSTANT", args = "intValue=80"))
+    private int tgvanillahud$playerLimit(int original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        return hud.isDrawnAsVanilla() ? original : hud.getPlayerLimit();
+    }
+
+    @ModifyExpressionValue(method = "render", at = @At(value = "FIELD",
+            target = "Lnet/minecraft/client/gui/overlay/PlayerTabOverlay;header:Lnet/minecraft/text/Text;",
+            opcode = Opcodes.GETFIELD))
+    private Text tgvanillahud$header(Text original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) return original;
+        if (!hud.getShowHeader()) return null;
+        return hud.getPreviewing() ? hud.previewHeader(original) : original;
+    }
+
+    @ModifyExpressionValue(method = "render", at = @At(value = "FIELD",
+            target = "Lnet/minecraft/client/gui/overlay/PlayerTabOverlay;footer:Lnet/minecraft/text/Text;",
+            opcode = Opcodes.GETFIELD))
+    private Text tgvanillahud$footer(Text original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        Text footer = hud.isDrawnAsVanilla() ? original : !hud.getShowFooter() ? null : hud.getPreviewing() ? hud.previewFooter(original) : original;
+        this.tgvanillahud$hasFooter = footer != null;
+        return footer;
+    }
+
+    @WrapOperation(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/overlay/PlayerTabOverlay;fill(IIIII)V", ordinal = 0))
+    private void tgvanillahud$headerBg(int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(x0, y0, x1, y1, color);
+            return;
+        }
+        int argb = hud.getHeaderBgArgb();
+        this.tgvanillahud$headerDrawn = (argb >>> 24) != 0;
+        tgvanillahud$fill(original, hud, x0, y0, x1, y1, argb, true, false);
+    }
+
+    @WrapOperation(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/overlay/PlayerTabOverlay;fill(IIIII)V", ordinal = 1))
+    private void tgvanillahud$bodyBg(int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(x0, y0, x1, y1, color);
+            return;
+        }
+        boolean header = this.tgvanillahud$headerDrawn;
+        this.tgvanillahud$headerDrawn = false;
+        tgvanillahud$markShape(x0, y0, x1, y1, header, this.tgvanillahud$hasFooter);
+        tgvanillahud$fill(original, hud, x0, y0, x1, y1, hud.getBodyBgArgb(), !header, !this.tgvanillahud$hasFooter);
+    }
+
+    @WrapOperation(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/overlay/PlayerTabOverlay;fill(IIIII)V", ordinal = 2))
+    private void tgvanillahud$widget(int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(x0, y0, x1, y1, color);
+            return;
+        }
+        int argb = hud.getTabWidgetArgb();
+        if ((argb >>> 24) == 0) return;
+        TextBackdrop.roundedClip(LegacyDrawContext.INSTANCE, x0, y0, x1, y1, tgvanillahud$shapeX0, tgvanillahud$shapeTop, tgvanillahud$shapeX1, tgvanillahud$shapeBottom,
+                hud.getRadius(), tgvanillahud$shapeRoundTop, tgvanillahud$shapeRoundBottom,
+                (a, b, c, d) -> original.call(a, b, c, d, argb));
+    }
+
+    @WrapOperation(method = "render", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/overlay/PlayerTabOverlay;fill(IIIII)V", ordinal = 3))
+    private void tgvanillahud$footerBg(int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) {
+            original.call(x0, y0, x1, y1, color);
+            return;
+        }
+        tgvanillahud$fill(original, hud, x0, y0, x1, y1, hud.getFooterBgArgb(), false, true);
+    }
+
+    @ModifyExpressionValue(method = "render", at = {
+            @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isIntegratedServerRunning()Z"),
+            @At(value = "INVOKE", target = "Lnet/minecraft/network/Connection;isEncrypted()Z")
+    })
+    private boolean tgvanillahud$showHead(boolean original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        return original && (hud.isDrawnAsVanilla() || hud.getShowHead());
+    }
+
+    @Unique
+    private int tgvanillahud$pingReserve() {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (!hud.isDrawnAsVanilla() && hud.getShowPing() && hud.getNumberPing() && hud.getPingType() == 1) {
+            return Minecraft.getInstance().font.width("999") + 3;
+        }
+        return 0;
+    }
+
+    @ModifyExpressionValue(method = "render", at = @At(value = "CONSTANT", args = "intValue=13"))
+    private int tgvanillahud$pingReserveWidth(int original) {
+        int reserve = tgvanillahud$pingReserve();
+        return reserve > 0 ? Math.max(original, reserve) : original;
+    }
+
+    @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Ljava/lang/Math;min(II)I", ordinal = 1))
+    private int tgvanillahud$fixWidth(int a, int b, Operation<Integer> original) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        return !hud.isDrawnAsVanilla() && hud.getFixWidth() ? a : original.call(a, b);
+    }
+
+    @Inject(method = "renderPing", at = @At("HEAD"), cancellable = true)
+    private void tgvanillahud$ping(int slotWidth, int xo, int yo, PlayerInfo info, CallbackInfo ci) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        if (hud.isDrawnAsVanilla()) return;
+        if (!hud.getShowPing()) {
+            ci.cancel();
+            return;
+        }
+        if (!hud.getNumberPing()) return;
+
+        int ping = info.getPing();
+        if (hud.hidesPing(ping)) {
+            ci.cancel();
+            return;
+        }
+
+        Font font = Minecraft.getInstance().font;
+        String str = String.valueOf(ping);
+        int width = font.width(str);
+        int color = hud.pingColor(ping);
+        if (hud.getPingType() == 1) {
+            font.drawWithShadow(str, (float) (xo + slotWidth - width - 1), (float) yo, color);
+        } else {
+            float x = (float) (2 * (xo + slotWidth) - width - 2);
+            float y = (float) (2 * yo + 4);
+            this.tgvanillahud$smallPings.add(() -> font.drawWithShadow(str, x, y, color));
+        }
+        ci.cancel();
+    }
+
+    @Unique
+    private final List<Runnable> tgvanillahud$smallPings = new ArrayList<>();
+
+    @Unique
+    private boolean tgvanillahud$headCaptured;
+
+    @WrapWithCondition(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiElement;drawTexture(IIFFIIIIFF)V", ordinal = 0))
+    private boolean tgvanillahud$head(int x, int y, float u, float v, int regionWidth, int regionHeight, int width, int height, float texWidth, float texHeight, @Local PlayerInfo info, @Local Player player) {
+        TabListHud hud = Huds.INSTANCE.getTabList();
+        boolean hat = player != null && player.isModelPartVisible(PlayerModelPart.HAT);
+        this.tgvanillahud$headCaptured = !hud.isDrawnAsVanilla() &&
+                HudCapture.head(LegacyDrawContext.INSTANCE, info.getSkinTexture(), x, y, width, hud.headStyle(hat), regionHeight < 0);
+        return !this.tgvanillahud$headCaptured;
+    }
+
+    @WrapWithCondition(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiElement;drawTexture(IIFFIIIIFF)V", ordinal = 1))
+    private boolean tgvanillahud$hat(int x, int y, float u, float v, int regionWidth, int regionHeight, int width, int height, float texWidth, float texHeight) {
+        return !this.tgvanillahud$headCaptured;
+    }
+
+    @WrapMethod(method = "render", order = 2000)
+    private void tgvanillahud$drawSmallPings(int width, Scoreboard scoreboard, ScoreboardObjective objective, Operation<Void> original) {
+        this.tgvanillahud$smallPings.clear();
+        try {
+            original.call(width, scoreboard, objective);
+        } finally {
+            if (!this.tgvanillahud$smallPings.isEmpty()) {
+                LegacyDrawContext.INSTANCE.pose().pushMatrix();
+                LegacyDrawContext.INSTANCE.pose().scale(0.5F, 0.5F);
+                this.tgvanillahud$smallPings.forEach(Runnable::run);
+                LegacyDrawContext.INSTANCE.pose().popMatrix();
+                this.tgvanillahud$smallPings.clear();
+            }
+        }
+    }
+}
+*///?}
