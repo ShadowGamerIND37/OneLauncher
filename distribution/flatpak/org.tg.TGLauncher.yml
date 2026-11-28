@@ -1,4 +1,4 @@
-id: org.polyfrost.OneClient
+id: org.tg.TGLauncher
 runtime: org.gnome.Platform
 runtime-version: '51'
 sdk: org.gnome.Sdk
@@ -24,19 +24,19 @@ modules:
     cleanup:
       - /share/man
 
-  - name: oneclient
+  - name: tglauncher
     buildsystem: simple
     only-arches:
       - x86_64
     sources:
       - type: file
-        url: https://github.com/Polyfrost/OneLauncher/releases/download/oneclient-2.8.0/OneClient_2.8.0_linux_x86_64.deb
+        url: https://github.com/ShadowGamerIND37/OneLauncher/releases/download/tglauncher-2.8.0/TGLauncher_2.8.0_linux_x86_64.deb
         sha256: 8ac0ea645b78bcd2a9e13cb14e4ab22cc732ddf33b7bea88375cfcba4114d536
-        dest-filename: oneclient.deb
+        dest-filename: tglauncher.deb
       - type: file
-        path: org.polyfrost.OneClient.metainfo.xml
+        path: org.tg.TGLauncher.metainfo.xml
     build-commands:
-      - ar x oneclient.deb
+      - ar x tglauncher.deb
       - tar xf data.tar.*
       - install -Dm755 usr/bin/oneclient_app -t /app/bin
       - |
@@ -45,6 +45,6 @@ modules:
           install -Dm644 "$dir/apps/oneclient_app.png" "/app/share/icons/hicolor/$size/apps/$FLATPAK_ID.png"
         done
       - sed -e "s|^Exec=.*|Exec=oneclient_app %u|" -e "s|^Icon=.*|Icon=$FLATPAK_ID|" usr/share/applications/oneclient_app.desktop > $FLATPAK_ID.desktop
-      - echo "MimeType=x-scheme-handler/oneclient;" >> $FLATPAK_ID.desktop
+      - echo "MimeType=x-scheme-handler/tglauncher;" >> $FLATPAK_ID.desktop
       - install -Dm644 $FLATPAK_ID.desktop -t /app/share/applications
       - install -Dm644 $FLATPAK_ID.metainfo.xml -t /app/share/metainfo

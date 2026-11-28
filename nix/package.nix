@@ -6,11 +6,11 @@
 }:
 
 let
-  pname = "oneclient";
+  pname = "tglauncher";
   version = "2.13.0";
 
   src = fetchurl {
-    url = "https://github.com/Polyfrost/OneLauncher/releases/download/oneclient-${version}/OneClient_${version}_linux_x86_64.AppImage";
+    url = "https://github.com/ShadowGamerIND37/OneLauncher/releases/download/tglauncher-${version}/TGLauncher_${version}_linux_x86_64.AppImage";
     hash = "sha256-VtrkL2YNmA6KjHJAUX7m0HT0o/3vWOGh84+nOBYYdp4=";
   };
 
@@ -18,13 +18,13 @@ let
 
   desktopItem = makeDesktopItem {
     name = pname;
-    desktopName = "OneClient";
-    comment = "Minecraft launcher by Polyfrost";
+    desktopName = "TG Launcher";
+    comment = "Minecraft launcher by TG";
     exec = "${pname} %U";
     icon = pname;
     terminal = false;
     categories = [ "Game" ];
-    mimeTypes = [ "x-scheme-handler/oneclient" ];
+    mimeTypes = [ "x-scheme-handler/tglauncher" ];
   };
 in
 appimageTools.wrapType2 {
@@ -61,8 +61,8 @@ appimageTools.wrapType2 {
   '';
 
   meta = {
-    description = "OneClient, Minecraft launcher by Polyfrost";
-    homepage = "https://github.com/Polyfrost/OneLauncher";
+    description = "TG Launcher, Minecraft launcher by TG";
+    homepage = "https://github.com/ShadowGamerIND37/OneLauncher";
     sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
     platforms = [ "x86_64-linux" ];
     mainProgram = pname;

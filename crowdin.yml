@@ -5,8 +5,8 @@ preserve_hierarchy: true
 
 files:
   - source: /packages/oneclient_app/lang/en_us.json
-    dest: /oneclient.json
-    translation: /translations/%locale_with_underscore%/oneclient.json
+    dest: /tglauncher.json
+    translation: /translations/%locale_with_underscore%/tglauncher.json
     update_option: update_as_unapproved
     languages_mapping:
       locale_with_underscore:

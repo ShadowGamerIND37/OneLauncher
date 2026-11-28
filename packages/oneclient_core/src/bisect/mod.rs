@@ -1053,7 +1053,7 @@ pub(crate) async fn record_bisect_exit(
 
     if exit == GameExit::Unknown {
         let db = &state.services.db;
-        let note = "OneClient couldn't tell how the game ended, so this launch doesn't count. Launch again to test this round.";
+        let note = "TG Launcher couldn't tell how the game ended, so this launch doesn't count. Launch again to test this round.";
         let recorded = async {
             bisect_dao::clear_suggestions(db, cluster_id).await?;
             bisect_dao::set_pending_exit(db, cluster_id, BisectExit::None).await?;
@@ -2083,7 +2083,7 @@ fn report(session: &Session, status: &BisectStatus) -> String {
         BisectStage::Halted => "Stuck: both halves were unclear",
         BisectStage::Complete => "Complete",
     };
-    let _ = writeln!(out, "OneClient problem mod search report");
+    let _ = writeln!(out, "TG Launcher problem mod search report");
     let _ = writeln!(out, "===================================");
     let _ = writeln!(out, "Status: {stage}");
     let _ = writeln!(

@@ -1,4 +1,4 @@
-name: OneClient Nightly (Unsigned)
+name: TG Launcher Nightly (Unsigned)
 
 
 on:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: oneclient-nightly-${{ github.ref }}
+  group: tglauncher-nightly-${{ github.ref }}
   cancel-in-progress: true
 
 # Nightlies are unsigned test builds, so they do not need the release profile's
@@ -19,7 +19,7 @@ concurrency:
 #
 # These are cargo's documented profile overrides, so `target/release` stays the
 # output directory and every path below is unaffected. The shipped release binary
-# is untouched: oneclient_release.yml still builds the fat-LTO profile from
+# is untouched: tglauncher_release.yml still builds the fat-LTO profile from
 # Cargo.toml. That difference is why the two workflows must not share a cache
 # namespace - see `cache-namespace` on the Setup Rust step.
 env:
@@ -122,14 +122,14 @@ jobs:
           set -euo pipefail
           out="packages/oneclient_app/icons/generated"
           mkdir -p "$out"
-          xcrun actool packages/oneclient_app/icons/OneClient.icon \
+          xcrun actool packages/oneclient_app/icons/TGLauncher.icon \
             --compile "$out" \
-            --app-icon OneClient \
+            --app-icon TGLauncher \
             --output-partial-info-plist "$out/partial.plist" \
             --platform macosx \
             --minimum-deployment-target 26.0 \
             --errors --warnings --notices
-          rm -f "$out/OneClient.icns"
+          rm -f "$out/TGLauncher.icns"
           test -f "$out/Assets.car" || { echo "::error::actool produced no Assets.car"; exit 1; }
 
       - name: (Windows) Stage app-local VC++ runtime
@@ -199,7 +199,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $dest = 'C:\oneclient-smoke'
+          $dest = 'C:\tglauncher-smoke'
           Remove-Item -Recurse -Force $dest -ErrorAction SilentlyContinue
           $exe = Resolve-Path (Get-ChildItem '${{ steps.outdir.outputs.dir }}/*-setup.exe')[0].FullName
           # NSIS: /S is silent, /D= sets the install dir and must be the last arg.

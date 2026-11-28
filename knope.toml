@@ -12,7 +12,7 @@ change_templates = [
 ]
 
 [github]
-owner = "Polyfrost"
+owner = "ShadowGamerIND37"
 repo = "OneLauncher"
 
 [[workflows]]

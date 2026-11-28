@@ -25,8 +25,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           latest=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/Polyfrost/OneLauncher/releases?per_page=30" \
-            | jq -r '[.[] | select((.tag_name | startswith("oneclient-")) and (.prerelease | not) and (.draft | not))][0].tag_name | ltrimstr("oneclient-")')
+            "https://api.github.com/repos/ShadowGamerIND37/OneLauncher/releases?per_page=30" \
+            | jq -r '[.[] | select((.tag_name | startswith("tglauncher-")) and (.prerelease | not) and (.draft | not))][0].tag_name | ltrimstr("tglauncher-")')
           current=$(sed -n 's/^  version = "\(.*\)";$/\1/p' nix/package.nix | head -1)
           echo "latest=${latest} current=${current}"
 
@@ -35,9 +35,9 @@ jobs:
             exit 0
           fi
 
-          url="https://github.com/Polyfrost/OneLauncher/releases/download/oneclient-${latest}/OneClient_${latest}_linux_x86_64.AppImage"
-          curl -fsSL -o /tmp/oneclient.AppImage "$url"
-          hash="sha256-$(openssl dgst -sha256 -binary /tmp/oneclient.AppImage | base64 -w0)"
+          url="https://github.com/ShadowGamerIND37/OneLauncher/releases/download/tglauncher-${latest}/TGLauncher_${latest}_linux_x86_64.AppImage"
+          curl -fsSL -o /tmp/tglauncher.AppImage "$url"
+          hash="sha256-$(openssl dgst -sha256 -binary /tmp/tglauncher.AppImage | base64 -w0)"
 
           sed -i \
             -e "s|^  version = \".*\";|  version = \"${latest}\";|" \
@@ -48,13 +48,13 @@ jobs:
 
       - name: Build the new version
         if: steps.update.outputs.changed == 'true'
-        run: nix build .#oneclient --print-build-logs
+        run: nix build .#tglauncher --print-build-logs
 
       - name: Commit and push
         if: steps.update.outputs.changed == 'true'
         run: |
-          version=$(nix eval --raw .#oneclient.version)
+          version=$(nix eval --raw .#tglauncher.version)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "oneclient: update to ${version}"
+          git commit -am "tglauncher: update to ${version}"
           git push

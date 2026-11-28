@@ -2,25 +2,24 @@
 
 <img src=".github/media/RepoBanner.png" alt="Repository Banner" />
 
-# OneClient  |  OneLauncher
-The monorepo containing the code for OneLauncher, OneClient, and their core backend.
+# TG Launcher
+The monorepo containing the code for TG Launcher and its core backend.
 
-OneClient is a Minecraft client featuring fully 100% open-source components, offering many packaged and pre-configured mods in one click.
+TG Launcher is a Minecraft client featuring fully 100% open-source components, offering many packaged and pre-configured mods in one click.
 
 </div>
 
 ## Installing
 
-You can install the latest release of OneClient from our website: [https://polyfrost.org/projects/oneclient](https://polyfrost.org/projects/oneclient)
-as well as our [GitHub releases](https://github.com/Polyfrost/OneLauncher/releases/latest).
+You can install the latest release of TG Launcher from our [GitHub releases](https://github.com/ShadowGamerIND37/OneLauncher/releases/latest).
 
 | Windows (x86_64) | macOS (Intel & Apple Silicon) | Linux (x86_64)                                          |
 |------------------|-------------------------------|---------------------------------------------------------|
 | Installer 🔄      | DMG 🔄                        | AppImage 🔄                                             |
 |                  | App Bundle 🔄                 | DEB                                                     |
 |                  |                               | RPM                                                     |
-|                  |                               | *[RPM (COPR)](https://copr.fedorainfracloud.org/coprs/polyfrost/OneClient/) 🔄 |
-|                  |                               | [AUR](https://aur.archlinux.org/packages/oneclient-bin)|
+|                  |                               | *[RPM (COPR)](https://copr.fedorainfracloud.org/coprs/tg/tglauncher/) 🔄 |
+|                  |                               | [AUR](https://aur.archlinux.org/packages/tglauncher-bin)|
 |                  |                               | Flatpak|
 
 > 🔄 = Has support for autoupdating built-in
@@ -36,7 +35,7 @@ cd Downloads
 ```
 2. You can then install the package: (change filename with the one you downloaded)
 ```
-flatpak install ./OneClient_2.11.0_linux_x86_64.flatpak 
+flatpak install ./TGLauncher_2.13.0_linux_x86_64.flatpak 
 ```
 </details>
 <details>
@@ -46,11 +45,11 @@ flatpak install ./OneClient_2.11.0_linux_x86_64.flatpak
 On supported distributions (RHEL, Fedora, etc.), you can make use of the Fedora COPR instead of using the AppImage or manually installing the RPM file.
 1. First, you have to enable the repository:
 ```
-sudo dnf copr enable polyfrost/OneClient
+sudo dnf copr enable tg/tglauncher
 ```
 2. You can then install the package:
 ```
-sudo dnf install oneclient-bin
+sudo dnf install tglauncher-bin
 ```
 
 </details>
@@ -99,7 +98,7 @@ The workspace shares a single version, defined in the root [`Cargo.toml`](./Carg
 
 Versions and release notes come from [Knope](https://knope.tech) change files in [`.changeset/`](./.changeset).
 Add one per user-facing change with `knope document-change` (installed via `cargo install knope`). The
-`OneClient Release Build` workflow consumes them, bumps the version, writes [`CHANGELOG.md`](./CHANGELOG.md),
+`TG Launcher Release Build` workflow consumes them, bumps the version, writes [`CHANGELOG.md`](./CHANGELOG.md),
 and uses the new entry as the GitHub release body, which is what the launcher's changelog page shows.
 
 

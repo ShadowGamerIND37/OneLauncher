@@ -18,14 +18,14 @@ use oneclient_app::{
 use std::cell::Cell;
 use tokio::runtime::Builder;
 
-struct OneClientApp {
+struct TGLauncherApp {
     needs_location: bool,
     start_maximized: bool,
     boot_launch: Cell<Option<String>>,
     boot_share: Cell<Option<String>>,
 }
 
-impl App for OneClientApp {
+impl App for TGLauncherApp {
     fn render(&self) -> impl IntoElement {
         let needs_location = self.needs_location;
 
@@ -250,7 +250,7 @@ fn main() {
 
     platform::set_main_window_config(move || {
         main_window_config(
-            OneClientApp {
+            TGLauncherApp {
                 needs_location: false,
                 start_maximized,
                 boot_launch: Cell::new(None),
@@ -261,7 +261,7 @@ fn main() {
     });
 
     let window_config = main_window_config(
-        OneClientApp {
+        TGLauncherApp {
             needs_location,
             start_maximized,
             boot_launch: Cell::new(cli.launch.clone()),
@@ -300,7 +300,7 @@ fn main() {
     launch(launch_config);
 }
 
-fn main_window_config(app: OneClientApp, start_maximized: bool) -> WindowConfig {
+fn main_window_config(app: TGLauncherApp, start_maximized: bool) -> WindowConfig {
     let window_config = WindowConfig::new_app(app)
     .with_title(constants::WINDOW_TITLE)
     .with_app_id(constants::WINDOW_APP_ID)

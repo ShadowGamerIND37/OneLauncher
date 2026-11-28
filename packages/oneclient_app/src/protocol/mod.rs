@@ -19,11 +19,18 @@ use std::path::Path;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 
 #[cfg(debug_assertions)]
-pub const SCHEME: &str = "oneclient-dev";
+pub const SCHEME: &str = "tglauncher-dev";
 #[cfg(not(debug_assertions))]
-pub const SCHEME: &str = "oneclient";
+pub const SCHEME: &str = "tglauncher";
 
 const LAUNCH_HOST: &str = "launch";
+
+/// Old OneClient schemes still parse so links made before the rebrand keep working.
+fn is_our_scheme(scheme: &str) -> bool {
+    scheme.eq_ignore_ascii_case(SCHEME)
+        || scheme.eq_ignore_ascii_case("oneclient")
+        || scheme.eq_ignore_ascii_case("oneclient-dev")
+}
 
 const FOLDER: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'-')
@@ -42,7 +49,7 @@ pub fn launch_url(folder: &str) -> String {
 #[must_use]
 pub fn parse_launch_url(raw: &str) -> Option<String> {
     let (scheme, rest) = raw.trim().split_once("://")?;
-    if !scheme.eq_ignore_ascii_case(SCHEME) {
+    if !is_our_scheme(scheme) {
         return None;
     }
 
@@ -59,7 +66,7 @@ pub fn parse_launch_url(raw: &str) -> Option<String> {
 #[must_use]
 pub fn parse_share_url(raw: &str) -> Option<String> {
     let (scheme, _) = raw.trim().split_once("://")?;
-    if !scheme.eq_ignore_ascii_case(SCHEME) {
+    if !is_our_scheme(scheme) {
         return None;
     }
     oneclient_core::sharing::ShareCode::parse(raw).map(|code| code.as_str().to_string())
@@ -127,5 +134,17 @@ mod tests {
         assert_eq!(parse_launch_url(&format!("{SCHEME}://launch/")), None);
         assert_eq!(parse_launch_url(&format!("{SCHEME}://launch/%20")), None);
         assert_eq!(parse_launch_url(&format!("{SCHEME}://launch")), None);
+    }
+
+    #[test]
+    fn a_link_made_before_the_rebrand_still_parses() {
+        assert_eq!(
+            parse_launch_url("oneclient://launch/pack").as_deref(),
+            Some("pack"),
+        );
+        assert_eq!(
+            parse_launch_url("oneclient-dev://launch/pack").as_deref(),
+            Some("pack"),
+        );
     }
 }
