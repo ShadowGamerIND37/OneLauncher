@@ -91,7 +91,7 @@ jetbrains-compose-navigation = { module = "org.jetbrains.androidx.navigation:nav
 jetbrains-lifecycle = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 jetbrains-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "viewmodel" }
 
-polycompose-core = { module = "org.tg:polycompose-core", version.ref = "polycompose" }
+polycompose-core = { module = "org.polyfrost:polycompose-core", version.ref = "polycompose" }
 
 commonmark = { module = "org.commonmark:commonmark", version.ref = "commonmark" }
 

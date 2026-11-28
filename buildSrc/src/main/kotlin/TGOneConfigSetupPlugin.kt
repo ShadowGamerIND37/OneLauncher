@@ -185,7 +185,7 @@ class TGOneConfigSetupPlugin : Plugin<Project> {
             moulConfig(skyhanniRelocatedConfiguration, firmamentRelocatedConfiguration, skysoftRelocatedConfiguration)
 
             "api"(versionedCatalog["commonmark"])
-            "modApi"("org.tg:polycompose-${stonecutter.current.project}:$polyComposeVersion")
+            "modApi"("org.polyfrost:polycompose-${stonecutter.current.project}:$polyComposeVersion")
             handleApiDep(versionedCatalog.bundles["adventure"])
 
             if (adventurePlatform != null) {
@@ -220,7 +220,7 @@ class TGOneConfigSetupPlugin : Plugin<Project> {
                 }
                 "bundle"(hypixelFabricMod)
             } else if (loader == "ornithe") {
-                val hypixelOrnitheMod = "org.tg:mod-api-fabric:1.0.2+build.3+mc1.8.9"
+                val hypixelOrnitheMod = "org.polyfrost:mod-api-fabric:1.0.2+build.3+mc1.8.9"
                 "modLocalRuntime"(hypixelOrnitheMod) { isTransitive = false }
                 "bundle"(hypixelOrnitheMod)
             }
