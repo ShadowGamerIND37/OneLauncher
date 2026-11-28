@@ -37,7 +37,7 @@ class TGOneConfigDistributionPlugin : Plugin<Project> {
             dependsOn(extractModJarManifest)
             manifest.from(modJarManifestDir.get().file("META-INF/MANIFEST.MF").asFile)
 
-            archiveBaseName = "TG OneConfig-${project.name}"
+            archiveBaseName = "TGOneConfig-${project.name}"
             destinationDirectory = layout.buildDirectory.dir("dist")
         }
         extensions.getByType<LoomGradleExtensionAPI>().nestJars(bundleJar, configurations.named("bundle"))

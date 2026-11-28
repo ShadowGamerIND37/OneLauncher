@@ -53,10 +53,10 @@ detekt {
 
 gradlePlugin {
     mapOf(
-        "tgoneconfig-bridge" to "TG OneConfigBridgePlugin",
-        "tgoneconfig-fabric" to "TG OneConfigFabricPlugin",
-        "tgoneconfig-lint" to "TG OneConfigLintPlugin",
-        "tgoneconfig-setup" to "TG OneConfigSetupPlugin",
+        "tgoneconfig-bridge" to "TGOneConfigBridgePlugin",
+        "tgoneconfig-fabric" to "TGOneConfigFabricPlugin",
+        "tgoneconfig-lint" to "TGOneConfigLintPlugin",
+        "tgoneconfig-setup" to "TGOneConfigSetupPlugin",
     ).forEach { (pluginId, className) ->
         plugins.register(pluginId) {
             id = pluginId
