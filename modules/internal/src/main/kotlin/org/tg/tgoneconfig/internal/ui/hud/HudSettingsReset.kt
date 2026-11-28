@@ -1,0 +1,635 @@
+@file:OptIn(ExperimentalTGOneConfigUiApi::class)
+
+package org.tg.tgoneconfig.internal.ui.hud
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
+import org.tg.tgoneconfig.api.config.v1.Property
+import org.tg.tgoneconfig.api.config.v1.Tree
+import org.tg.tgoneconfig.api.hud.v1.Hud
+import org.tg.tgoneconfig.api.hud.v1.HudAnchor
+import org.tg.tgoneconfig.api.hud.v1.HudSnapEdge
+import org.tg.tgoneconfig.api.hud.v1.LegacyHudMarker
+import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
+import org.tg.tgoneconfig.api.ui.v1.components.Icon
+import org.tg.tgoneconfig.api.ui.v1.components.MenuAction
+import org.tg.tgoneconfig.api.ui.v1.components.MenuCustomItem
+import org.tg.tgoneconfig.api.ui.v1.components.MenuEntry
+import org.tg.tgoneconfig.api.ui.v1.components.MenuIconRow
+import org.tg.tgoneconfig.api.ui.v1.components.MenuItem
+import org.tg.tgoneconfig.api.ui.v1.components.MenuList
+import org.tg.tgoneconfig.api.ui.v1.components.MenuSeparator
+import org.tg.tgoneconfig.api.ui.v1.components.TooltipBox
+import org.tg.tgoneconfig.api.ui.v1.components.TooltipDefaults
+import org.tg.tgoneconfig.api.ui.v1.keybind.TGOneConfigKeybind
+import org.tg.tgoneconfig.internal.TGOneConfigConfig
+import org.tg.tgoneconfig.internal.ui.components.ShellPopup
+import org.tg.tgoneconfig.internal.ui.components.blockInteraction
+import org.tg.tgoneconfig.internal.ui.components.isEmptyText
+import org.tg.tgoneconfig.internal.ui.components.localizedDescription
+import org.tg.tgoneconfig.internal.ui.components.settings.asStyledLabel
+import org.tg.tgoneconfig.internal.ui.components.settings.identitySet
+import org.tg.tgoneconfig.internal.ui.components.settings.optionContextMenu
+import org.tg.tgoneconfig.internal.ui.components.settings.optionHasDefault
+import org.tg.tgoneconfig.internal.ui.components.settings.rememberOptionMenu
+import org.tg.tgoneconfig.internal.ui.components.settings.resetOption
+import org.tg.tgoneconfig.internal.ui.components.translated
+import org.tg.tgoneconfig.internal.ui.hud.screens.HudAlign
+import org.tg.tgoneconfig.internal.ui.hud.screens.alignHuds
+import org.tg.tgoneconfig.internal.ui.hud.screens.tourString
+import org.tg.tgoneconfig.internal.ui.themes.Accent
+import kotlin.math.abs
+
+private val MenuIconSize = 14.dp
+
+private val hudUiEpochs = mutableStateMapOf<Hud, Int>()
+
+private val STATIC_SIZE_OPTIONS = setOf("staticW", "staticH")
+private val POSITION_OPTIONS = setOf(
+    "section", "relativeX", "relativeY",
+    "anchorTargetId", "anchorPoint", "selfAnchorPoint", "anchorOffsetX", "anchorOffsetY", "movedByPlayer",
+    "snapEdgeX", "snapEdgeY",
+)
+
+private val UNRESETTABLE_OPTIONS = setOf("groupPath", "groupBackground")
+
+/** Bumped when any HUD field is reset so bound [remember] state is recreated from the HUD */
+fun hudUiEpoch(hud: Hud): Int = hudUiEpochs[hud] ?: 0
+
+internal fun bumpHudUiEpoch(hud: Hud) {
+    hudUiEpochs[hud] = (hudUiEpochs[hud] ?: 0) + 1
+}
+
+fun hudProperty(hud: Hud, optionId: String): Property<*>? =
+    hud.tree?.getProp(optionId)
+
+fun resetHudProperty(hud: Hud, optionId: String) {
+    val prop = hudProperty(hud, optionId) ?: return
+    resetOption(prop)
+    finishHudReset(hud)
+}
+
+fun hudHasResettableDefaults(hud: Hud): Boolean {
+    val tree = hud.tree ?: return false
+    return treeHasResettableDefaults(tree, root = true)
+}
+
+private fun treeHasResettableDefaults(tree: Tree, root: Boolean): Boolean {
+    for (node in tree.map.values) {
+        when (node) {
+            is Property<*> -> {
+                val optionId = node.id ?: node.getID()
+                if (!(root && optionId in POSITION_OPTIONS) && optionId !in UNRESETTABLE_OPTIONS && optionHasDefault(node)) return true
+            }
+            is Tree -> if (treeHasResettableDefaults(node, root = false)) return true
+        }
+    }
+    return false
+}
+
+fun resetAllHudProperties(hud: Hud) {
+    val tree = hud.tree ?: return
+    resetHudStaticSize(hud)
+    resetTreeDefaults(tree, root = true)
+    finishHudReset(hud)
+}
+
+private fun resetHudStaticSize(hud: Hud) {
+    if (!hud.staticWidth) return
+    for (id in STATIC_SIZE_OPTIONS) {
+        val prop = hudProperty(hud, id) ?: continue
+        performHudOptionReset(hud, prop, id)
+    }
+}
+
+fun hudHasPositionDefaults(hud: Hud): Boolean = hud.defaultPosition() != null
+
+/** Counts the HUD's position too when [position] is set */
+fun hudOptionsCanReset(hud: Hud, optionIds: Collection<String>, position: Boolean = false): Boolean =
+    (position && hudCanResetPosition(hud)) || optionIds.any { id ->
+        val prop = hudProperty(hud, id) ?: return@any false
+        val default = prop.getMetadata<Any?>("default") ?: return@any false
+        prop.get() != default
+    }
+
+/** Resets the HUD's position too when [position] is set */
+fun resetHudOptions(hud: Hud, optionIds: Collection<String>, position: Boolean = false) {
+    for (id in optionIds) {
+        val prop = hudProperty(hud, id) ?: continue
+        if (optionHasDefault(prop)) performHudOptionReset(hud, prop, id)
+    }
+    if (position && hudHasPositionDefaults(hud)) resetPositionOptions(hud)
+    finishHudReset(hud)
+}
+
+/** Whether [hud] sits on its default position, or has none to compare against */
+private fun hudIsAtDefaultPosition(hud: Hud): Boolean {
+    val section = hudProperty(hud, "section")?.getMetadata<Any?>("default") ?: return true
+    val x = (hudProperty(hud, "relativeX")?.getMetadata<Any?>("default") as? Number)?.toFloat() ?: return true
+    val y = (hudProperty(hud, "relativeY")?.getMetadata<Any?>("default") as? Number)?.toFloat() ?: return true
+    if (hud.snapEdgeX != HudSnapEdge.None || hud.snapEdgeY != HudSnapEdge.None) return false
+    return section == hud.section && abs(x - hud.relativeX) < 1e-4f && abs(y - hud.relativeY) < 1e-4f
+}
+
+/** Whether [resetHudPosition] would move [hud] or drop its anchor right now */
+fun hudCanResetPosition(hud: Hud): Boolean =
+    hudHasPositionDefaults(hud) && (hud.isAnchored || hud.isMergeAnchored || !hudIsAtDefaultPosition(hud))
+
+fun resetHudPosition(hud: Hud) {
+    if (!resetPositionOptions(hud)) return
+    bumpHudUiEpoch(hud)
+    hud.updateAndRecalculate()
+}
+
+private fun resetPositionOptions(hud: Hud): Boolean {
+    val props = POSITION_OPTIONS.mapNotNull { id -> hudProperty(hud, id)?.takeIf(::optionHasDefault) }
+    if (props.isEmpty()) return false
+    hud.dropMergeLinks()
+    for (prop in props) resetOption(prop)
+    return true
+}
+
+private fun finishHudReset(hud: Hud) {
+    hud.reseedStaticSizeIfNeeded()
+    hud.captureStaticSizeDefaults()
+    bumpHudUiEpoch(hud)
+    hud.updateAndRecalculate()
+}
+
+private fun canResetHudOption(hud: Hud, prop: Property<*>, optionId: String): Boolean {
+    if (optionHasDefault(prop)) return true
+    return hud.staticWidth && optionId in STATIC_SIZE_OPTIONS
+}
+
+private fun performHudOptionReset(hud: Hud, prop: Property<*>, optionId: String) {
+    when (optionId) {
+        "staticW" -> {
+            if (optionHasDefault(prop)) resetOption(prop) else hud.reseedStaticWidth()
+        }
+        "staticH" -> {
+            if (optionHasDefault(prop)) resetOption(prop) else hud.reseedStaticHeight()
+        }
+        "growthAnchor" -> {
+            val def = prop.getMetadata<Any?>("default") as? HudAnchor
+            if (def != null) hud.setGrowthAnchorKeepingPosition(def) else resetOption(prop)
+        }
+        else -> {
+            if (optionId in POSITION_OPTIONS) hud.dropMergeLinks()
+            resetOption(prop)
+        }
+    }
+    hud.captureStaticSizeDefaults(force = optionId in STATIC_SIZE_OPTIONS)
+}
+
+/** Fixes invalid static dimensions such as after a bad reset and refreshes the settings UI */
+fun repairHudStaticSize(hud: Hud) {
+    if (!hud.staticWidth) return
+    if (hud.staticW > 0f && hud.staticH > 0f) {
+        hud.captureStaticSizeDefaults()
+        return
+    }
+    hud.reseedStaticSizeIfNeeded()
+    hud.captureStaticSizeDefaults(force = true)
+    bumpHudUiEpoch(hud)
+}
+
+private fun resetTreeDefaults(tree: Tree, root: Boolean, seen: MutableSet<Property<*>> = identitySet()) {
+    for (node in tree.map.values) {
+        when (node) {
+            is Property<*> -> {
+                val optionId = node.id ?: node.getID()
+                val builtIn = root && (optionId in STATIC_SIZE_OPTIONS || optionId in POSITION_OPTIONS)
+                if (!builtIn && optionId !in UNRESETTABLE_OPTIONS && optionHasDefault(node)) resetOption(node, seen)
+            }
+            is Tree -> resetTreeDefaults(node, root = false, seen = seen)
+        }
+    }
+}
+
+/**
+ * Wraps a HUD settings control so right-click offers "Reset to default" for [optionId] and the [linkedIds] the
+ * control also sets
+ */
+@Composable
+fun HudSettingTarget(
+    hud: Hud,
+    optionId: String,
+    vararg linkedIds: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val prop = remember(hud, optionId) { hudProperty(hud, optionId) }
+    val linked = remember(hud, linkedIds.toList()) {
+        linkedIds.mapNotNull { id -> hudProperty(hud, id)?.let { id to it } }
+    }
+    if (prop == null) {
+        Box(modifier) { content() }
+        return
+    }
+
+    val menu = rememberOptionMenu(
+        prop,
+        onReset = {
+            performHudOptionReset(hud, prop, optionId)
+            for ((id, p) in linked) performHudOptionReset(hud, p, id)
+            finishHudReset(hud)
+        },
+        resetEnabled = canResetHudOption(hud, prop, optionId) ||
+            linked.any { (id, p) -> canResetHudOption(hud, p, id) },
+    )
+
+    Box(modifier = modifier.optionContextMenu(menu)) {
+        val description = prop.localizedDescription()?.takeUnless { it.isEmptyText() }
+        if (description != null) {
+            TooltipBox(description.asStyledLabel(), maxWidth = TooltipDefaults.descriptionMaxWidth) {
+                content()
+            }
+        } else {
+            content()
+        }
+    }
+}
+
+/** A [HudSettingTarget] for a control that moves [hud], so right-click resets its whole position */
+@Composable
+fun HudPositionTarget(hud: Hud, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val linked = if (hudHasPositionDefaults(hud)) (POSITION_OPTIONS - "section").toTypedArray() else emptyArray()
+    HudSettingTarget(hud, "section", *linked, modifier = modifier, content = content)
+}
+
+/** Recompose key for HUD panels whose controls use local [remember] copies of HUD fields */
+@Composable
+fun HudSettingsContent(hud: Hud, content: @Composable () -> Unit) {
+    key(hud, hudUiEpoch(hud)) {
+        content()
+    }
+}
+
+/** [HudSettingsContent] for a panel editing several HUDs at once, which is recreated when any one of them is */
+@Composable
+fun HudSettingsContent(huds: Collection<Hud>, content: @Composable () -> Unit) {
+    val list = huds.toList()
+    key(list, list.map(::hudUiEpoch)) {
+        content()
+    }
+}
+
+/**
+ * Right-click menu on a HUD element in the design studio canvas
+ *
+ * Mirrors the hover action bar so the buttons stay reachable when HUDs are packed too tightly for the bar
+ * to be aimed at
+ */
+@Composable
+fun HudCanvasResetMenu(
+    hud: Hud?,
+    expanded: Boolean,
+    offset: IntOffset,
+    onDismiss: () -> Unit,
+    targets: List<Hud> = emptyList(),
+    preview: Boolean = false,
+    onMeasured: (IntSize) -> Unit = {},
+    /** [targets] split into what moves as one block, so a selected group aligns as a whole */
+    units: List<Collection<Hud>> = emptyList(),
+    onGroup: (() -> Unit)? = null,
+    onUngroup: (() -> Unit)? = null,
+    onRemoveFromGroup: (() -> Unit)? = null,
+    /** Existing groups the targets can be moved into, each with its label */
+    addToGroups: List<Pair<String, () -> Unit>> = emptyList(),
+) {
+    if (hud == null || !expanded) return
+    val entries = buildHudCanvasMenuEntries(
+        hud = hud,
+        targets = targets,
+        onSettings = {},
+        onCopy = {},
+        onCut = {},
+        onPaste = {},
+        pasteEnabled = false,
+        onDuplicate = {},
+        duplicateEnabled = true,
+        onAnchor = {},
+        anchorEnabled = true,
+        onDelete = {},
+        onUndo = {},
+        undoEnabled = false,
+        onRedo = {},
+        redoEnabled = false,
+        onUndoAll = {},
+        highlightAnchor = preview,
+        units = units,
+        onGroup = onGroup,
+        onUngroup = onUngroup,
+        onRemoveFromGroup = onRemoveFromGroup,
+        addToGroups = addToGroups,
+    )
+    ShellPopup(
+        alignment = Alignment.TopStart,
+        offset = offset,
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(focusable = !preview, dismissOnClickOutside = !preview),
+    ) {
+        MenuList(entries, onDismiss, Modifier.onSizeChanged(onMeasured).blockInteraction(preview, keyboard = true))
+    }
+}
+
+internal fun hudCanvasMenuEntries(
+    hud: Hud,
+    targets: List<Hud>,
+    onSettings: (Hud) -> Unit,
+    onCopy: (Hud) -> Unit,
+    onCut: (Hud) -> Unit,
+    onPaste: (Hud) -> Unit,
+    pasteEnabled: Boolean,
+    onDuplicate: (Hud) -> Unit,
+    duplicateEnabled: Boolean,
+    onAnchor: (Hud) -> Unit,
+    anchorEnabled: Boolean,
+    onDelete: (Hud) -> Unit,
+    onUndo: () -> Unit,
+    undoEnabled: Boolean,
+    onRedo: () -> Unit,
+    redoEnabled: Boolean,
+    onUndoAll: () -> Unit,
+    units: List<Collection<Hud>> = emptyList(),
+    onGroup: (() -> Unit)? = null,
+    onUngroup: (() -> Unit)? = null,
+    onRemoveFromGroup: (() -> Unit)? = null,
+    addToGroups: List<Pair<String, () -> Unit>> = emptyList(),
+): List<MenuEntry> = buildHudCanvasMenuEntries(
+    hud = hud,
+    targets = targets,
+    onSettings = onSettings,
+    onCopy = onCopy,
+    onCut = onCut,
+    onPaste = onPaste,
+    pasteEnabled = pasteEnabled,
+    onDuplicate = onDuplicate,
+    duplicateEnabled = duplicateEnabled,
+    onAnchor = onAnchor,
+    anchorEnabled = anchorEnabled,
+    onDelete = onDelete,
+    onUndo = onUndo,
+    undoEnabled = undoEnabled,
+    onRedo = onRedo,
+    redoEnabled = redoEnabled,
+    onUndoAll = onUndoAll,
+    highlightAnchor = false,
+    units = units,
+    onGroup = onGroup,
+    onUngroup = onUngroup,
+    onRemoveFromGroup = onRemoveFromGroup,
+    addToGroups = addToGroups,
+)
+
+private fun buildHudCanvasMenuEntries(
+    hud: Hud,
+    targets: List<Hud>,
+    onSettings: (Hud) -> Unit,
+    onCopy: (Hud) -> Unit,
+    onCut: (Hud) -> Unit,
+    onPaste: (Hud) -> Unit,
+    pasteEnabled: Boolean,
+    onDuplicate: (Hud) -> Unit,
+    duplicateEnabled: Boolean,
+    onAnchor: (Hud) -> Unit,
+    anchorEnabled: Boolean,
+    onDelete: (Hud) -> Unit,
+    onUndo: () -> Unit,
+    undoEnabled: Boolean,
+    onRedo: () -> Unit,
+    redoEnabled: Boolean,
+    onUndoAll: () -> Unit,
+    highlightAnchor: Boolean,
+    units: List<Collection<Hud>> = emptyList(),
+    onGroup: (() -> Unit)? = null,
+    onUngroup: (() -> Unit)? = null,
+    onRemoveFromGroup: (() -> Unit)? = null,
+    addToGroups: List<Pair<String, () -> Unit>> = emptyList(),
+): List<MenuEntry> {
+    val actionTargets = targets.ifEmpty { listOf(hud) }
+    val allHidden = actionTargets.all { it.effectivelyHidden }
+    val allLocked = actionTargets.all { it.locked }
+    val entries = ArrayList<MenuEntry>(24)
+
+    entries += MenuAction(
+        translated("tgoneconfig.hud.menu.settings", "Settings"),
+        { onSettings(hud) },
+        icon = "settings",
+        shortcutHint = keybindHint(TGOneConfigConfig.hudSettingsKeybind),
+    )
+    entries += MenuAction(
+        if (allHidden) translated("tgoneconfig.hud.menu.show", "Show") else translated("tgoneconfig.hud.menu.hide", "Hide"),
+        { toggleHudVisibility(actionTargets) },
+        icon = if (allHidden) "eye-off" else "eye",
+        shortcutHint = keybindHint(TGOneConfigConfig.hudVisibilityKeybind),
+    )
+    val lockIcon = if (allLocked) "lock" else "unlock"
+    entries += MenuAction(
+        if (allLocked) translated("tgoneconfig.hud.menu.unlock", "Unlock") else translated("tgoneconfig.hud.menu.lock", "Lock"),
+        {
+            Snapshot.withMutableSnapshot {
+                val lock = actionTargets.any { !it.locked }
+                actionTargets.forEach { it.locked = lock }
+            }
+        },
+        icon = lockIcon,
+        shortcutHint = keybindHint(TGOneConfigConfig.hudLockKeybind),
+        leading = if (allLocked) accentMenuIcon(lockIcon) else null,
+    )
+    entries += MenuIconRow(
+        HudAlign.entries.map { align ->
+            MenuAction(alignLabel(align), { alignHuds(units.ifEmpty { actionTargets.map(::listOf) }, align) }, icon = align.icon)
+        },
+    )
+    val anchorLabel = translated("tgoneconfig.hud.menu.anchor", "Anchor")
+    entries += if (highlightAnchor) {
+        MenuCustomItem { MenuItem(anchorLabel, {}, icon = "align", enabled = anchorEnabled, selected = true) }
+    } else {
+        MenuAction(anchorLabel, { onAnchor(hud) }, icon = "align", enabled = anchorEnabled)
+    }
+    if (actionTargets.any { it.isAnchored }) {
+        entries += MenuAction(
+            translated("tgoneconfig.hud.menu.remove_anchor", "Remove anchor"),
+            {
+                Snapshot.withMutableSnapshot {
+                    actionTargets.forEach { it.clearAnchor() }
+                }
+            },
+            icon = "x-circle",
+        )
+    }
+    val mergeable = actionTargets.filter { it !is LegacyHudMarker && it.canMergeBackground() }
+    if (mergeable.any { it.mergeBackground && it.bgFused }) {
+        entries += MenuAction(
+            translated("tgoneconfig.hud.menu.detach", "Detach from group"),
+            { Snapshot.withMutableSnapshot { mergeable.forEach { it.mergeBackground = false } } },
+            icon = "layers",
+        )
+    } else if (mergeable.any { !it.mergeBackground }) {
+        entries += MenuAction(
+            translated("tgoneconfig.hud.menu.allow_merging", "Allow merging"),
+            { Snapshot.withMutableSnapshot { mergeable.forEach { it.mergeBackground = true } } },
+            icon = "layers",
+        )
+    }
+
+    if (onGroup != null || onUngroup != null || onRemoveFromGroup != null || addToGroups.isNotEmpty()) {
+        entries += MenuSeparator
+    }
+    if (onGroup != null) {
+        entries += MenuAction(translated("tgoneconfig.hud.menu.group", "Group"), onGroup, icon = "group")
+    }
+    if (onUngroup != null) {
+        entries += MenuAction(translated("tgoneconfig.hud.menu.ungroup", "Ungroup"), onUngroup, icon = "ungroup")
+    }
+    for ((label, onAdd) in addToGroups) {
+        entries += MenuAction(translated("tgoneconfig.hud.menu.add_to_group", "Add to %s", label), onAdd, icon = "plus")
+    }
+    if (onRemoveFromGroup != null) {
+        entries += MenuAction(translated("tgoneconfig.hud.menu.remove_from_group", "Remove from group"), onRemoveFromGroup, icon = "minus")
+    }
+
+    entries += MenuSeparator
+
+    entries += MenuAction(
+        translated("tgoneconfig.menu.text.copy", "Copy"),
+        { onCopy(hud) },
+        icon = "copy",
+        shortcutHint = keybindHint(TGOneConfigConfig.hudCopyKeybind),
+    )
+    entries += MenuAction(
+        translated("tgoneconfig.menu.text.cut", "Cut"),
+        { onCut(hud) },
+        icon = "scissors",
+        shortcutHint = keybindHint(TGOneConfigConfig.hudCutKeybind),
+    )
+    entries += pasteAction({ onPaste(hud) }, pasteEnabled)
+    entries += MenuAction(
+        translated("tgoneconfig.hud.menu.duplicate", "Duplicate"),
+        { onDuplicate(hud) },
+        icon = "copy-plus",
+        enabled = duplicateEnabled,
+        shortcutHint = keybindHint(TGOneConfigConfig.hudDuplicateKeybind),
+    )
+
+    entries += MenuSeparator
+    entries += undoAction(onUndo, undoEnabled)
+    entries += redoAction(onRedo, redoEnabled)
+    entries += undoAllAction(onUndoAll, undoEnabled)
+
+    entries += MenuSeparator
+    if (actionTargets.any(::hudHasPositionDefaults)) {
+        entries += MenuAction(
+            translated("tgoneconfig.hud.menu.reset_position", "Reset position"),
+            { actionTargets.filter { hudCanResetPosition(it) }.forEach(::resetHudPosition) },
+            icon = "move",
+            enabled = actionTargets.any { hudCanResetPosition(it) },
+        )
+    }
+    entries += MenuAction(
+        translated("tgoneconfig.hud.menu.reset_settings", "Reset HUD settings"),
+        { actionTargets.forEach { resetAllHudProperties(it) } },
+        icon = "refresh",
+        enabled = actionTargets.any { hudHasResettableDefaults(it) },
+        shortcutHint = keybindHint(TGOneConfigConfig.hudResetKeybind),
+    )
+    if (actionTargets.any { it.canDelete() }) {
+        entries += MenuAction(
+            translated("tgoneconfig.hud.menu.delete", "Delete HUD"),
+            { onDelete(hud) },
+            icon = "trash",
+            shortcutHint = keybindHint(TGOneConfigConfig.hudDeleteKeybind),
+            danger = true,
+        )
+    }
+    return entries
+}
+
+internal fun hudCanvasPasteMenuEntries(
+    pasteEnabled: Boolean,
+    onPaste: () -> Unit,
+    onSelectAll: () -> Unit,
+    onUndo: () -> Unit,
+    undoEnabled: Boolean,
+    onRedo: () -> Unit,
+    redoEnabled: Boolean,
+    onUndoAll: () -> Unit,
+    onTour: (() -> Unit)?,
+    onShortcuts: () -> Unit,
+): List<MenuEntry> {
+    val entries = ArrayList<MenuEntry>(9)
+    entries += undoAction(onUndo, undoEnabled)
+    entries += redoAction(onRedo, redoEnabled)
+    entries += undoAllAction(onUndoAll, undoEnabled)
+    entries += MenuSeparator
+    entries += pasteAction(onPaste, pasteEnabled)
+    entries += MenuAction(
+        translated("tgoneconfig.menu.text.select_all", "Select all"),
+        onSelectAll,
+        icon = "select-all",
+        shortcutHint = keybindHint(TGOneConfigConfig.hudSelectAllKeybind),
+    )
+    entries += MenuSeparator
+    if (onTour != null) entries += MenuAction(tourString("menu"), onTour, icon = "info")
+    entries += MenuAction(
+        translated("tgoneconfig.ui.shortcuts.title", "Keyboard shortcuts"),
+        onShortcuts,
+        icon = "keyboard",
+        shortcutHint = keybindHint(TGOneConfigConfig.hudShortcutsKeybind),
+    )
+    return entries
+}
+
+private fun pasteAction(onPaste: () -> Unit, enabled: Boolean): MenuAction = MenuAction(
+    translated("tgoneconfig.menu.text.paste", "Paste"),
+    onPaste,
+    icon = "clipboard",
+    enabled = enabled,
+    shortcutHint = keybindHint(TGOneConfigConfig.hudPasteKeybind),
+)
+
+private fun undoAction(onUndo: () -> Unit, enabled: Boolean): MenuAction = MenuAction(
+    translated("tgoneconfig.hud.menu.undo", "Undo"),
+    onUndo,
+    icon = "undo",
+    enabled = enabled,
+    shortcutHint = keybindHint(TGOneConfigConfig.hudUndoKeybind),
+)
+
+private fun undoAllAction(onUndoAll: () -> Unit, enabled: Boolean): MenuAction = MenuAction(
+    translated("tgoneconfig.hud.menu.undo_all", "Undo all"),
+    onUndoAll,
+    icon = "undo",
+    enabled = enabled,
+)
+
+private fun redoAction(onRedo: () -> Unit, enabled: Boolean): MenuAction = MenuAction(
+    translated("tgoneconfig.hud.menu.redo", "Redo"),
+    onRedo,
+    icon = "redo",
+    enabled = enabled,
+    shortcutHint = keybindHint(TGOneConfigConfig.hudRedoKeybind),
+)
+
+private fun alignLabel(align: HudAlign): String =
+    translated("tgoneconfig.hud.align.${align.name.lowercase()}", align.label)
+
+private fun accentMenuIcon(icon: String): @Composable () -> Unit = {
+    Icon(icon, null, Modifier.size(MenuIconSize), Accent)
+}
+
+private fun keybindHint(keybind: TGOneConfigKeybind?): String? =
+    if (TGOneConfigConfig.showKeybindHints) keybind?.takeIf { it.isBound }?.displayName() else null

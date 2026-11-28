@@ -1,0 +1,224 @@
+package org.tg.tgoneconfig.internal.ui.hud.screens
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
+import org.tg.tgoneconfig.api.hud.v1.Hud
+import org.tg.tgoneconfig.api.hud.v1.HudGroup
+import org.tg.tgoneconfig.api.hud.v1.HudManager
+import org.tg.tgoneconfig.internal.ui.hud.resetAllHudProperties
+import org.tg.tgoneconfig.internal.ui.hud.toggleHudVisibility
+
+internal sealed interface StudioCommand {
+    data class Select(val huds: List<Hud>) : StudioCommand
+
+    data object OpenSettings : StudioCommand
+
+    data object Copy : StudioCommand
+
+    data object Cut : StudioCommand
+
+    data object Paste : StudioCommand
+
+    data object Delete : StudioCommand
+
+    data object SelectAll : StudioCommand
+
+    data object Lock : StudioCommand
+
+    data object Undo : StudioCommand
+
+    data object Redo : StudioCommand
+
+    data object UndoAll : StudioCommand
+
+    data object Search : StudioCommand
+
+    data object Shortcuts : StudioCommand
+}
+
+object HudDesignSession {
+    /** The HUDs currently selected in the design studio so global keybinds can act on them */
+    var activeSelection: List<Hud> by mutableStateOf(emptyList())
+
+    /** The group the user stepped into in the design studio, whose members a click picks one by one */
+    var enteredGroup: HudGroup? by mutableStateOf(null)
+
+    /** The group selected on its own in the design studio, if any */
+    @Volatile
+    var activeGroup: HudGroup? = null
+
+    @JvmField
+    @Volatile
+    var launcherPending: Boolean = false
+
+    var islandCollapsed: Boolean by mutableStateOf(false)
+
+    private val commandQueue = Channel<StudioCommand>(Channel.UNLIMITED)
+
+    /**
+     * Commands waiting for the design studio
+     *
+     * The studio suspends on this while open so a posted command is handled as it arrives rather than on
+     * the next frame
+     */
+    internal val commands: ReceiveChannel<StudioCommand> get() = commandQueue
+
+    private fun post(command: StudioCommand) {
+        commandQueue.trySend(command)
+    }
+
+    /** Drops commands that were never consumed since they are stale by the time the studio reopens */
+    internal fun clearCommands() {
+        while (commandQueue.tryReceive().isSuccess) { /* drain */ }
+    }
+
+    /** Action for the "Duplicate HUD" keybind returning `true` if a duplicate was created */
+    @JvmStatic
+    fun handleDuplicate(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        val huds = activeSelection
+        if (huds.isEmpty()) return false
+        if (selectionUnits(huds.toSet(), enteredGroup).any { unit -> unit.all { it.locked } }) return false
+        if (huds.none(::canDuplicateHud)) return false
+        val dups = duplicateHudGroup(huds)
+        if (dups.isEmpty()) return false
+        post(StudioCommand.Select(dups))
+        return true
+    }
+
+    /** Action for the "Open HUD Settings" keybind returning `true` if the settings panel will open */
+    @JvmStatic
+    fun handleOpenSettings(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        val huds = activeSelection
+        if (huds.isEmpty()) return false
+        if (activeGroup == null && huds.size == 1 && huds.first().locked) return false
+        post(StudioCommand.OpenSettings)
+        return true
+    }
+
+    /** Action for the "Show/Hide HUD" keybind returning `true` if visibility was toggled */
+    @JvmStatic
+    fun handleToggleVisibility(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        val huds = activeSelection
+        if (huds.isEmpty()) return false
+        toggleHudVisibility(huds)
+        return true
+    }
+
+    /** Action for the "Reset HUD Settings" keybind returning `true` if any HUD was reset */
+    @JvmStatic
+    fun handleReset(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        val huds = activeSelection
+        if (huds.isEmpty()) return false
+        huds.forEach { resetAllHudProperties(it) }
+        return true
+    }
+
+    /** Action for the "Copy HUD" keybind returning `true` if the studio will copy its selection */
+    @JvmStatic
+    fun handleCopy(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        if (activeSelection.isEmpty()) return false
+        post(StudioCommand.Copy)
+        return true
+    }
+
+    /** Action for the "Cut HUD" keybind returning `true` if the studio will cut its selection */
+    @JvmStatic
+    fun handleCut(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        if (activeSelection.isEmpty()) return false
+        post(StudioCommand.Cut)
+        return true
+    }
+
+    /** Action for the "Paste HUD" keybind returning `true` if the studio will paste its clipboard */
+    @JvmStatic
+    fun handlePaste(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        post(StudioCommand.Paste)
+        return true
+    }
+
+    /** Action for the "Delete HUD" keybind returning `true` if the studio will delete its selection */
+    @JvmStatic
+    fun handleDelete(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        if (activeSelection.isEmpty()) return false
+        post(StudioCommand.Delete)
+        return true
+    }
+
+    /** Action for the "Select All HUDs" keybind */
+    @JvmStatic
+    fun handleSelectAll(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        post(StudioCommand.SelectAll)
+        return true
+    }
+
+    /** Action for the "Lock/Unlock HUD" keybind */
+    @JvmStatic
+    fun handleLock(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        if (activeSelection.isEmpty()) return false
+        post(StudioCommand.Lock)
+        return true
+    }
+
+    @JvmStatic
+    fun handleUndo(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        post(StudioCommand.Undo)
+        return true
+    }
+
+    @JvmStatic
+    fun handleUndoAll(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        post(StudioCommand.UndoAll)
+        return true
+    }
+
+    @JvmStatic
+    fun handleRedo(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        post(StudioCommand.Redo)
+        return true
+    }
+
+    @JvmStatic
+    fun handleShortcuts(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        post(StudioCommand.Shortcuts)
+        return true
+    }
+
+    @JvmStatic
+    fun handleSearch(pressed: Boolean): Boolean {
+        if (!pressed) return false
+        if (!HudManager.isEditorOpen) return false
+        post(StudioCommand.Search)
+        return true
+    }
+}

@@ -1,0 +1,313 @@
+package org.tg.tgoneconfig.internal.ui.hud.screens
+
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import org.tg.tgoneconfig.api.platform.v1.Platform
+import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
+import org.tg.tgoneconfig.api.ui.v1.components.ControlSize
+import org.tg.tgoneconfig.api.ui.v1.components.ControlStyle
+import org.tg.tgoneconfig.api.ui.v1.components.ModalPanel
+import org.tg.tgoneconfig.api.ui.v1.components.TextButton
+import org.tg.tgoneconfig.api.ui.v1.theme.TGOneConfigTheme
+import org.tg.tgoneconfig.internal.ui.components.Icon
+import org.tg.tgoneconfig.internal.ui.components.Text
+import org.tg.tgoneconfig.internal.ui.themes.Accent
+import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
+import org.tg.tgoneconfig.internal.ui.themes.cornerRadiusOrNull
+import kotlin.math.roundToInt
+
+internal enum class HudTourFocus {
+    None,
+    Library,
+    Hud,
+    AnchorMenu,
+    Panel;
+}
+
+internal enum class HudTourStep(
+    val id: String,
+    val focus: HudTourFocus,
+    val interactive: Boolean = false,
+    val category: StudioCategory = StudioCategory.Settings,
+) {
+    Welcome("welcome", HudTourFocus.None),
+    Adding("adding", HudTourFocus.Library),
+    Dragging("dragging", HudTourFocus.Hud),
+    Merging("merging", HudTourFocus.None, interactive = true),
+    Anchoring("anchoring", HudTourFocus.AnchorMenu),
+    Settings("settings", HudTourFocus.Panel),
+    Style("style", HudTourFocus.Panel, category = StudioCategory.Style),
+    Fonts("fonts", HudTourFocus.Panel, category = StudioCategory.Style),
+    Layout("layout", HudTourFocus.Panel, category = StudioCategory.Layout),
+    Done("done", HudTourFocus.None);
+
+    val title: String get() = tourString("$id.title")
+    val body: String get() = tourString("$id.body")
+    val isFirst: Boolean get() = ordinal == 0
+    val isLast: Boolean get() = ordinal == entries.lastIndex
+
+    fun offset(delta: Int): HudTourStep? = entries.getOrNull(ordinal + delta)
+}
+
+internal fun tourString(key: String): String = Platform.i18n().translateString("tgoneconfig.hud.tour.$key")
+
+private val TOUR_CARD_WIDTH = 280.dp
+private val SPOTLIGHT_RADIUS = 8.dp
+private val GHOST_RADIUS = 4.dp
+private const val TOUR_MOTION_MILLIS = 220
+
+private fun placeTourCard(
+    root: IntSize,
+    card: IntSize,
+    focus: Rect?,
+    gap: Float,
+    margin: Float,
+    bottom: Boolean,
+    avoid: Rect?,
+): Offset {
+    val centered = Offset((root.width - card.width) / 2f, (root.height - card.height) / 2f)
+    val maxX = (root.width - card.width - margin).coerceAtLeast(margin)
+    val maxY = (root.height - card.height - margin).coerceAtLeast(margin)
+    if (bottom) {
+        val slot = Offset(centered.x.coerceAtLeast(margin), maxY)
+        val cardRect = Rect(slot, Size(card.width.toFloat(), card.height.toFloat()))
+        return if (avoid != null && avoid.overlaps(cardRect)) {
+            Offset((avoid.left - gap - card.width).coerceAtLeast(margin), maxY)
+        } else {
+            slot
+        }
+    }
+    if (focus == null) return centered
+    val besideY = (focus.center.y - card.height / 2f).coerceIn(margin, maxY)
+    val aroundX = (focus.center.x - card.width / 2f).coerceIn(margin, maxX)
+    val candidates = listOf(
+        Offset(focus.right + gap, besideY),
+        Offset(focus.left - gap - card.width, besideY),
+        Offset(aroundX, focus.bottom + gap),
+        Offset(aroundX, focus.top - gap - card.height),
+    )
+    return candidates.firstOrNull { it.x >= margin && it.y >= margin && it.x <= maxX && it.y <= maxY }
+        ?: Offset(centered.x, maxY)
+}
+
+@Composable
+internal fun HudTourOverlay(
+    step: HudTourStep,
+    focus: Rect?,
+    task: String?,
+    taskDone: Boolean,
+    dragHint: Pair<Rect, Rect>?,
+    avoid: Rect?,
+    modifier: Modifier = Modifier,
+    cardModifier: Modifier = Modifier,
+    onBack: () -> Unit,
+    onNext: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    val theme = LocalTheme.current
+    val density = LocalDensity.current
+    var rootSize by remember { mutableStateOf(IntSize.Zero) }
+    var cardSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val hole = focus?.inflate(with(density) { 6.dp.toPx() })
+    val target = hole ?: Rect(Offset(rootSize.width / 2f, rootSize.height / 2f), Size.Zero)
+    val holeSpec = tween<Float>(TOUR_MOTION_MILLIS)
+    val holeLeft by Motion.animateFloatAsState(target.left, holeSpec, label = "tourHoleLeft")
+    val holeTop by Motion.animateFloatAsState(target.top, holeSpec, label = "tourHoleTop")
+    val holeRight by Motion.animateFloatAsState(target.right, holeSpec, label = "tourHoleRight")
+    val holeBottom by Motion.animateFloatAsState(target.bottom, holeSpec, label = "tourHoleBottom")
+    val ringAlpha by Motion.animateFloatAsState(if (hole != null) 1f else 0f, holeSpec, label = "tourRingAlpha")
+    val scrimAlpha by Motion.animateFloatAsState(if (step.interactive) 0f else 1f, holeSpec, label = "tourScrimAlpha")
+    val scrimColor = theme.scrimColor
+
+    val measured = rootSize.width > 0 && cardSize.width > 0
+    var cardPlaced by remember { mutableStateOf(false) }
+    val cardSlot = if (measured) {
+        placeTourCard(
+            rootSize,
+            cardSize,
+            hole,
+            with(density) { 12.dp.toPx() },
+            with(density) { 16.dp.toPx() },
+            bottom = step.interactive,
+            avoid = avoid,
+        )
+    } else {
+        Offset.Zero
+    }
+    val cardSpec = tween<Float>(durationMillis = if (cardPlaced) TOUR_MOTION_MILLIS else 0)
+    val cardX by Motion.animateFloatAsState(cardSlot.x, cardSpec, label = "tourCardX")
+    val cardY by Motion.animateFloatAsState(cardSlot.y, cardSpec, label = "tourCardY")
+    LaunchedEffect(measured) { if (measured) cardPlaced = true }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { rootSize = it }
+    ) {
+        val spotlightRadius = TGOneConfigTheme.shape(SPOTLIGHT_RADIUS).cornerRadiusOrNull() ?: 0.dp
+        Canvas(Modifier.fillMaxSize()) {
+            val radius = CornerRadius(spotlightRadius.toPx())
+            val cutout = Path().apply {
+                fillType = PathFillType.EvenOdd
+                val margin = 2.dp.toPx()
+                addRect(
+                    Rect(
+                        minOf(0f, holeLeft - margin),
+                        minOf(0f, holeTop - margin),
+                        maxOf(size.width, holeRight + margin),
+                        maxOf(size.height, holeBottom + margin),
+                    )
+                )
+                addRoundRect(RoundRect(holeLeft, holeTop, holeRight, holeBottom, radius))
+            }
+            drawPath(cutout, scrimColor.copy(alpha = scrimColor.alpha * scrimAlpha))
+            if (ringAlpha > 0f) {
+                drawRoundRect(
+                    color = Accent.copy(alpha = ringAlpha),
+                    topLeft = Offset(holeLeft, holeTop),
+                    size = Size(holeRight - holeLeft, holeBottom - holeTop),
+                    cornerRadius = radius,
+                    style = Stroke(width = 1.5.dp.toPx()),
+                )
+            }
+        }
+
+        if (dragHint != null) TourDragHint(dragHint.first, dragHint.second)
+
+        ModalPanel(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset {
+                    val x = if (cardPlaced) cardX else cardSlot.x
+                    val y = if (cardPlaced) cardY else cardSlot.y
+                    IntOffset(x.roundToInt(), y.roundToInt())
+                }
+                .graphicsLayer { alpha = if (measured) 1f else 0f }
+                .then(cardModifier)
+                .onSizeChanged { cardSize = it },
+            width = TOUR_CARD_WIDTH,
+            padding = PaddingValues(16.dp),
+            spacing = 8.dp,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for (entry in HudTourStep.entries) {
+                    Box(
+                        Modifier
+                            .size(6.dp)
+                            .background(if (entry.ordinal <= step.ordinal) Accent else theme.borderColor, theme.shapes.circle)
+                    )
+                }
+            }
+            Text(step.title, TGOneConfigTheme.typography.bodyMedium, color = theme.textColor)
+            Text(step.body, color = theme.textColorSecondary, fontSize = TGOneConfigTheme.typography.small.fontSize, lineHeight = 17.sp)
+            if (task != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Accent.copy(alpha = 0.12f), theme.buttonShape)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(if (taskDone) "check-circle" else "move", color = Accent, modifier = Modifier.size(16.dp))
+                    Text(task, color = theme.textColor, fontSize = TGOneConfigTheme.typography.small.fontSize, lineHeight = 17.sp)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (!step.isLast) TourButton(tourString("skip"), primary = false, onClick = onSkip)
+                Spacer(Modifier.weight(1f))
+                if (!step.isFirst) TourButton(tourString("back"), primary = false, onClick = onBack)
+                TourButton(
+                    tourString(if (step.isLast) "finish" else "next"),
+                    primary = true,
+                    enabled = !step.interactive || taskDone,
+                    onClick = onNext,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TourDragHint(from: Rect, to: Rect) {
+    val progress = tourDragProgress()
+    val ghostRadius = TGOneConfigTheme.shape(GHOST_RADIUS).cornerRadiusOrNull() ?: 0.dp
+    val handleRing = LocalTheme.current.onMedia
+    Canvas(Modifier.fillMaxSize()) {
+        val radius = CornerRadius(ghostRadius.toPx())
+        val stroke = 1.5.dp.toPx()
+        val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()))
+        drawRoundRect(
+            color = Accent.copy(alpha = 0.8f),
+            topLeft = to.topLeft,
+            size = to.size,
+            cornerRadius = radius,
+            style = Stroke(width = stroke, pathEffect = dash),
+        )
+        drawLine(Accent.copy(alpha = 0.5f), from.center, to.center, strokeWidth = stroke, pathEffect = dash)
+        val ghost = from.translate((to.topLeft - from.topLeft) * progress)
+        drawRoundRect(Accent.copy(alpha = 0.2f), ghost.topLeft, ghost.size, radius)
+        drawRoundRect(Accent, ghost.topLeft, ghost.size, radius, style = Stroke(width = stroke))
+        drawCircle(handleRing, radius = 7.dp.toPx(), center = ghost.center)
+        drawCircle(Accent, radius = 5.dp.toPx(), center = ghost.center)
+    }
+}
+
+@Composable
+private fun tourDragProgress(): Float {
+    val progress by Motion.animateInfiniteFloat(
+        initial = 0f,
+        target = 1f,
+        spec = infiniteRepeatable(
+            keyframes {
+                durationMillis = 2200
+                0f at 0
+                0f at 400 using FastOutSlowInEasing
+                1f at 1600
+                1f at 2200
+            }
+        ),
+        label = "tourDragProgress",
+    )
+    return progress
+}
+
+@Composable
+private fun TourButton(text: String, primary: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+    TextButton(
+        text,
+        onClick,
+        style = if (primary) ControlStyle.Primary else ControlStyle.Ghost,
+        size = ControlSize.Compact,
+        enabled = enabled,
+    )
+}

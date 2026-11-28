@@ -1,0 +1,32 @@
+package org.tg.tgoneconfig.internal.ui.navigation.graph
+
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.composable
+import androidx.navigation.navigation
+import androidx.navigation.toRoute
+import kotlinx.serialization.Serializable
+import org.tg.tgoneconfig.internal.ui.screens.ModConfig
+import org.tg.tgoneconfig.internal.ui.screens.Mods
+
+@Serializable
+data object ModsGraph
+
+@Serializable
+data object ModsRoute
+
+@Serializable
+data class ModConfigRoute(val id: String, val category: String? = null, val submenu: String? = null) {
+    val pageKey: String get() = submenu?.let { "$id/$it" } ?: id
+}
+
+fun NavGraphBuilder.modsGraph() {
+    navigation<ModsGraph>(startDestination = ModsRoute) {
+        composable<ModsRoute> {
+            Mods()
+        }
+        composable<ModConfigRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ModConfigRoute>()
+            ModConfig(route.id, route.category, route.submenu)
+        }
+    }
+}

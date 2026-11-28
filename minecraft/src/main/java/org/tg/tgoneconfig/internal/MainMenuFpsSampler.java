@@ -1,0 +1,181 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.internal;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.LevelLoadingScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import org.tg.tgoneconfig.api.event.v1.EventManager;
+import org.tg.tgoneconfig.api.event.v1.events.FramebufferRenderEvent;
+import org.tg.tgoneconfig.api.event.v1.events.MainMenuFpsEvent;
+import org.tg.tgoneconfig.api.event.v1.invoke.EventHandler;
+import org.tg.tgoneconfig.api.platform.v1.Platform;
+import org.tg.compose.host.ComposeHost;
+import org.tg.compose.minecraft.screen.ComposeScreen;
+import org.tg.tgoneconfig.internal.ui.compose.impls.TGOneConfigUIScreen;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
+public final class MainMenuFpsSampler {
+    private static final String POLYPLUS_PACKAGE = "org.tg.polyplus.";
+
+    private static final long MAX_TICK_GAP_NANOS = 250L * 1_000_000L;
+
+    private static final long FPS_SETTLE_NANOS = 2_000L * 1_000_000L;
+
+    private static volatile boolean sampling = false;
+
+    private static final int SAMPLING_FRAMERATE = 260;
+
+    private static AutoCloseable framerateRequest;
+
+    private boolean started = false;
+    private long lastTickNanos = 0L;
+    private long elapsedNanos = 0L;
+    private long settledNanos = 0L;
+    private long fpsSum = 0L;
+    private int sampleCount = 0;
+
+    private MainMenuFpsSampler() {
+    }
+
+    private static void setSampling(boolean value) {
+        sampling = value;
+        if (value && framerateRequest == null) {
+            framerateRequest = ComposeHost.requestFramerate(SAMPLING_FRAMERATE);
+        } else if (!value && framerateRequest != null) {
+            try {
+                framerateRequest.close();
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            } finally {
+                framerateRequest = null;
+            }
+        }
+    }
+
+    public static boolean isSampling() {
+        return sampling;
+    }
+
+    public static boolean isAnySampling() {
+        if (sampling) return true;
+        MethodHandle polyPlus = PolyPlusSampler.IS_SAMPLING;
+        if (polyPlus == null) return false;
+        try {
+            return (boolean) polyPlus.invokeExact();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    public static boolean isMainMenu(Object screen) {
+        return !hasOverlay() && (screen instanceof TitleScreen || screen instanceof ComposeScreen && screen.getClass().getName().startsWith(POLYPLUS_PACKAGE));
+    }
+
+    private static boolean hasOverlay() {
+        //? if >= 26.2 {
+        return Minecraft.getInstance().gui.overlay() != null;
+        //?} else if > 1.12.2 {
+        /*return Minecraft.getInstance().getOverlay() != null;
+        *///?} else
+        //return false;
+    }
+
+    public static void init() {
+        MainMenuFpsSampler sampler = new MainMenuFpsSampler();
+        EventHandler.ofRemoving(FramebufferRenderEvent.End.class, e -> sampler.tick()).register();
+    }
+
+    private boolean tick() {
+        Object screen = Platform.screen().current();
+        Minecraft mc = Minecraft.getInstance();
+        long now = System.nanoTime();
+        long gap = Math.min(now - lastTickNanos, MAX_TICK_GAP_NANOS);
+        lastTickNanos = now;
+
+        if (started && mc.level != null) return finish();
+
+        if (!mc.isWindowActive()) {
+            setSampling(false); // don't fight power saving while nobody is looking
+            elapsedNanos = 0L;
+            fpsSum = 0L;
+            sampleCount = 0;
+            settledNanos = 0L;
+            return false;
+        }
+
+        if (!started) {
+            if (!(screen instanceof TitleScreen) || hasOverlay()) return false;
+            started = true;
+            elapsedNanos = 0L;
+            gap = 0L;
+        }
+        boolean representative = !TGOneConfigUIScreen.warmBusy() && !hasOverlay() && !(screen instanceof LevelLoadingScreen)
+                && (!(screen instanceof ComposeScreen) || screen.getClass().getName().startsWith(POLYPLUS_PACKAGE));
+        setSampling(representative);
+        if (!representative) {
+            settledNanos = 0L;
+            return false;
+        }
+        if (settledNanos < FPS_SETTLE_NANOS) {
+            settledNanos += gap;
+            return false;
+        }
+        elapsedNanos += gap;
+        fpsSum += Math.max(0, Platform.compatibility().fps());
+        sampleCount++;
+
+        if (elapsedNanos / 1_000_000L >= MainMenuFpsEvent.WINDOW_MILLIS) return finish();
+        return false;
+    }
+
+    private static final class PolyPlusSampler {
+        static final MethodHandle IS_SAMPLING = find();
+
+        private static MethodHandle find() {
+            try {
+                Class<?> owner = Class.forName(POLYPLUS_PACKAGE + "client.features.AdaptiveBlurDefaults", false, MainMenuFpsSampler.class.getClassLoader());
+                return MethodHandles.publicLookup().findStatic(owner, "isSampling", MethodType.methodType(boolean.class));
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+    }
+
+    private boolean finish() {
+        setSampling(false);
+        if (sampleCount == 0) {
+            started = false;
+            return false;
+        }
+        EventManager.INSTANCE.post(new MainMenuFpsEvent((float) fpsSum / sampleCount, sampleCount, elapsedNanos / 1_000_000L));
+        return true;
+    }
+}

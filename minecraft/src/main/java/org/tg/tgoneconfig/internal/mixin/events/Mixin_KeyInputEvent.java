@@ -1,0 +1,77 @@
+package org.tg.tgoneconfig.internal.mixin.events;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import org.tg.tgoneconfig.api.event.v1.EventManager;
+import org.tg.tgoneconfig.api.event.v1.events.KeyInputEvent;
+import org.tg.tgoneconfig.api.platform.v1.Platform;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+//? if >= 1.21.10 {
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
+//?}
+
+//? if > 1.8.9 {
+import net.minecraft.client.KeyboardHandler;
+//?}
+
+//? if = 1.8.9 {
+/*import org.lwjgl.input.Keyboard;
+import org.tg.compose.minecraft.legacy.LegacyInputDrain;
+import org.tg.tgoneconfig.internal.legacy.LegacyInputEvents;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+*///?}
+
+//~ if = 1.8.9 'KeyboardHandler.class' -> 'Keyboard.class'
+@Mixin(KeyboardHandler.class)
+public class Mixin_KeyInputEvent {
+
+    //? if >= 1.21.10 {
+    @ModifyVariable(method = "keyPress", at = @At(value = "STORE"), ordinal = 0)
+    private boolean keyCallback(boolean original, long handle, int action, KeyEvent event) {
+        EventManager.INSTANCE.post(new KeyInputEvent(event.key(), (char) 0, tgoneconfig$state(action)));
+        return original;
+    }
+
+    @Inject(method = "charTyped", at = @At("HEAD"))
+    private void charCallback(long handle, CharacterEvent event, CallbackInfo ci) {
+        if (handle != Platform.compatibility().windowHandle()) {
+            return;
+        }
+
+        EventManager.INSTANCE.post(new KeyInputEvent(0, (char) event.codepoint(), KeyInputEvent.PRESSED));
+    }
+    //?} elif > 1.8.9 {
+    /*@Inject(method = "keyPress", at = @At("HEAD"))
+    private void keyCallback(long window, int key, int scancode, int action, int mods, CallbackInfo ci) {
+        EventManager.INSTANCE.post(new KeyInputEvent(key, (char) 0, tgoneconfig$state(action)));
+    }
+
+    @Inject(method = "charTyped", at = @At("HEAD"))
+    private void charCallback(long window, int codepoint, int mods, CallbackInfo ci) {
+        if (window != Platform.compatibility().windowHandle()) {
+            return;
+        }
+        EventManager.INSTANCE.post(new KeyInputEvent(0, (char) codepoint, KeyInputEvent.PRESSED));
+    }
+    *///?} else {
+    /*@Inject(method = "next", at = @At("RETURN"), remap = false, cancellable = true)
+    private static void keyCallback(CallbackInfoReturnable<Boolean> cir) {
+        if (!cir.getReturnValue() || LegacyInputDrain.active) return;
+        LegacyInputEvents.postKeyboard();
+    }
+    *///?}
+
+    @Unique
+    private static int tgoneconfig$state(int action) {
+        if (action == InputConstants.PRESS) return KeyInputEvent.PRESSED;
+        if (action == InputConstants.RELEASE) return KeyInputEvent.RELEASED;
+        if (action == InputConstants.REPEAT) return KeyInputEvent.REPEAT;
+        return action;
+    }
+}

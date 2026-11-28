@@ -1,0 +1,111 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.api.config.v1
+
+import org.jetbrains.annotations.Contract
+import java.lang.reflect.Field
+import java.util.function.Consumer
+import java.util.function.Supplier
+import kotlin.reflect.KMutableProperty0
+
+public object Properties {
+    /**
+     * create a new property which is internally backed by a field
+     */
+    @JvmStatic
+    @JvmOverloads
+    @Contract("_, _, _, null, null -> fail")
+    public fun <T> simple(
+        id: String? = null,
+        name: String? = null,
+        description: String? = null,
+        value: T? = null, cls: Class<T>? = null
+    ): Property<T> = Property.Simple(id, name, description, value, cls)
+
+    /**
+     * create a property which is internally backed by a field
+     */
+    @JvmStatic
+    public fun <T> simple(value: T): Property<T> = Property.Simple(null, null, null, value, null)
+
+    /**
+     * create a property backed by the given [field]
+     *
+     * The [owner] is the object that owns the field
+     *
+     * If the field is static the owner should be `null`
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun <T> field(
+        name: String? = null,
+        description: String? = null,
+        field: Field,
+        owner: Any? = null
+    ): Property<T> = Property.Field(name, description, field, owner)
+
+    /**
+     * create a property which has no serializable value
+     *
+     * the type is [Void] and the value is always `null`
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun dummy(
+        id: String? = null,
+        name: String? = null,
+        description: String? = null,
+    ): Property<Void> = Property.Dummy(id, name, description)
+
+    /**
+     * create a property which is backed by the given kotlin property reference such as `this::foo`
+     *
+     * for the inverse where a property is backed by a property see `KtConfig`
+     */
+    @Suppress("DEPRECATION")
+    @JvmSynthetic
+    public inline fun <reified T> ktProperty(
+        ref: KMutableProperty0<T>,
+        name: String? = null,
+        description: String? = null,
+    ): Property<T> = Property.KtProperty(name, description, ref, T::class.java)
+
+    /**
+     * Return a property which delegates to the given [getter] and [setter]
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun <T> functional(
+        getter: Supplier<T>,
+        setter: Consumer<T>,
+        id: String? = null,
+        name: Any? = null,
+        description: Any? = null,
+        type: Class<T>? = null,
+    ): Property<T> = Property.Functional(id, name, description, setter, getter, type)
+
+}

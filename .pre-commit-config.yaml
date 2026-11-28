@@ -1,0 +1,4 @@
+# Intentionally blank: pre-commit hooks are no longer used, but deleting this
+# file would result in "No .pre-commit-config.yaml file was found" where it was
+# previously installed.
+repos: []

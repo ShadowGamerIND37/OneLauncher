@@ -1,0 +1,171 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.api.platform.v1.internal;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
+//? if > 1.8.9
+import net.minecraft.client.GameNarrator;
+import org.tg.tgoneconfig.api.event.v1.EventDelay;
+import org.tg.tgoneconfig.api.event.v1.events.FramebufferRenderEvent;
+import org.tg.tgoneconfig.api.platform.v1.ScreenPlatform;
+import org.tg.compose.minecraft.screen.ComposeScreen;
+import org.tg.compose.minecraft.screen.ComposeSupport;
+import org.tg.compose.minecraft.render.gl.GlHost;
+//? if = 1.8.9
+//import org.tg.tgoneconfig.internal.legacy.LegacyPanoramaTracker;
+
+public class ScreenPlatformImpl implements ScreenPlatform {
+    @Override
+    public void runOnUiThread(Runnable action) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft == null || minecraft.isSameThread()) action.run();
+        else minecraft.execute(action);
+    }
+
+    @Override
+    public boolean supportsBackdropGlass() {
+        return !GlHost.vanillaPipeline;
+    }
+
+    @Override
+    public int viewportWidth() {
+        return Minecraft.getInstance().getWindow().getWidth();
+    }
+
+    @Override
+    public int viewportHeight() {
+        return Minecraft.getInstance().getWindow().getHeight();
+    }
+
+    @Override
+    public int windowWidth() {
+        return Minecraft.getInstance().getWindow().getScreenWidth();
+    }
+
+    @Override
+    public int windowHeight() {
+        return Minecraft.getInstance().getWindow().getScreenHeight();
+    }
+
+    @Override
+    public int guiWidth() {
+        return Minecraft.getInstance().getWindow().getGuiScaledWidth();
+    }
+
+    @Override
+    public int guiHeight() {
+        return Minecraft.getInstance().getWindow().getGuiScaledHeight();
+    }
+
+    // on Windows contentScale reflects DPI rather than the framebuffer to window ratio so using it
+    // here sized the UI wrong (#478) so compute the ratio directly instead
+    // https://github.com/glfw/glfw/pull/2457
+    @Override
+    public float pixelRatio() {
+        int win = windowWidth();
+        if (win > 0) return (float) viewportWidth() / win;
+        return 1.0f;
+    }
+
+    @Override
+    public void display(@Nullable Object screen, int frames) {
+        if (!Minecraft.getInstance().isSameThread()) {
+            Minecraft.getInstance().schedule(() -> display(screen, frames));
+            return;
+        }
+        String unavailable = screen instanceof ComposeScreen ? ComposeSupport.INSTANCE.unavailableReason() : null;
+        if (unavailable != null) {
+            showMessage(unavailable);
+            return;
+        }
+        //? if >= 26.2 {
+        // 26.2 removed Minecraft#setScreen so use Gui#setScreen not setScreenAndShow which force-calls
+        // renderFrame and re-enters our renderFrame mixin giving a nested frame and a black flash
+        if (frames < 1) Minecraft.getInstance().gui.setScreen((Screen) screen);
+        else EventDelay.of(FramebufferRenderEvent.End.class, frames, () -> Minecraft.getInstance().gui.setScreen((Screen) screen));
+        //?} elif > 1.8.9 {
+        /*if (frames < 1) Minecraft.getInstance().setScreen((Screen) screen);
+        else EventDelay.of(FramebufferRenderEvent.End.class, frames, () -> Minecraft.getInstance().setScreen((Screen) screen));
+        *///?} else {
+        /*Object target = (screen == null && Minecraft.getInstance().level == null && current() instanceof ComposeScreen)
+                ? LegacyPanoramaTracker.current() : screen;
+        if (frames < 1) Minecraft.getInstance().setScreen((Screen) target);
+        else EventDelay.of(FramebufferRenderEvent.End.class, frames, () -> Minecraft.getInstance().setScreen((Screen) target));
+        *///?}
+    }
+
+    @Override
+    public void showMessage(@Nullable String message) {
+        if (message == null || message.isEmpty()) return;
+        if (!Minecraft.getInstance().isSameThread()) {
+            Minecraft.getInstance().schedule(() -> showMessage(message));
+            return;
+        }
+        if (Minecraft.getInstance().gui == null) return;
+        //~ if >= 26.2 'gui.getChat' -> 'gui.hud.getChat'
+        var chat = Minecraft.getInstance().gui.hud.getChat();
+        if (chat == null) return;
+        //~ if >= 26.1 'addMessage' -> 'addClientSystemMessage'
+        chat.addClientSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
+    }
+
+    @Override
+    public boolean narratorActive() {
+        //? if > 1.8.9 {
+        Minecraft minecraft = Minecraft.getInstance();
+        return minecraft.getNarrator().isActive() && minecraft.options.narrator().get().shouldNarrateSystem();
+        //?} else
+        //return false;
+    }
+
+    @Override
+    public void narrate(String text, boolean interrupt) {
+        //? if > 1.8.9 {
+        if (text == null || text.isBlank() || !narratorActive()) return;
+        GameNarrator narrator = Minecraft.getInstance().getNarrator();
+        //? if >= 1.21.8 {
+        if (interrupt) narrator.saySystemNow(text);
+        else narrator.saySystemQueued(Component.literal(text));
+        //?} else {
+        /*if (interrupt) narrator.sayNow(text);
+        else narrator.say(Component.literal(text));
+        *///?}
+        //?}
+    }
+
+    @Override
+    @SuppressWarnings("unchecked" /*, reason = "reduces friction between versions" */)
+    public <T> @Nullable T current() {
+        //~ if >= 26.2 '.screen' -> '.gui.screen()'
+        return (T) Minecraft.getInstance().gui.screen();
+    }
+
+}

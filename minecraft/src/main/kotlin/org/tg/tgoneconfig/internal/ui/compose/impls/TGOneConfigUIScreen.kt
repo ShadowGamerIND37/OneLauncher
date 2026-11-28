@@ -1,0 +1,619 @@
+package org.tg.tgoneconfig.internal.ui.compose.impls
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.platform.FrameRecomposer
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.PlatformContext
+import androidx.compose.ui.platform.WindowInfo
+import androidx.compose.ui.scene.CanvasLayersComposeScene
+import androidx.compose.ui.scene.ComposeScene
+import androidx.compose.ui.scene.SingleComposeSceneRenderingScope
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
+import com.mojang.blaze3d.platform.InputConstants
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.CoroutineContext
+import kotlin.math.pow
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
+import net.minecraft.client.Minecraft
+import org.apache.logging.log4j.LogManager
+import org.tg.compose.backend.PolyCanvas
+import org.tg.compose.backend.PolyCompose
+import org.tg.compose.host.LocalComposeOptions
+import org.tg.compose.minecraft.mc.McItemIcons
+import org.tg.compose.render.PolyBitmap
+import org.tg.compose.render.PolyGlyphPage
+import org.tg.compose.render.PolyRenderer
+import org.tg.compose.render.PolyTessellator
+import org.tg.tgoneconfig.api.config.v1.ConfigManager
+import org.tg.tgoneconfig.api.config.v1.Tree
+import org.tg.tgoneconfig.api.hud.v1.HudManager
+import org.tg.tgoneconfig.api.platform.v1.Platform
+import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
+import org.tg.tgoneconfig.api.ui.v1.components.releaseFeedback
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeybindManager
+import org.tg.tgoneconfig.api.ui.v1.keybind.TGOneConfigKeybind
+import org.tg.tgoneconfig.api.ui.v1.platform.TGOneConfigComposeOptions
+import org.tg.tgoneconfig.internal.ClassPreloader
+import org.tg.tgoneconfig.internal.MainMenuFpsSampler
+import org.tg.tgoneconfig.internal.TGOneConfig
+import org.tg.tgoneconfig.internal.TGOneConfigConfig
+import org.tg.tgoneconfig.internal.ThemeConfig
+import org.tg.tgoneconfig.internal.ui.TGOneConfigInterface
+import org.tg.tgoneconfig.internal.ui.UiErrors
+import org.tg.tgoneconfig.internal.ui.api.ConfigRegistry
+import org.tg.tgoneconfig.internal.ui.api.ConfigSource
+import org.tg.tgoneconfig.internal.ui.components.AnimationsMotionScale
+import org.tg.tgoneconfig.internal.ui.components.warmIconCache
+import org.tg.compose.minecraft.screen.ComposeScreen
+import org.tg.compose.minecraft.screen.ComposeSupport
+import org.tg.compose.minecraft.screen.sceneDensity
+import org.tg.tgoneconfig.internal.ui.compose.TGOneConfigComposeHooks
+import org.tg.tgoneconfig.internal.ui.guiCloseAnimationMillis
+import org.tg.tgoneconfig.internal.ui.hud.LegacyHudRenderer
+import org.tg.tgoneconfig.internal.ui.hud.screens.HudEditorViewport
+import org.tg.tgoneconfig.internal.ui.keybind.KeybindRecordingBus
+import org.tg.tgoneconfig.internal.ui.navigation.graph.KeybindsGraph
+import org.tg.tgoneconfig.internal.ui.navigation.graph.ModConfigRoute
+import org.tg.tgoneconfig.internal.ui.navigation.graph.ModsGraph
+import org.tg.tgoneconfig.internal.ui.navigation.graph.PreferencesGraph
+import org.tg.tgoneconfig.internal.ui.navigation.graph.ThemesGraph
+import org.tg.tgoneconfig.internal.ui.shell.HudEditorRoute
+import org.tg.tgoneconfig.internal.ui.shell.SearchFocus
+import org.tg.tgoneconfig.internal.ui.shell.ShellController
+import org.tg.tgoneconfig.internal.ui.sound.UiSoundEvent
+import org.tg.tgoneconfig.internal.ui.sound.UiSounds
+import org.tg.tgoneconfig.internal.ui.themes.updateAccent
+import org.tg.tgoneconfig.utils.v1.Multithreading
+
+//? if > 1.8.9 {
+import net.minecraft.client.gui.GuiGraphicsExtractor
+//?}
+
+//? if < 1.21.11 && > 1.8.9 {
+/*import org.lwjgl.glfw.GLFW
+*///?}
+
+class TGOneConfigUIScreen @JvmOverloads constructor(
+    private val initialTreeId: String? = null,
+    private val initialCategory: String? = null,
+    private val initialTree: Tree? = null,
+) : ComposeScreen(options = TGOneConfigComposeOptions) {
+    private var initialRoute: Any? = null
+
+    override val retainsScene: Boolean get() = this === sharedScreen
+
+    // over the blur, legacy HUDs stay as sharp as the HUD previews next to them
+    override val underlay get() = LegacyHudRenderer.liveDraw.takeIf { client.level != null }
+
+    override fun blurAlpha(): Float {
+        if (!ThemeConfig.enableBackgroundBlur || ThemeConfig.reduceTransparency) return 0f
+        if (!ThemeConfig.animations) return if (closeRequested) 0f else 1f
+        val now = System.currentTimeMillis()
+        val progress = if (closeRequested) {
+            if (closeAnimationMs <= 0L) 0f
+            else 1f - easeOutExpo((now - closeRequestedAt).toFloat() / closeAnimationMs)
+        } else {
+            (now - openedAt).toFloat() / OPEN_ANIMATION_MS
+        }
+        return progress.coerceIn(0f, 1f)
+    }
+
+    companion object {
+        private val LOGGER = LogManager.getLogger("TG OneConfig/UI")
+
+        private val shell: ShellController = ShellController.shared
+
+        private var sharedScreen: TGOneConfigUIScreen? = null
+
+        private fun shared(): TGOneConfigUIScreen =
+            sharedScreen ?: run { ClassPreloader.recordFirstOpen(); dropPrerasteredLater(); TGOneConfigUIScreen() }.also { sharedScreen = it }
+
+        @JvmStatic
+        fun forRoute(route: Any?): TGOneConfigUIScreen = shared().also {
+            it.initialRoute = route
+            it.resumeNext = false
+            it.minimalNext = false
+        }
+
+        /** Opens as a search bar only, which expands into the full menu once a result navigates */
+        @JvmStatic
+        fun minimal(): TGOneConfigUIScreen = forRoute(ModsGraph).also { it.minimalNext = true }
+
+        @JvmStatic
+        fun open(): TGOneConfigUIScreen = forRoute(null)
+
+        /** For returning from a HUD editor opened from the TGOneConfig menu */
+        @JvmStatic
+        fun resume(): TGOneConfigUIScreen =
+            if (shell.layout.minimal) minimal() else forRoute(null).also { it.resumeNext = true }
+
+        private const val OPEN_ANIMATION_MS = 250L
+
+        /** Serialized so two closes in quick succession cannot write the same files at once */
+        private val SAVE_EXECUTOR = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "TG OneConfig-ConfigSave").apply { isDaemon = true }
+        }
+
+        private val savePending = AtomicBoolean(false)
+
+        private fun scheduleSave() {
+            if (!savePending.compareAndSet(false, true)) return
+            SAVE_EXECUTOR.execute {
+                savePending.set(false)
+                try {
+                    ConfigManager.active().saveAll()
+                } catch (t: Throwable) {
+                    LOGGER.error("Failed to save configs on TGOneConfig UI close", t)
+                }
+            }
+        }
+
+        /** [restored] marks a route that puts the user back where they were rather than opening a fixed page */
+        private data class OpeningRoute(val route: Any, val restored: Boolean = false)
+
+        private fun resolveOpeningRoute(): OpeningRoute {
+            val route = shell.navigation.lastRoute
+            // "Reopen HUD editor" is off by default so the editor is never restored as a page
+            if (route == null || !TGOneConfigConfig.remembersPageClosedAt(shell.session.lastClosedAt) ||
+                (route === HudEditorRoute && !TGOneConfigConfig.restoreHudEditor)) return OpeningRoute(ModsGraph)
+            return OpeningRoute(route, restored = true)
+        }
+
+        private const val WARM_FRAMES = 6
+
+        private const val PRERASTER_DROP_DELAY_S = 5L
+
+        private var warm: WarmScene? = null
+
+        @Volatile
+        private var warmStopped = false
+
+        private var warmNanos = 0L
+
+        private var warmDeferred = false
+
+        @JvmStatic
+        fun warmBusy(): Boolean = !warmStopped && !warmDeferred
+
+        @JvmStatic
+        fun warmStep(allowed: Boolean): Boolean {
+            warmDeferred = !warmStopped && !allowed
+            if (warmDeferred) {
+                warm?.close()
+                warm = null
+                warmNanos = 0L
+                return false
+            }
+            if (!warmStopped && MainMenuFpsSampler.isAnySampling()) return false
+            if (!warmStopped) {
+                val start = System.nanoTime()
+                val more = try {
+                    warm?.let { it.frame(); it.frames < WARM_FRAMES } ?: (createWarmScene()?.also { warm = it } != null)
+                } catch (t: Throwable) {
+                    LOGGER.warn("Failed to warm the TGOneConfig UI after {} frames; it will start cold", warm?.frames ?: 0, t)
+                    false
+                }
+                warmNanos += System.nanoTime() - start
+                if (more) return false
+                warm?.takeIf { it.frames >= WARM_FRAMES }?.let {
+                    LOGGER.info("Warmed the TGOneConfig UI ({} frames) in {}ms", it.frames, warmNanos / 1_000_000L)
+                }
+            }
+            warmStopped = true
+            warm?.close()
+            warm = null
+            return true
+        }
+
+        @JvmStatic
+        fun stopWarmUp() {
+            warmStopped = true
+        }
+
+        private fun dropPrerasteredLater() {
+            Multithreading.schedule({
+                LOGGER.info("Dropped {} unused prerasterized glyphs", PolyGlyphPage.dropPrerastered())
+            }, PRERASTER_DROP_DELAY_S, TimeUnit.SECONDS)
+        }
+
+        private fun createWarmScene(): WarmScene? {
+            if (java.lang.Boolean.getBoolean("tgoneconfig.debug.noWarmCompose") || sharedScreen != null || !ComposeSupport.isAvailable) return null
+            val w = Platform.screen().windowWidth()
+            val h = Platform.screen().windowHeight()
+            if (w <= 0 || h <= 0) return null
+            return WarmScene(w, h, sceneDensity(), Platform.screen().viewportWidth().toFloat() / w)
+        }
+
+        @JvmStatic
+        fun openLastSession() {
+            if (resolveOpeningRoute().route === HudEditorRoute) HudManager.openEditor()
+            else Platform.screen().display(open())
+        }
+    }
+
+    @Volatile private var closeRequested = false
+    @Volatile private var closeRequestedAt = 0L
+    @Volatile private var closeAnimationMs = 0L
+    @Volatile private var openedAt = 0L
+
+    private fun beginClose() {
+        if (closeRequested) return
+        closeRequested = true
+        closeRequestedAt = System.currentTimeMillis()
+        closeAnimationMs = guiCloseAnimationMillis()
+        UiSounds.play(UiSoundEvent.CLOSE)
+        UiSounds.releaseAmbience()
+    }
+
+    private fun cancelClose(): Boolean {
+        if (!closeRequested) return false
+
+        // Resume the opening blur animation from current blur intensity
+        val now = System.currentTimeMillis()
+        val blurProgress = if (closeAnimationMs <= 0L) 0f
+            else 1f - easeOutExpo((now - closeRequestedAt).toFloat() / closeAnimationMs)
+        openedAt = now - (blurProgress.coerceIn(0f, 1f) * OPEN_ANIMATION_MS).toLong()
+
+        closeRequested = false
+        requestOpenCallback?.invoke()
+        UiSounds.play(UiSoundEvent.OPEN)
+        UiSounds.acquireAmbience()
+        return true
+    }
+
+    /** The page this screen is showing which survives the scene being disposed and rebuilt */
+    private var route: Any? by mutableStateOf(null)
+
+    /** True when [route] is a page being put back rather than a page being opened */
+    private var restoring by mutableStateOf(false)
+
+    private var resumeNext = false
+
+    private var minimalNext = false
+
+    private var openRevision by mutableIntStateOf(0)
+
+    @Volatile private var everOpened = false
+
+    private fun markClosed() {
+        shell.session.markClosed(System.currentTimeMillis())
+    }
+
+    override fun init() {
+        stopWarmUp()
+        TGOneConfig.dismissFirstLaunchToast()
+        updateAccent()
+        ConfigRegistry.loadFrom(ConfigManager.active(), ConfigSource.OC)
+        initialTree?.let { ConfigRegistry.registerTree(it, ConfigSource.OC) }
+
+        val isResume = resumeNext
+        resumeNext = false
+        shell.layout.updateMinimal(minimalNext)
+        minimalNext = false
+        val (target, targetRestoring) = when {
+            isResume -> (shell.navigation.lastRoute?.takeIf { it !== HudEditorRoute } ?: ModsGraph) to true
+            initialRoute != null -> initialRoute to false
+            initialTreeId != null -> ModConfigRoute(initialTreeId, initialCategory) to false
+            else -> {
+                val opening = resolveOpeningRoute()
+                val resolved = opening.route.takeIf { it !== HudEditorRoute } ?: ModsGraph
+                resolved to (opening.restored && resolved === opening.route)
+            }
+        }
+        route = target
+        restoring = targetRestoring
+        openRevision++
+        if (!shell.layout.minimal) shell.navigation.recordLastRoute(target)
+
+        try {
+            shell.session.updatePlayerName(Minecraft.getInstance().user.name)
+        } catch (t: Throwable) {
+            UiErrors.warn("Failed to read the player name for the TGOneConfig UI", t)
+            shell.session.updatePlayerName("Player")
+        }
+        val keepFocus = if (shell.search.fieldFocused) SearchFocus.Focus else SearchFocus.Unfocus
+        shell.search.requestFocus(when {
+            shell.layout.minimal -> SearchFocus.SelectAll
+            isResume -> keepFocus
+            TGOneConfigConfig.instantSearch -> SearchFocus.SelectAll
+            targetRestoring -> keepFocus
+            else -> SearchFocus.Unfocus
+        })
+        try {
+            val loaderStr = Platform.loader().loaderString
+            val parts = loaderStr.split("-", limit = 2)
+            if (parts.size == 2) {
+                shell.session.updateVersionLabel("${parts[1].replaceFirstChar { it.uppercase() }} ${parts[0]}")
+            } else {
+                shell.session.updateVersionLabel(loaderStr)
+            }
+        } catch (t: Throwable) {
+            UiErrors.warn("Failed to build the version label for the TGOneConfig UI", t)
+            shell.session.updateVersionLabel("TG OneConfig")
+        }
+
+        HudManager.overrideShowInScreens = true
+        HudManager.isConfigUiOpen = true
+
+        closeRequested = false
+        closeRequestedAt = 0L
+        closeAnimationMs = 0L
+
+        everOpened = true
+        openedAt = System.currentTimeMillis()
+        UiSounds.play(UiSoundEvent.OPEN)
+        UiSounds.acquireAmbience()
+        shell.session.resume()
+        super.init()
+        requestOpenCallback?.invoke()
+    }
+
+    /**
+     * A scene that failed mid-frame is thrown away and rebuilt while the menu stays open so the
+     * rebuild is treated as coming back from another screen which stops the GUI hanging
+     */
+    override fun onSceneRebuilding() {
+        shell.navigation.lastRoute?.takeIf { it !== HudEditorRoute }?.let { route = it }
+        restoring = true
+        if (shell.search.fieldFocused) shell.search.requestFocus(SearchFocus.Focus)
+    }
+
+    override fun removed() {
+        HudManager.overrideShowInScreens = false
+        HudManager.isConfigUiOpen = false
+        shell.layout.updateShellBounds(null)
+        shell.session.stop()
+        UiSounds.releaseAmbience()
+        // writing every registered tree hitches and Minecraft only re-grabs the cursor once this returns
+        scheduleSave()
+        super.removed()
+    }
+
+    override fun isPauseScreen(): Boolean = TGOneConfigConfig.pauseGame
+
+    private fun handleTGOneConfigKeybind(onRelease: Boolean = false): Boolean {
+        if (closeRequested) return cancelClose()
+        // the minimal menu's footer advertises this keybind as opening the HUD editor
+        if (shell.layout.minimal) {
+            HudManager.openEditor()
+            return true
+        }
+        if (TGOneConfigConfig.keybindClosesGui) {
+            if (!onRelease) TGOneConfigConfig.notifyKeybindClosedGui()
+            beginClose()
+            requestCloseCallback?.invoke()
+        } else {
+            HudManager.openEditor()
+        }
+        return true
+    }
+
+    override fun handleKeyPressed(key: Int, modifiers: Int): Boolean {
+        if (key == InputConstants.KEY_ESCAPE) {
+            if (!closeRequested) {
+                beginClose()
+                requestCloseCallback?.invoke()
+            }
+            return true
+        }
+        val toggleKey = TGOneConfigConfig.oneConfigKeybind.keyCodes?.firstOrNull()
+        if (toggleKey != null && key == toggleKey && !KeybindRecordingBus.isRecording && !isModifierTapBind) {
+            return handleTGOneConfigKeybind()
+        }
+        return false
+    }
+
+    override val modifierTapKeys: Set<Int>? get() = TGOneConfigComposeHooks.modifierTapKeys
+
+    override fun handleModifierTapped() {
+        handleTGOneConfigKeybind(onRelease = true)
+    }
+
+    /** Mouse side buttons navigate the page history like a browser */
+    override fun handleMouseClicked(button: Int): Boolean {
+        if (KeybindRecordingBus.isRecording) return false
+        // Only side and extra mouse buttons can trigger the TGOneConfig keybind
+        //~ if < 1.21.11 && > 1.8.9 'InputConstants.MOUSE_BUTTON_4' -> 'GLFW.GLFW_MOUSE_BUTTON_4'
+        if (button >= InputConstants.MOUSE_BUTTON_4 &&
+            KeybindManager.isTriggeredByMouse(TGOneConfigConfig.oneConfigKeybind, button)
+        ) {
+            return handleTGOneConfigKeybind()
+        }
+        if (!closeRequested && shell.navigation.isReady && !shell.layout.minimal) {
+            when (button) {
+                //~ if < 1.21.11 && > 1.8.9 'InputConstants.MOUSE_BUTTON_4' -> 'GLFW.GLFW_MOUSE_BUTTON_4'
+                InputConstants.MOUSE_BUTTON_4 -> {
+                    if (KeybindManager.hasTriggeredMouseBind(button)) return true
+                    UiSounds.play(UiSoundEvent.CLICK)
+                    shell.navigation.back()
+                    return true
+                }
+                //~ if < 1.21.11 && > 1.8.9 'InputConstants.MOUSE_BUTTON_5' -> 'GLFW.GLFW_MOUSE_BUTTON_5'
+                InputConstants.MOUSE_BUTTON_5 -> {
+                    if (KeybindManager.hasTriggeredMouseBind(button)) return true
+                    UiSounds.play(UiSoundEvent.CLICK)
+                    shell.navigation.forward()
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    //? if > 1.8.9 {
+    //~ if >= 26.1 'render' -> 'extractRenderState'
+    override fun extractRenderState(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, tickDelta: Float) {
+    //?} else
+    //override fun render(mouseX: Int, mouseY: Int, tickDelta: Float) {
+        // tcdcommons-based screens like Better Statistics Screen render their parent by hand each frame
+        // and that would queue a fullscreen blur which smears over the popup so bail unless we are current
+        if (Platform.screen().current<Any?>() !== this) return
+        if (closeRequested && System.currentTimeMillis() - closeRequestedAt >= closeAnimationMs) {
+            markClosed()
+            //? if < 1.21.8 && > 1.8.9
+            //renderBackground(ctx, mouseX, mouseY, tickDelta)
+            Platform.screen().close()
+            return
+        }
+        if (client.level == null) {
+            HudManager.inWorld = false
+            val sw = Platform.screen().guiWidth().toFloat()
+            val sh = Platform.screen().guiHeight().toFloat()
+            HudManager.guiScreenWidth = sw
+            HudManager.guiScreenHeight = sh
+            HudManager.prepare(sw, sh)
+            McItemIcons.renderPending()
+        }
+        HudEditorViewport.update(Platform.screen().windowWidth(), Platform.screen().windowHeight())
+        //? if > 1.8.9 {
+        //~ if >= 26.1 'render' -> 'extractRenderState'
+        super.extractRenderState(ctx, mouseX, mouseY, tickDelta)
+        //?} else
+        //super.render(mouseX, mouseY, tickDelta)
+    }
+
+    private fun easeOutExpo(progress: Float): Float {
+        return if (progress >= 1f) 1f else 1f - 2f.pow(-10f * progress)
+    }
+
+    /** Holds a reference to the close-animation trigger from Compose */
+    private var requestCloseCallback: (() -> Unit)? = null
+    private var requestOpenCallback: (() -> Unit)? = null
+
+    @Composable
+    override fun compose() {
+        val initialRoute = route ?: ModsGraph
+
+        val containerSize = LocalWindowInfo.current.containerSize
+        TGOneConfigInterface(
+            containerSize.width.toFloat(),
+            containerSize.height.toFloat(),
+            initialRoute = initialRoute,
+            restoring = restoring,
+            openRevision = openRevision,
+            onCloseRequest = { beginClose() },
+            onCloseReady = { closeRequest ->
+                requestCloseCallback = closeRequest
+            },
+            onOpenReady = { openRequest ->
+                requestOpenCallback = openRequest
+            },
+        ) { }
+    }
+}
+
+@OptIn(InternalComposeUiApi::class)
+private class WarmScene(w: Int, h: Int, density: Float, private val surface: Float) {
+    private val queue = ConcurrentLinkedQueue<Runnable>()
+    private val failure = AtomicReference<Throwable?>()
+    private val scope = SingleComposeSceneRenderingScope {}
+    private val shell = ShellController(warming = true)
+    private val renderer = WarmRenderer()
+    private val canvas = PolyCanvas(renderer)
+    private var nanos = System.nanoTime()
+    var frames = 0
+        private set
+    private val recomposer: FrameRecomposer
+    private val scene: ComposeScene
+
+    init {
+        val thread = Thread.currentThread()
+        val dispatcher = object : CoroutineDispatcher() {
+            override fun isDispatchNeeded(context: CoroutineContext) = Thread.currentThread() !== thread
+            override fun dispatch(context: CoroutineContext, block: Runnable) {
+                queue += block
+            }
+        }
+        PolyCompose.install()
+        recomposer = FrameRecomposer(dispatcher + AnimationsMotionScale + CoroutineExceptionHandler { _, t -> failure.compareAndSet(null, t) }) {}
+        scene = try {
+            CanvasLayersComposeScene(
+                frameRecomposer = recomposer,
+                platformContext = WarmPlatformContext(IntSize(w, h)),
+                invalidateLayout = scope::onSceneInvalidation,
+                invalidateDraw = scope::onSceneInvalidation,
+            )
+        } catch (t: Throwable) {
+            recomposer.close()
+            throw t
+        }
+        try {
+            scene.density = Density(density)
+            scene.size = IntSize(w, h)
+            shell.session.resume()
+            if (TGOneConfigConfig.instantSearch) shell.search.requestFocus(SearchFocus.SelectAll)
+            scene.setContent {
+                CompositionLocalProvider(LocalComposeOptions provides TGOneConfigComposeOptions) {
+                    TGOneConfigComposeOptions.Decorate(this@WarmScene) { TGOneConfigInterface(w.toFloat(), h.toFloat(), shell = shell) }
+                }
+            }
+        } catch (t: Throwable) {
+            close()
+            throw t
+        }
+    }
+
+    fun frame() {
+        drain()
+        recomposer.performFrame(nanos)
+        scene.measureAndLayout()
+        scene.sendPointerEvent(PointerEventType.Move, Offset(1f, 1f))
+        renderer.save()
+        renderer.scale(surface, surface)
+        with(scope) { scene.render(recomposer, canvas, nanos) }
+        renderer.restore()
+        failure.get()?.let { throw it }
+        nanos += 16_666_667L
+        frames++
+    }
+
+    @OptIn(ExperimentalTGOneConfigUiApi::class)
+    fun close() {
+        try {
+            scene.close()
+            recomposer.close()
+            shell.session.stop()
+            drain()
+            releaseFeedback(this)
+        } catch (t: Throwable) {
+            LogManager.getLogger("TG OneConfig/UI").debug("Ignoring failure while closing the TGOneConfig UI warm-up scene", t)
+        }
+    }
+
+    private fun drain() {
+        while (true) (queue.poll() ?: return).run()
+    }
+}
+
+@OptIn(InternalComposeUiApi::class, ExperimentalComposeUiApi::class)
+private class WarmPlatformContext(size: IntSize) : PlatformContext by PlatformContext.Empty() {
+    override val windowInfo: WindowInfo = object : WindowInfo {
+        override val isWindowFocused: Boolean get() = true
+        override val containerSize: IntSize = size
+    }
+}
+
+private class WarmRenderer : PolyTessellator() {
+    override val cpuOnly: Boolean get() = true
+
+    override fun submit(texture: Any, premultiplied: Boolean, nearest: Boolean, verts: FloatArray, colors: IntArray, bounds: FloatArray) {}
+
+    override fun bitmapTexture(bitmap: PolyBitmap): Any = bitmap
+
+    override fun live(draw: (PolyRenderer) -> Unit) = draw(this)
+}

@@ -1,0 +1,41 @@
+package org.tg.tgoneconfig.internal.ui.hud
+
+import java.util.concurrent.CopyOnWriteArrayList
+import org.tg.tgoneconfig.api.hud.v1.HudManager
+import org.slf4j.LoggerFactory
+
+//? if > 1.8.9 {
+import net.minecraft.client.gui.GuiGraphicsExtractor
+//?}
+
+object CompatOverlayRenderer {
+    private val LOG = LoggerFactory.getLogger("TG OneConfig/CompatOverlayRenderer")
+    //~ if = 1.8.9 '<(GuiGraphicsExtractor)' -> '<()'
+    private val hooks = CopyOnWriteArrayList<(GuiGraphicsExtractor) -> Unit>()
+
+    @JvmStatic
+    //~ if = 1.8.9 'hook: (GuiGraphicsExtractor)' -> 'hook: ()'
+    fun register(hook: (GuiGraphicsExtractor) -> Unit) {
+        hooks.add(hook)
+    }
+
+    @JvmStatic
+    fun hasHooks(): Boolean = hooks.isNotEmpty()
+
+    @JvmStatic
+    fun oneConfigScreenOpen(): Boolean = HudManager.isEditing
+
+    @JvmStatic
+    //~ if = 1.8.9 '(ctx: GuiGraphicsExtractor)' -> '()'
+    fun render(ctx: GuiGraphicsExtractor) {
+        if (hooks.isEmpty()) return
+        for (hook in hooks) {
+            try {
+                //~ if = 1.8.9 'hook(ctx)' -> 'hook()'
+                hook(ctx)
+            } catch (t: Throwable) {
+                LOG.debug("compat overlay hook failed", t)
+            }
+        }
+    }
+}

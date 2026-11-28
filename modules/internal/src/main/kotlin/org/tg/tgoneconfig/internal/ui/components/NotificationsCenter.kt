@@ -1,0 +1,246 @@
+package org.tg.tgoneconfig.internal.ui.components
+
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import org.tg.tgoneconfig.api.notifications.v1.Notification
+import org.tg.tgoneconfig.api.notifications.v1.NotificationAction
+import org.tg.tgoneconfig.api.notifications.v1.NotificationState
+import org.tg.tgoneconfig.api.notifications.v1.NotificationType
+import org.tg.tgoneconfig.api.notifications.v1.NotificationsManager
+import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
+import org.tg.tgoneconfig.api.ui.v1.components.BadgeTone
+import org.tg.tgoneconfig.api.ui.v1.components.ControlSize
+import org.tg.tgoneconfig.api.ui.v1.components.ControlStyle
+import org.tg.tgoneconfig.api.ui.v1.components.Divider
+import org.tg.tgoneconfig.api.ui.v1.components.MenuAction
+import org.tg.tgoneconfig.api.ui.v1.components.MenuEntry
+import org.tg.tgoneconfig.api.ui.v1.components.MenuSeparator
+import org.tg.tgoneconfig.api.ui.v1.components.PanelHeader
+import org.tg.tgoneconfig.api.ui.v1.components.ProgressBar
+import org.tg.tgoneconfig.api.ui.v1.components.ScrollContainer
+import org.tg.tgoneconfig.api.ui.v1.components.StatusDot
+import org.tg.tgoneconfig.api.ui.v1.components.SurfaceKind
+import org.tg.tgoneconfig.api.ui.v1.components.TextButton
+import org.tg.tgoneconfig.api.ui.v1.components.contextMenu
+import org.tg.tgoneconfig.api.ui.v1.components.oneConfigClickable
+import org.tg.tgoneconfig.api.ui.v1.components.themedSurface
+import org.tg.tgoneconfig.internal.ui.themes.Accent
+import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
+import org.tg.tgoneconfig.utils.v1.ClipboardHelper
+import org.tg.tgoneconfig.utils.v1.Formatters
+import java.time.Instant
+
+private val PanelWidth = 368.dp
+private val ButtonShape @Composable get() = LocalTheme.current.buttonShape
+
+@Composable
+fun NotificationsCenter() {
+    val theme = LocalTheme.current
+    val history = NotificationsManager.history
+
+    Column(
+        modifier = Modifier
+            .width(PanelWidth)
+            .themedSurface(SurfaceKind.Popup)
+            .padding(horizontal = 14.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        PanelHeader(translated("tgoneconfig.sidebar.notifications", "Notifications"))
+
+        if (history.isEmpty()) {
+            Text(
+                translated("tgoneconfig.notifications.empty", "You're all caught up."),
+                color = theme.textColorSecondary,
+                fontSize = theme.typography.small.fontSize,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+        } else {
+            ScrollContainer(rememberScrollState(), Modifier.heightIn(max = 420.dp), fadingEdges = true) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    history.forEachIndexed { index, notification ->
+                        NotificationRow(notification)
+                        if (index != history.lastIndex) Divider()
+                    }
+                }
+            }
+        }
+
+        Divider()
+
+        Footer()
+    }
+}
+
+@Composable
+private fun NotificationRow(notification: Notification) {
+    val theme = LocalTheme.current
+    val state = notification.state
+    val accent = accentFor(state.type)
+
+    Row(
+        modifier = Modifier.contextMenu { notificationMenu(notification) },
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
+    ) {
+        Box(Modifier.size(32.dp).padding(4.dp), contentAlignment = Alignment.Center) {
+            Icon(notification.iconName ?: state.type.iconName, color = accent, modifier = Modifier.size(24.dp))
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    state.title,
+                    color = accent,
+                    fontSize = theme.typography.body.fontSize,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
+                Text(
+                    Formatters.relativeTime(Instant.ofEpochMilli(notification.createdAt)),
+                    color = theme.textColorSecondary,
+                    fontSize = theme.typography.caption.fontSize,
+                )
+                if (!state.read) {
+                    StatusDot(BadgeTone.Accent, Modifier.padding(start = 6.dp), contentDescription = translated("tgoneconfig.notifications.unread", "Unread"))
+                }
+            }
+            if (state.message.isNotEmpty()) {
+                Text(
+                    state.message,
+                    color = theme.textColorSecondary,
+                    fontSize = theme.typography.small.fontSize,
+                    lineHeight = 21.sp,
+                )
+            }
+
+            val progress = liveProgress(notification, state)
+            if (progress != null) {
+                ProgressBar(progress, Modifier.padding(top = 8.dp), ControlSize.Regular)
+            }
+
+            if (notification.actions.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    for (action in notification.actions) ActionButton(notification, action, state.type)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionButton(notification: Notification, action: NotificationAction, type: NotificationType) {
+    TextButton(
+        action.label,
+        {
+            action.onClick.run()
+            if (action.dismissOnClick) NotificationsManager.remove(notification)
+        },
+        style = when {
+            !action.primary -> ControlStyle.Secondary
+            type == NotificationType.ERROR -> ControlStyle.DangerFilled
+            else -> ControlStyle.Primary
+        },
+        size = ControlSize.Compact,
+        enabled = action.enabled,
+    )
+}
+
+private fun notificationMenu(notification: Notification): List<MenuEntry> = listOf(
+    MenuAction(translated("tgoneconfig.notifications.dismiss", "Dismiss"), { NotificationsManager.remove(notification) }, icon = "close"),
+    MenuAction(
+        translated("tgoneconfig.notifications.copy", "Copy text"),
+        { ClipboardHelper.setString(notification.state.let { listOf(it.title, it.message) }.filter { it.isNotEmpty() }.joinToString("\n")) },
+        icon = "copy",
+    ),
+    MenuSeparator,
+    MenuAction(
+        translated("tgoneconfig.notifications.clear_all", "Clear all notifications"),
+        { NotificationsManager.clearHistory() },
+        icon = "trash",
+        danger = true,
+    ),
+)
+
+@Composable
+private fun Footer() {
+    val theme = LocalTheme.current
+    val source = rememberInteractionSource()
+    val isHovered by source.collectIsHoveredAsState()
+    val color by Motion.animateColorAsState(if (isHovered) theme.textColor else theme.textColor.copy(0.85f))
+    val label = translated("tgoneconfig.notifications.clear_all", "Clear all notifications")
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(ButtonShape)
+                .oneConfigClickable(label, { NotificationsManager.clearHistory() }, indication = false, interactionSource = source)
+                .pointerHoverIcon(PointerIcon.Hand),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon("trash", color = color, modifier = Modifier.size(18.dp))
+            Text(label, theme.typography.smallMedium, color = color)
+        }
+    }
+}
+
+@Composable
+private fun accentFor(type: NotificationType): Color = when (type) {
+    NotificationType.INFO -> LocalTheme.current.textColor
+    NotificationType.SUCCESS -> LocalTheme.current.success
+    NotificationType.ERROR -> LocalTheme.current.error
+    NotificationType.WARNING -> LocalTheme.current.warning
+    NotificationType.PROGRESS -> Accent
+}
+
+@Composable
+private fun liveProgress(notification: Notification, state: NotificationState): Float? {
+    var observed by remember(notification.id) { mutableStateOf<Float?>(null) }
+    val progress = observed.let { notification.progressOrNull(state) }
+    if (progress != null && progress < 1f && notification.progress != null) {
+        LaunchedEffect(notification.id) {
+            while (true) {
+                delay(PROGRESS_POLL_MILLIS)
+                val next = notification.progressOrNull(notification.state)
+                if (next != observed) observed = next
+            }
+        }
+    }
+    return progress
+}
+
+private const val PROGRESS_POLL_MILLIS = 50L

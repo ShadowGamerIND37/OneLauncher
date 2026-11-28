@@ -1,0 +1,25 @@
+tgoneconfig.search=Search
+tgoneconfig.search.placeholder=Search for something...
+tgoneconfig.search.nonefound=Nothing found. Try searching for something else?
+tgoneconfig.button.default=Click
+
+tgoneconfig.keybinds.none=Not bound
+tgoneconfig.keybinds.recording=Recording...
+
+tgoneconfig.align=Align
+tgoneconfig.align.start=Start
+tgoneconfig.align.center=Center
+tgoneconfig.align.end=End
+
+tgoneconfig.width=Width:
+tgoneconfig.height=Height:
+
+tgoneconfig.fweight.100=Thin
+tgoneconfig.fweight.200=Extra light
+tgoneconfig.fweight.300=Light
+tgoneconfig.fweight.400=Regular
+tgoneconfig.fweight.500=Medium
+tgoneconfig.fweight.600=Semi bold
+tgoneconfig.fweight.700=Bold
+tgoneconfig.fweight.800=Extra bold
+tgoneconfig.fweight.900=Black

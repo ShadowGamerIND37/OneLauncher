@@ -1,0 +1,18 @@
+package org.tg.tgoneconfig.api.ui.v1.internal
+
+import org.tg.tgoneconfig.api.config.v1.Property
+import org.tg.tgoneconfig.internal.ui.api.ModOrder
+import org.tg.tgoneconfig.internal.ui.api.ModSortStore
+import org.tg.tgoneconfig.internal.ui.components.settings.bumpResetEpoch
+
+class TGOneConfigUIExtensionsBridgeImpl : TGOneConfigUIExtensionsBridge {
+    override fun modOrder(): List<String> = ModOrder.current()
+
+    override fun replaceModOrder(ids: List<String>) = ModOrder.replace(ids)
+
+    override fun modSortModeId(): String = ModSortStore.selectedId
+
+    override fun selectModSortMode(id: String) = ModSortStore.select(id)
+
+    override fun refreshOption(property: Property<*>) = bumpResetEpoch(property)
+}

@@ -1,0 +1,16 @@
+[versions]
+modmenu = "17.0.0-alpha.1"
+yacl = "3.8.0+1.21.9-fabric"
+dandelion = "1.0.0-alpha.15+1.21.11"
+
+vulkanmod = "0.6.8+1.21.11"
+
+[libraries]
+modmenu = { module = "com.terraformersmc:modmenu", version.ref = "modmenu"}
+yacl = { module = "dev.isxander:yet-another-config-lib", version.ref = "yacl" }
+dandelion = { module = "net.azureaaron:dandelion", version.ref = "dandelion" }
+
+vulkanmod = { module = "maven.modrinth:vulkanmod", version.ref = "vulkanmod" }
+
+[bundles]
+compat = ["modmenu", "yacl", "dandelion"]

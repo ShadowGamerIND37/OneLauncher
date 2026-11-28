@@ -1,0 +1,55 @@
+package org.tg.tgoneconfig.internal.mixin.compat.firmament;
+
+//? if skyblock {
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.joml.Matrix3x2f;
+import org.joml.Vector2f;
+import org.tg.tgoneconfig.internal.compat.FirmamentHudCompat;
+import org.spongepowered.asm.mixin.Unique;
+
+@Mixin(GuiGraphicsExtractor.class)
+public class Mixin_FirmamentContentCapture {
+
+    @Inject(
+        method = "text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V",
+        at = @At("HEAD"),
+        require = 0
+    )
+    private void tgoneconfig$captureFirmamentText(Font font, Component text, int x, int y, int color, boolean shadow, CallbackInfo ci) {
+        if (text == null || !FirmamentHudCompat.isCapturing()) return;
+        tgoneconfig$noteTextBounds(font, x, y, font.width(text));
+    }
+
+    @Inject(
+        method = "text(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)V",
+        at = @At("HEAD"),
+        require = 0
+    )
+    private void tgoneconfig$captureFirmamentString(Font font, String text, int x, int y, int color, boolean shadow, CallbackInfo ci) {
+        if (text == null || !FirmamentHudCompat.isCapturing()) return;
+        tgoneconfig$noteTextBounds(font, x, y, font.width(text));
+    }
+
+    @Unique
+    private void tgoneconfig$noteTextBounds(Font font, int x, int y, int width) {
+        Matrix3x2f pose = ((GuiGraphicsExtractor) (Object) this).pose();
+        int height = font.lineHeight;
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        int[][] corners = {{x, y}, {x + width, y}, {x, y + height}, {x + width, y + height}};
+        for (int[] c : corners) {
+            Vector2f p = pose.transformPosition(new Vector2f(c[0], c[1]));
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
+        FirmamentHudCompat.noteContentDrawn(minX, minY, maxX, maxY);
+    }
+}
+//?}

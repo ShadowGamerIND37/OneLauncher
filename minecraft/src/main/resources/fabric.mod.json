@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "tgoneconfig",
+  "provides": [
+    "tgoneconfigv1",
+    "tgoneconfigbootstrap"
+  ],
+  "name": "TG OneConfig",
+  "version": "${mod_version}",
+  "description": "Access all your mod settings in one place, with a sleek and intuitive interface.",
+  "authors": [
+    "TG"
+  ],
+  "contact": {
+    "homepage": "https://github.com/ShadowGamerIND37/OneLauncher/tree/mods/oneconfig",
+    "sources": "https://github.com/ShadowGamerIND37/OneLauncher/tree/mods/oneconfig",
+    "issues": "https://inv.wtf/polyfrost"
+  },
+  "icon": "tgoneconfig-icon.png",
+  "license": "LGPL-3.0",
+  "environment": "client",
+  "accessWidener": "tgoneconfigv1.classtweaker",
+  "mixins": [
+    "mixins.tgoneconfigv1.init.json",
+    "mixins.tgoneconfigv1.json"
+  ],
+  "entrypoints": {
+    "client": [
+      "org.tg.tgoneconfig.internal.TGOneConfig"
+    ],
+    "modmenu": [
+      {
+        "adapter": "kotlin",
+        "value": "org.tg.tgoneconfig.internal.compat.ModMenuEntrypoint"
+      }
+    ],
+    "preLaunch": [
+      "org.tg.tgoneconfig.internal.TGOneConfigPreLaunch"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${fabric_mc_version}",
+    "fabric-api": "*",
+    "fabric-language-kotlin": ">=${flk_version}",
+    "polycompose": ">=${polycompose_version}"
+  },
+  "breaks": {
+    "autotext": "<0.1.1",
+    "chattweaks": "<1.2.3",
+    "crashpatch": "<2.3.0",
+    "evergreenhud": "<3.10.0",
+    "hybedwars": "<1.2.1",
+    "legacyskyblock": "<2.10.1",
+    "noteable": "<3.1.0",
+    "polydium": "<1.2.0",
+    "polyplus": "<2.3.0",
+    "screencapper": "<2.2.0",
+    "tgvanillahud": "<3.5.11"
+  }
+}

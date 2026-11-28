@@ -1,0 +1,1182 @@
+package org.tg.tgoneconfig.internal.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.center
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.tg.tgoneconfig.api.config.v1.ConfigManager
+import org.tg.tgoneconfig.api.config.v1.Property
+import org.tg.tgoneconfig.api.notifications.v1.Notifications
+import org.tg.tgoneconfig.api.platform.v1.DesktopHelper
+import org.tg.tgoneconfig.api.platform.v1.Platform
+import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
+import org.tg.tgoneconfig.api.ui.v1.api.TinyFdApi
+import org.tg.tgoneconfig.api.ui.v1.components.Card
+import org.tg.tgoneconfig.api.ui.v1.components.Confirm
+import org.tg.tgoneconfig.api.ui.v1.components.ControlSize
+import org.tg.tgoneconfig.api.ui.v1.components.ControlStyle
+import org.tg.tgoneconfig.api.ui.v1.components.EmptyState
+import org.tg.tgoneconfig.api.ui.v1.components.IconButton
+import org.tg.tgoneconfig.api.ui.v1.components.InteractionStateSource
+import org.tg.tgoneconfig.api.ui.v1.components.KeyCap
+import org.tg.tgoneconfig.api.ui.v1.components.LoadState
+import org.tg.tgoneconfig.api.ui.v1.components.MenuAction
+import org.tg.tgoneconfig.api.ui.v1.components.MenuEntry
+import org.tg.tgoneconfig.api.ui.v1.components.MenuSeparator
+import org.tg.tgoneconfig.api.ui.v1.components.ModalDialog
+import org.tg.tgoneconfig.api.ui.v1.components.MoreButton
+import org.tg.tgoneconfig.api.ui.v1.components.ProgressBar
+import org.tg.tgoneconfig.api.ui.v1.components.ScrollContainer
+import org.tg.tgoneconfig.api.ui.v1.components.Switch
+import org.tg.tgoneconfig.api.ui.v1.components.Text
+import org.tg.tgoneconfig.api.ui.v1.components.TextButton
+import org.tg.tgoneconfig.api.ui.v1.components.TextField
+import org.tg.tgoneconfig.api.ui.v1.components.TextPromptDialog
+import org.tg.tgoneconfig.api.ui.v1.components.TooltipBox
+import org.tg.tgoneconfig.api.ui.v1.components.TooltipPlacement
+import org.tg.tgoneconfig.api.ui.v1.components.contextMenu
+import org.tg.tgoneconfig.api.ui.v1.components.hiddenUntilHover
+import org.tg.tgoneconfig.api.ui.v1.components.oneConfigClickable
+import org.tg.tgoneconfig.api.ui.v1.keybind.TGOneConfigKeybind
+import org.tg.tgoneconfig.internal.ui.api.settings.KeybindOptionData
+import org.tg.tgoneconfig.internal.ui.components.HeaderMenu
+import org.tg.tgoneconfig.internal.ui.components.Icon
+import org.tg.tgoneconfig.internal.ui.components.StripTab
+import org.tg.tgoneconfig.internal.ui.components.TabStrip
+import org.tg.tgoneconfig.internal.ui.components.accentSheen
+import org.tg.tgoneconfig.internal.ui.components.iconButtonLabel
+import org.tg.tgoneconfig.internal.ui.components.rememberInteractionSource
+import org.tg.tgoneconfig.internal.ui.components.scrollFade
+import org.tg.tgoneconfig.internal.ui.components.settings.KeybindOption
+import org.tg.tgoneconfig.internal.ui.components.translated
+import org.tg.tgoneconfig.internal.ui.keybind.ProfileKeybinds
+import org.tg.tgoneconfig.internal.ui.search.searchMatches
+import org.tg.tgoneconfig.internal.ui.shell.PageGutter
+import org.tg.tgoneconfig.internal.ui.shell.pageSearchQuery
+import org.tg.tgoneconfig.internal.ui.themes.Accent
+import org.tg.tgoneconfig.internal.ui.themes.AccentBrush
+import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
+import org.tg.tgoneconfig.internal.ui.themes.animateAccentColorAsState
+import org.tg.tgoneconfig.internal.ui.themes.concentric
+import org.tg.tgoneconfig.internal.ui.themes.contrastRatio
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.function.Predicate
+
+enum class ProfileCategory(val title: String, val icon: String?) {
+    All("All", null),
+    Favorited("Favorites", "star"),
+    ;
+
+    val label: String get() = translated("tgoneconfig.profiles.tab.${name.lowercase()}", title)
+}
+
+private data class UiProfile(
+    val id: String,
+    val name: String,
+    val icon: String,
+    val active: Boolean,
+    val favorite: Boolean,
+) {
+    val editable: Boolean get() = id.isNotEmpty()
+}
+
+private data class ProfileActionResult(
+    val profiles: List<UiProfile>?,
+    val failure: Throwable?,
+)
+
+private val ProfileCardHeight = 140.dp
+private val ProfileBandHeight = 36.dp
+private val ProfileStarIconSize = 18.dp
+private val ProfileStarGlow = 5.dp
+private const val ProfileMoreRestAlpha = 0.6f
+private const val ProfileStarHintAlpha = 0.6f
+private const val BusyOverlayDelayMs = 400L
+private const val OverlayFrameTimeoutMs = 500L
+private enum class ProfileEditor { Rename, Clone, Icon, Keybind }
+private val ProfileIconOptions = listOf(
+    "profiles",
+    "star",
+    "settings",
+    "cog",
+    "paintbrush",
+    "keyboard",
+    "hud",
+    "combat",
+    "qol",
+    "cloud",
+)
+
+@Composable
+fun Profiles() {
+    var activeCategory by remember { mutableStateOf(ProfileCategory.All) }
+    var profiles by remember { mutableStateOf(emptyList<UiProfile>()) }
+    var newProfileName by remember { mutableStateOf("") }
+    var createError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var busyInstant by remember { mutableStateOf(false) }
+    var createTick by remember { mutableIntStateOf(0) }
+    var profileSpecificControls by remember { mutableStateOf(true) }
+    var loadState by remember { mutableStateOf<LoadState>(LoadState.Loading) }
+    var loadAttempt by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(loadAttempt) {
+        loadState = LoadState.Loading
+        try {
+            val loaded = withContext(Dispatchers.IO) {
+                loadProfiles() to ConfigManager.profileSpecificControls()
+            }
+            profiles = loaded.first
+            profileSpecificControls = loaded.second
+            loadState = LoadState.Idle
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Throwable) {
+            loadState = LoadState.Error(failure.messageOrType())
+        }
+    }
+
+    fun runProfileAction(
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = { Notifications.error(actionFailedTitle(), it) },
+        holdsBusy: Boolean = false,
+        instant: Boolean = false,
+        action: () -> Unit,
+    ) {
+        Platform.screen().runOnUiThread {
+            if (busy && !holdsBusy) return@runOnUiThread
+            busy = true
+            busyInstant = instant
+            // A profile operation must finish refreshing the global registry even if this page is
+            // closed while its blocking IO is still running. Enter the non-cancellable section
+            // before the first suspension so disposal of the composition cannot strand the UI on
+            // the previous profile.
+            val ownerJob = scope.coroutineContext[Job]!!
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                withContext(NonCancellable) {
+                    if (instant) awaitOverlayDrawn()
+                    val result = withContext(Dispatchers.IO) {
+                        try {
+                            action()
+                            ProfileActionResult(loadProfiles(), null)
+                        } catch (failure: Throwable) {
+                            val refreshed = try {
+                                loadProfiles()
+                            } catch (refreshFailure: Throwable) {
+                                failure.addSuppressed(refreshFailure)
+                                null
+                            }
+                            ProfileActionResult(refreshed, failure)
+                        }
+                    }
+                    Platform.screen().runOnUiThread {
+                        if (ownerJob.isCancelled) {
+                            result.failure?.let { failure ->
+                                Notifications.error(
+                                    actionFailedTitle(),
+                                    failure.messageOrType(),
+                                )
+                            }
+                            return@runOnUiThread
+                        }
+                        try {
+                            result.profiles?.let { profiles = it }
+                            val failure = result.failure
+                            if (failure == null) onSuccess()
+                            else onError(failure.messageOrType())
+                        } catch (failure: Throwable) {
+                            Notifications.error(
+                                actionFailedTitle(),
+                                failure.messageOrType(),
+                            )
+                        } finally {
+                            busy = false
+                            busyInstant = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun <T : Any> runProfileDialog(prompt: () -> T?, action: (T) -> Unit) {
+        Platform.screen().runOnUiThread {
+            if (busy) return@runOnUiThread
+            busy = true
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                withContext(NonCancellable) {
+                    val choice = try {
+                        withContext(Dispatchers.IO) { prompt() }
+                    } catch (failure: Throwable) {
+                        Platform.screen().runOnUiThread {
+                            busy = false
+                            Notifications.error(actionFailedTitle(), failure.messageOrType())
+                        }
+                        return@withContext
+                    }
+                    if (choice == null) {
+                        Platform.screen().runOnUiThread { busy = false }
+                        return@withContext
+                    }
+                    runProfileAction(holdsBusy = true) { action(choice) }
+                }
+            }
+        }
+    }
+
+    fun openProfilesFolder() {
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                Files.createDirectories(ConfigManager.PROFILES_DIR)
+                DesktopHelper.open(ConfigManager.PROFILES_DIR.toFile())
+            }.onFailure {
+                Notifications.error(
+                    translated("tgoneconfig.profiles.open_folder.failed", "Could not open the profiles folder"),
+                    it.messageOrType(),
+                )
+            }
+        }
+    }
+
+    fun importProfile() {
+        runProfileDialog(
+            prompt = {
+                TinyFdApi.getInstance().openFileSelector(
+                    translated("tgoneconfig.profiles.import.title", "Import profile"),
+                    null,
+                    arrayOf("*.zip"),
+                    translated("tgoneconfig.profiles.export.filter", "Zip archive"),
+                )
+            },
+            action = ::importProfileArchive,
+        )
+    }
+
+    HeaderMenu {
+        listOf(
+            MenuAction(translated("tgoneconfig.profiles.import", "Import profile..."), ::importProfile, icon = "down", enabled = !busy),
+            MenuAction(translated("tgoneconfig.profiles.open_folder.menu", "Open profiles folder"), ::openProfilesFolder, icon = "folder"),
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(19.dp)
+        ) {
+            val localSearchQuery = pageSearchQuery().trim()
+            val categorizedProfiles = when (activeCategory) {
+                ProfileCategory.All -> profiles
+                ProfileCategory.Favorited -> profiles.filter { it.favorite }
+            }
+            val visibleProfiles = remember(categorizedProfiles, localSearchQuery) {
+                if (localSearchQuery.isBlank()) categorizedProfiles
+                else categorizedProfiles.filter { it.matchesSearch(localSearchQuery) }
+            }
+            val existingProfileIds = remember(profiles) { profiles.mapTo(HashSet()) { it.id.lowercase() } }
+
+            val counts = remember(profiles) {
+                ProfileCategory.entries.associateWith { category ->
+                    if (category == ProfileCategory.Favorited) profiles.count { it.favorite } else profiles.size
+                }
+            }
+            TabStrip(
+                ProfileCategory.entries.map { StripTab(it, it.label, counts.getValue(it)) },
+                activeCategory,
+                { activeCategory = it },
+                Modifier.padding(horizontal = PageGutter),
+            ) {
+                SeparateControlsSwitch(profileSpecificControls, enabled = !busy) { enabled ->
+                    runProfileAction(onSuccess = { profileSpecificControls = enabled }) {
+                        ConfigManager.setProfileSpecificControls(enabled)
+                    }
+                }
+            }
+
+            val state = loadState
+            if (state != LoadState.Idle) {
+                Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    EmptyState(
+                        if (state is LoadState.Error) translated("tgoneconfig.profiles.load_failed", "Couldn't load profiles")
+                        else translated("tgoneconfig.profiles.loading", "Loading profiles"),
+                        state = state,
+                        onRetry = { loadAttempt++ },
+                    )
+                }
+            } else ProfilesGrid(
+                profiles = visibleProfiles,
+                existingProfileIds = existingProfileIds,
+                showCreateProfile = activeCategory == ProfileCategory.All && localSearchQuery.isBlank(),
+                emptyMessage = if (localSearchQuery.isBlank()) translated("tgoneconfig.profiles.no_favorites", "No favorite profiles.")
+                    else translated("tgoneconfig.profiles.nomatch", "No profiles match \"%s\"", localSearchQuery),
+                emptyIcon = if (localSearchQuery.isBlank()) "star" else "search",
+                newProfileName = newProfileName,
+                createError = createError,
+                busy = busy,
+                createTick = createTick,
+                onNewProfileNameChange = {
+                    newProfileName = it
+                    createError = null
+                },
+                onCreateProfile = {
+                    val profileName = newProfileName
+                    runProfileAction(onSuccess = {
+                        newProfileName = ""
+                        createError = null
+                        createTick++
+                    }, onError = { createError = it }) {
+                        ConfigManager.createProfile(profileName)
+                    }
+                },
+                onOpen = { profile ->
+                    if (!profile.active) {
+                        runProfileAction(instant = true) { ConfigManager.openProfile(profile.id) }
+                    }
+                },
+                onFavorite = { profile ->
+                    runProfileAction { ConfigManager.setFavoriteProfile(profile.id, !profile.favorite) }
+                },
+                onRename = { profile, newName, onSuccess, onError ->
+                    runProfileAction(onSuccess, onError) {
+                        ConfigManager.renameProfile(profile.id, newName)
+                    }
+                },
+                onClone = { profile, newName, onSuccess, onError ->
+                    runProfileAction(onSuccess, onError) {
+                        ConfigManager.cloneProfile(profile.id, newName)
+                    }
+                },
+                onIconChange = { profile, icon, onSuccess, onError ->
+                    runProfileAction(onSuccess, onError) { ConfigManager.setProfileIcon(profile.id, icon) }
+                },
+                onDelete = { profile ->
+                    Confirm.ask(
+                        translated("tgoneconfig.profiles.delete.title", "Delete profile?"),
+                        translated("tgoneconfig.profiles.delete.text", "The profile \"%s\" and all its settings will be deleted.", profile.name),
+                        translated("tgoneconfig.profiles.delete.confirm", "Delete profile"),
+                        onConfirm = { runProfileAction(instant = profile.active) { ConfigManager.deleteProfile(profile.id) } },
+                        icon = "trash",
+                    )
+                },
+                onExport = { profile ->
+                    runProfileDialog(
+                        prompt = {
+                            val defaultName = profile.name.replace(Regex("[^a-zA-Z0-9._-]"), "_") + ".zip"
+                            TinyFdApi.getInstance().openSaveSelector(
+                                translated("tgoneconfig.profiles.export.title", "Export profile"),
+                                defaultName,
+                                arrayOf("*.zip"),
+                                translated("tgoneconfig.profiles.export.filter", "Zip archive"),
+                            )
+                        },
+                        action = { destination ->
+                            val archive = if (destination.fileName.toString().endsWith(".zip", ignoreCase = true)) {
+                                destination
+                            } else {
+                                destination.resolveSibling(destination.fileName.toString() + ".zip")
+                            }
+                            ConfigManager.exportProfile(profile.id, archive)
+                        },
+                    )
+                }
+            )
+        }
+        if (busy) ProfileBusyOverlay(busyInstant)
+    }
+}
+
+private suspend fun awaitOverlayDrawn() {
+    withTimeoutOrNull(OverlayFrameTimeoutMs) {
+        withFrameNanos { }
+        withFrameNanos { }
+    }
+}
+
+@Composable
+private fun ProfileBusyOverlay(instant: Boolean) {
+    var shown by remember { mutableStateOf(instant) }
+    LaunchedEffect(Unit) {
+        if (shown) return@LaunchedEffect
+        delay(BusyOverlayDelayMs)
+        shown = true
+    }
+    if (!shown) return
+    val theme = LocalTheme.current
+    ModalDialog(onDismiss = {}, dismissOnScrim = false, dismissOnEscape = false) {
+        Text(
+            translated("tgoneconfig.profiles.busy.title", "Applying profile changes\u2026"),
+            Modifier.fillMaxWidth(),
+            theme.textColor,
+            theme.typography.title,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            translated("tgoneconfig.profiles.busy.text", "The game will stop responding until it finishes."),
+            Modifier.fillMaxWidth(),
+            theme.textColorSecondary,
+            theme.typography.body,
+            textAlign = TextAlign.Center,
+        )
+        ProgressBar(null, Modifier.fillMaxWidth().padding(top = theme.spacing.xs))
+    }
+}
+
+private fun actionFailedTitle(): String = translated("tgoneconfig.profiles.action_failed", "Profile action failed")
+
+private fun Throwable.messageOrType(): String = message ?: this::class.java.simpleName
+
+private fun UiProfile.matchesSearch(query: String): Boolean {
+    val q = query.lowercase()
+    return listOf(name, id, icon)
+        .any { searchMatches(it, q) }
+}
+
+private fun loadProfiles(): List<UiProfile> {
+    val active = ConfigManager.activeProfile()
+    val favorites = ConfigManager.favoriteProfiles().toSet()
+    val icons = ConfigManager.profileIcons()
+    return ConfigManager.profiles().map { id ->
+        UiProfile(
+            id = id,
+            name = if (id.isEmpty()) translated("tgoneconfig.profiles.default", "Default") else id,
+            icon = icons[id] ?: "profiles",
+            active = id == active,
+            favorite = id in favorites,
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.ProfilesGrid(
+    profiles: List<UiProfile>,
+    existingProfileIds: Set<String>,
+    showCreateProfile: Boolean,
+    emptyMessage: String,
+    emptyIcon: String,
+    newProfileName: String,
+    createError: String?,
+    busy: Boolean,
+    createTick: Int,
+    onNewProfileNameChange: (String) -> Unit,
+    onCreateProfile: () -> Unit,
+    onOpen: (UiProfile) -> Unit,
+    onFavorite: (UiProfile) -> Unit,
+    onRename: (UiProfile, String, () -> Unit, (String) -> Unit) -> Unit,
+    onClone: (UiProfile, String, () -> Unit, (String) -> Unit) -> Unit,
+    onIconChange: (UiProfile, String, () -> Unit, (String) -> Unit) -> Unit,
+    onDelete: (UiProfile) -> Unit,
+    onExport: (UiProfile) -> Unit,
+) {
+    var editingProfileId by remember { mutableStateOf<String?>(null) }
+    var activeEditor by remember { mutableStateOf<ProfileEditor?>(null) }
+    var menuProfileId by remember { mutableStateOf<String?>(null) }
+    var creatingProfile by remember { mutableStateOf(false) }
+    val visibleProfileIds = profiles.mapTo(HashSet()) { it.id }
+
+    LaunchedEffect(visibleProfileIds, showCreateProfile) {
+        if (editingProfileId != null && editingProfileId !in visibleProfileIds) {
+            editingProfileId = null
+            activeEditor = null
+        }
+        if (menuProfileId != null && menuProfileId !in visibleProfileIds) menuProfileId = null
+        if (!showCreateProfile) creatingProfile = false
+    }
+
+    if (profiles.isEmpty() && !showCreateProfile) {
+        Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
+            EmptyState(emptyMessage, icon = emptyIcon)
+        }
+        return
+    }
+
+    val gridState = rememberLazyGridState()
+    ScrollContainer(gridState, Modifier.weight(1f), gutter = PageGutter) {
+        LazyVerticalGrid(
+            state = gridState,
+            modifier = Modifier.fillMaxSize().scrollFade(gridState),
+            contentPadding = PaddingValues(horizontal = PageGutter),
+            columns = GridCells.Fixed(4),
+            verticalArrangement = Arrangement.spacedBy(19.dp),
+            horizontalArrangement = Arrangement.spacedBy(19.dp),
+        ) {
+            if (showCreateProfile) {
+                item(key = "create-profile") {
+                    CreateProfileCard(
+                        value = newProfileName,
+                        error = createError,
+                        busy = busy,
+                        creating = creatingProfile,
+                        createTick = createTick,
+                        onValueChange = onNewProfileNameChange,
+                        onCreate = onCreateProfile,
+                        onCreatingChange = { creating ->
+                            creatingProfile = creating
+                            if (creating) {
+                                editingProfileId = null
+                                activeEditor = null
+                                menuProfileId = null
+                            }
+                        },
+                    )
+                }
+            }
+            items(profiles, key = { "profile:${it.id}" }) { profile ->
+                ProfileCard(
+                    profile = profile,
+                    busy = busy,
+                    editor = activeEditor.takeIf { editingProfileId == profile.id },
+                    menuOpen = menuProfileId == profile.id,
+                    suggestedCloneName = nextCloneName(profile.name, existingProfileIds),
+                    onEditorChange = { editor ->
+                        if (editor == null) {
+                            if (editingProfileId == profile.id) {
+                                editingProfileId = null
+                                activeEditor = null
+                            }
+                        } else {
+                            creatingProfile = false
+                            editingProfileId = profile.id
+                            activeEditor = editor
+                            menuProfileId = null
+                        }
+                    },
+                    onMenuOpenChange = { open ->
+                        if (open) {
+                            creatingProfile = false
+                            menuProfileId = profile.id
+                            editingProfileId = null
+                            activeEditor = null
+                        } else if (menuProfileId == profile.id) {
+                            menuProfileId = null
+                        }
+                    },
+                    onOpen = { onOpen(profile) },
+                    onFavorite = { onFavorite(profile) },
+                    onRename = { newName, onSuccess, onError ->
+                        onRename(profile, newName, onSuccess, onError)
+                    },
+                    onClone = { newName, onSuccess, onError ->
+                        onClone(profile, newName, onSuccess, onError)
+                    },
+                    onIconChange = { icon, onSuccess, onError ->
+                        onIconChange(profile, icon, onSuccess, onError)
+                    },
+                    onDelete = { onDelete(profile) },
+                    onExport = { onExport(profile) },
+                )
+            }
+        }
+    }
+}
+
+private fun nextCloneName(profileName: String, profileIds: Set<String>): String {
+    val base = "$profileName copy"
+    if (base.lowercase() !in profileIds) return base
+    var suffix = 2
+    while ("$base $suffix".lowercase() in profileIds) suffix++
+    return "$base $suffix"
+}
+
+@Composable
+private fun SeparateControlsSwitch(checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val theme = LocalTheme.current
+    val label = translated("tgoneconfig.profiles.separate_controls.label", "Separate controls per profile")
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier, theme.textColor.copy(alpha = 0.7f), theme.typography.body.copy(fontSize = 13.sp))
+        TooltipBox(
+            translated("tgoneconfig.profiles.separate_controls.tooltip", "Each profile keeps its own Minecraft controls."),
+            placement = TooltipPlacement.BelowCenter,
+        ) {
+            Icon("info", color = theme.textColorSecondary, modifier = Modifier.size(14.dp))
+        }
+        Switch(checked, onChange, enabled = enabled, label = label, stateLabel = false)
+    }
+}
+
+private fun importProfileArchive(archive: Path) {
+    val fileName = archive.fileName.toString()
+    require(fileName.endsWith(".zip", ignoreCase = true)) {
+        translated("tgoneconfig.profiles.import.not_zip", "Pick a .zip file exported from TGOneConfig.")
+    }
+    val name = fileName.dropLast(".zip".length)
+    Files.createDirectories(ConfigManager.PROFILES_DIR)
+    val before = profileFolders()
+    require(before.none { it.equals(name, ignoreCase = true) }) {
+        translated("tgoneconfig.profiles.import.exists", "A profile named \"%s\" already exists. Rename the file and try again.", name)
+    }
+    val dropped = ConfigManager.PROFILES_DIR.resolve(fileName)
+    val inPlace = Files.exists(dropped) && Files.isSameFile(archive, dropped)
+    if (!inPlace) {
+        require(!Files.exists(dropped)) {
+            translated("tgoneconfig.profiles.import.file_exists", "The profiles folder already has a file named \"%s\". Rename one of them and try again.", fileName)
+        }
+        Files.copy(archive, dropped)
+    }
+    ConfigManager.profiles()
+    if (Files.exists(dropped)) {
+        if (!inPlace) Files.deleteIfExists(dropped)
+        throw IllegalStateException(translated("tgoneconfig.profiles.import.invalid", "That file isn't a TGOneConfig profile."))
+    }
+}
+
+private fun profileFolders(): List<String> = Files.list(ConfigManager.PROFILES_DIR).use { stream ->
+    stream.filter(Files::isDirectory).map { it.fileName.toString() }.filter { !it.startsWith(".") }.toList()
+}
+
+@Composable
+private fun ProfileBand(text: String, active: Boolean) {
+    val theme = LocalTheme.current
+    val accent by Motion.animateFloatAsState(if (active) 1f else 0f)
+    val inset = theme.insetModFooter
+    val shape = theme.modCardShape.concentric(ProfileBandInset)
+    val color by Motion.animateColorAsState(
+        if (active) (if (inset && contrastRatio(theme.textColor, Accent) >= 3f) theme.textColor else theme.accentTextColor)
+        else theme.textColor.copy(alpha = 0.75f),
+    )
+    Box(
+        Modifier
+            .then(if (inset) Modifier.padding(start = 5.dp, end = 5.dp, bottom = 5.dp).clip(shape) else Modifier)
+            .fillMaxWidth()
+            .height(ProfileBandHeight)
+            .background(theme.textColor.copy(alpha = 0.08f * (1f - accent)))
+            .background(AccentBrush, alpha = accent)
+            .accentSheen(alpha = accent)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            Modifier.fillMaxWidth(),
+            color,
+            theme.typography.body.copy(fontSize = 14.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+private val ProfileBandInset = 6.dp
+
+@Composable
+private fun CreateProfileCard(
+    value: String,
+    error: String?,
+    busy: Boolean,
+    creating: Boolean,
+    createTick: Int,
+    onValueChange: (String) -> Unit,
+    onCreate: () -> Unit,
+    onCreatingChange: (Boolean) -> Unit,
+) {
+    val theme = LocalTheme.current
+    LaunchedEffect(createTick) {
+        if (createTick > 0) onCreatingChange(false)
+    }
+    val label = translated("tgoneconfig.profiles.new", "New profile")
+    Card(
+        Modifier.fillMaxWidth().height(ProfileCardHeight),
+        onClick = { if (!creating) onCreatingChange(true) },
+        label = label,
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (creating) {
+                    ProfileTextField(
+                        value = value,
+                        placeholder = translated("tgoneconfig.profiles.name_placeholder", "Profile name"),
+                        error = error,
+                        enabled = !busy,
+                        width = 160.dp,
+                        onValueChange = onValueChange,
+                        onSubmit = { if (!busy) onCreate() },
+                    )
+                } else {
+                    Box(
+                        Modifier.size(48.dp).background(theme.textColor.copy(alpha = 0.06f), theme.circleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon("plus", modifier = Modifier.size(24.dp), color = theme.textColorSecondary)
+                    }
+                }
+            }
+            ProfileBand(label, active = false)
+        }
+        if (creating) {
+            ActionRow {
+                ActionIcon(
+                    "tick",
+                    translated("tgoneconfig.profiles.create", "Create profile"),
+                    enabled = !busy,
+                    tint = theme.textColorSecondary,
+                    hoveredTint = Accent,
+                    onClick = onCreate,
+                )
+                ActionIcon("close", iconButtonLabel("close"), enabled = !busy, tint = theme.textColorSecondary) {
+                    onValueChange("")
+                    onCreatingChange(false)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberKeybindName(prop: Property<TGOneConfigKeybind>, refresh: Any?): String? {
+    var name by remember(prop, refresh) { mutableStateOf(prop.get()?.takeIf { it.isBound }?.displayName()) }
+    DisposableEffect(prop) {
+        val listener = Predicate<TGOneConfigKeybind> { value ->
+            name = value?.takeIf { it.isBound }?.displayName()
+            false
+        }
+        prop.addCallback(listener)
+        onDispose { prop.removeCallback(listener) }
+    }
+    return name
+}
+
+@Composable
+private fun KeybindCaps(name: String) {
+    val theme = LocalTheme.current
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        name.split(" + ").forEachIndexed { index, part ->
+            if (index > 0) Text("+", Modifier, theme.textColorSecondary, theme.typography.caption)
+            KeyCap(part)
+        }
+    }
+}
+
+@Composable
+private fun ProfileStar(favorite: Boolean, shown: Boolean, enabled: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val theme = LocalTheme.current
+    val color by Motion.animateColorAsState(if (favorite) theme.favoriteColor else theme.textColor)
+    val glow by Motion.animateFloatAsState(if (favorite) 1f else 0f)
+    val emphasis by Motion.animateFloatAsState(if (favorite) 1f else ProfileStarHintAlpha)
+    val glowColor = theme.favoriteColor
+    IconButton(
+        if (favorite) "star-filled" else "star",
+        if (favorite) translated("tgoneconfig.mods.menu.unfavorite", "Remove from favorites")
+        else translated("tgoneconfig.mods.menu.favorite", "Add to favorites"),
+        onClick,
+        modifier
+            .size(24.dp)
+            .hiddenUntilHover(shown)
+            .graphicsLayer { alpha = emphasis }
+            .drawWithCache {
+                val radius = (ProfileStarIconSize / 2 + ProfileStarGlow).toPx()
+                val inner = (ProfileStarIconSize / 2).toPx() / radius * 0.6f
+                val brush = Brush.radialGradient(
+                    inner to glowColor.copy(alpha = 0.41f),
+                    inner + (1f - inner) * 0.4f to glowColor.copy(alpha = 0.25f),
+                    inner + (1f - inner) * 0.8f to glowColor.copy(alpha = 0.09f),
+                    1f to Color.Transparent,
+                    center = size.center,
+                    radius = radius,
+                )
+                onDrawBehind { if (glow > 0f) drawCircle(brush, radius = radius, alpha = glow) }
+            },
+        enabled = enabled,
+        size = ControlSize.Large,
+        tooltip = null,
+        tint = color,
+    )
+}
+
+@Composable
+private fun ProfileKeybindDialog(prop: Property<TGOneConfigKeybind>, onDismiss: () -> Unit) {
+    val theme = LocalTheme.current
+    ModalDialog(
+        onDismiss = onDismiss,
+        title = { Text(translated("tgoneconfig.profiles.keybind.title", "Profile keybind"), Modifier, theme.textColor, theme.typography.title) },
+        buttons = {
+            TextButton(translated("tgoneconfig.profiles.keybind.done", "Done"), onDismiss, style = ControlStyle.Primary)
+        },
+    ) {
+        Text(
+            translated("tgoneconfig.profiles.keybind.text", "Press it anywhere in game to switch to this profile."),
+            Modifier.fillMaxWidth(),
+            theme.textColorSecondary,
+            theme.typography.body,
+        )
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            KeybindOption(KeybindOptionData(prop))
+        }
+    }
+}
+
+@Composable
+private fun ProfileCard(
+    profile: UiProfile,
+    busy: Boolean,
+    editor: ProfileEditor?,
+    menuOpen: Boolean,
+    suggestedCloneName: String,
+    onEditorChange: (ProfileEditor?) -> Unit,
+    onMenuOpenChange: (Boolean) -> Unit,
+    onOpen: () -> Unit,
+    onFavorite: () -> Unit,
+    onRename: (String, () -> Unit, (String) -> Unit) -> Unit,
+    onClone: (String, () -> Unit, (String) -> Unit) -> Unit,
+    onIconChange: (String, () -> Unit, (String) -> Unit) -> Unit,
+    onDelete: () -> Unit,
+    onExport: () -> Unit,
+) {
+    val interactionSource = remember { InteractionStateSource() }
+    val cardHovered = interactionSource.hovered
+    val theme = LocalTheme.current
+    var iconError by remember(profile.id) { mutableStateOf<String?>(null) }
+    var nameError by remember(profile.id) { mutableStateOf<Pair<String, String>?>(null) }
+    val keybindProp = remember(profile.id) { ProfileKeybinds.property(profile.id) }
+    val keybindName = rememberKeybindName(keybindProp, editor)
+
+    fun openEditor(next: ProfileEditor) {
+        iconError = null
+        nameError = null
+        onEditorChange(next)
+    }
+
+    fun closeEditor() {
+        onEditorChange(null)
+        iconError = null
+        nameError = null
+    }
+
+    fun menuEntries(): List<MenuEntry> = buildList<MenuEntry> {
+        add(MenuAction(translated("tgoneconfig.profiles.menu.switch", "Switch to this profile"), onOpen, icon = "tick", enabled = !busy && !profile.active))
+        add(
+            MenuAction(
+                if (profile.favorite) translated("tgoneconfig.mods.menu.unfavorite", "Remove from favorites") else translated("tgoneconfig.mods.menu.favorite", "Add to favorites"),
+                onFavorite,
+                icon = if (profile.favorite) "star-filled" else "star",
+                enabled = !busy,
+            ),
+        )
+        if (profile.editable) {
+            add(MenuAction(translated("tgoneconfig.profiles.menu.rename", "Rename"), { openEditor(ProfileEditor.Rename) }, icon = "text-input", enabled = !busy))
+        }
+        add(MenuAction(translated("tgoneconfig.profiles.menu.clone", "Clone"), { openEditor(ProfileEditor.Clone) }, icon = "copy", enabled = !busy))
+        if (profile.editable) {
+            add(MenuAction(translated("tgoneconfig.profiles.menu.icon", "Change icon"), { openEditor(ProfileEditor.Icon) }, icon = "paintbrush", enabled = !busy))
+        }
+        add(MenuAction(translated("tgoneconfig.profiles.menu.keybind", "Change keybind"), { openEditor(ProfileEditor.Keybind) }, icon = "keyboard", enabled = !busy))
+        add(MenuAction(translated("tgoneconfig.profiles.menu.export_zip", "Export as zip..."), onExport, icon = "upload", enabled = !busy))
+        if (profile.editable) {
+            add(MenuSeparator)
+            add(MenuAction(translated("tgoneconfig.profiles.menu.delete", "Delete"), onDelete, icon = "trash", enabled = !busy, danger = true))
+        }
+    }
+
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .height(ProfileCardHeight)
+            .contextMenu(enabled = editor == null) { menuEntries() },
+        onClick = { if (editor == null && !menuOpen) onOpen() },
+        label = profile.name,
+        interactionSource = interactionSource,
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (editor == ProfileEditor.Icon) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        ProfileIconPicker(
+                            selectedIcon = profile.icon,
+                            enabled = !busy,
+                            onIconChange = {
+                                iconError = null
+                                onIconChange(
+                                    it,
+                                    {
+                                        onEditorChange(null)
+                                        iconError = null
+                                    },
+                                    { message -> iconError = message },
+                                )
+                            },
+                        )
+                        iconError?.let { ProfileError(it, 150.dp) }
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(profile.icon, modifier = Modifier.size(40.dp), color = theme.textColor)
+                        keybindName?.let { KeybindCaps(it) }
+                    }
+                }
+            }
+            ProfileBand(profile.name, profile.active)
+        }
+        if (editor != ProfileEditor.Icon) {
+            ProfileStar(
+                profile.favorite,
+                shown = profile.favorite || cardHovered,
+                enabled = !busy,
+                onClick = onFavorite,
+                modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
+            )
+        }
+        Box(Modifier.align(Alignment.TopEnd).padding(6.dp)) {
+            if (editor == ProfileEditor.Icon) {
+                ActionIcon("close", iconButtonLabel("close"), enabled = !busy, tint = theme.textColorSecondary, onClick = ::closeEditor)
+            } else {
+                val emphasis by Motion.animateFloatAsState(if (cardHovered || menuOpen) 1f else ProfileMoreRestAlpha)
+                MoreButton(
+                    if (menuOpen) menuEntries() else emptyList(),
+                    menuOpen,
+                    onMenuOpenChange,
+                    Modifier.graphicsLayer { alpha = emphasis },
+                    contentDescription = translated("tgoneconfig.profiles.options", "Profile options"),
+                )
+            }
+        }
+    }
+
+    if (editor == ProfileEditor.Keybind) ProfileKeybindDialog(keybindProp, ::closeEditor)
+
+    if (editor == ProfileEditor.Rename || editor == ProfileEditor.Clone) {
+        val renaming = editor == ProfileEditor.Rename
+        val initial = if (renaming) profile.name else suggestedCloneName
+        val title = if (renaming) translated("tgoneconfig.profiles.rename.title", "Rename profile")
+            else translated("tgoneconfig.profiles.clone.title", "Clone profile")
+        key(editor) {
+            TextPromptDialog(
+                title = title,
+                initial = initial,
+                onConfirm = { name ->
+                    if (!busy) {
+                        val submit = if (renaming) onRename else onClone
+                        submit(
+                            name,
+                            {
+                                nameError = null
+                                onEditorChange(null)
+                            },
+                            { message ->
+                                nameError = name to message
+                                if (name == initial) Notifications.error(title, message)
+                            },
+                        )
+                    }
+                },
+                onDismiss = { if (!busy) closeEditor() },
+                confirmLabel = if (renaming) translated("tgoneconfig.profiles.menu.rename", "Rename")
+                    else translated("tgoneconfig.profiles.menu.clone", "Clone"),
+                validate = { value ->
+                    val failed = nameError
+                    when {
+                        value.isBlank() -> translated("tgoneconfig.profiles.name_required", "Enter a name")
+                        failed != null && failed.first == value -> failed.second
+                        else -> null
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileIconPicker(
+    selectedIcon: String,
+    enabled: Boolean,
+    onIconChange: (String) -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        ProfileIconOptions.chunked(5).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { icon ->
+                    ProfileIconChoice(
+                        icon = icon,
+                        selected = icon == selectedIcon,
+                        enabled = enabled,
+                        onClick = { onIconChange(icon) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileIconChoice(
+    icon: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val interactionSource = rememberInteractionSource()
+    val theme = LocalTheme.current
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val backgroundColor by animateAccentColorAsState(
+        listOf(selected, enabled, isHovered),
+        if (selected) Accent.copy(alpha = if (enabled) 0.22f else 0.10f)
+        else if (enabled && isHovered) theme.textColor.copy(alpha = 0.08f)
+        else Color.Transparent
+    )
+    val borderColor by animateAccentColorAsState(
+        selected && enabled,
+        if (selected && enabled) Accent else theme.borderColor.copy(alpha = 0f)
+    )
+    val iconColor by Motion.animateColorAsState(
+        if (enabled && (selected || isHovered)) theme.textColor else theme.textColorSecondary
+    )
+
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .background(backgroundColor, theme.sideBarNavigationEntryShape)
+            .border(1.dp, borderColor, theme.sideBarNavigationEntryShape)
+            .oneConfigClickable(
+                iconButtonLabel(icon),
+                onClick,
+                enabled = enabled,
+                selected = selected,
+                shape = theme.sideBarNavigationEntryShape,
+                indication = false,
+                interactionSource = interactionSource,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, modifier = Modifier.size(14.dp), color = iconColor)
+    }
+}
+
+@Composable
+private fun BoxScope.ActionRow(content: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier.align(Alignment.TopEnd).padding(top = 9.dp, end = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+@Composable
+private fun ActionIcon(
+    icon: String,
+    label: String,
+    enabled: Boolean = true,
+    tint: Color,
+    hoveredTint: Color = tint,
+    tooltip: String? = label,
+    onClick: () -> Unit,
+) {
+    val interactionSource = rememberInteractionSource()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val iconColor by Motion.animateColorAsState(
+        if (enabled && isHovered) hoveredTint else tint
+    )
+
+    TooltipBox(tooltip, placement = TooltipPlacement.BelowCenter) {
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .oneConfigClickable(label, onClick, enabled = enabled, indication = false, interactionSource = interactionSource),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, color = iconColor, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProfileTextField(
+    value: String,
+    placeholder: String,
+    width: Dp,
+    error: String? = null,
+    enabled: Boolean = true,
+    onValueChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    Column(
+        modifier = Modifier.width(width),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        TextField(
+            value,
+            onValueChange,
+            Modifier.fillMaxWidth(),
+            placeholder = placeholder,
+            enabled = enabled,
+            invalid = error != null,
+            size = ControlSize.Regular,
+            focusRequester = focusRequester,
+            onSubmit = onSubmit,
+        )
+        if (error != null) ProfileError(error, width)
+    }
+
+    LaunchedEffect(Unit) {
+        runCatching { focusRequester.requestFocus() }
+    }
+}
+
+@Composable
+private fun ProfileError(message: String, width: Dp) {
+    val theme = LocalTheme.current
+    Text(
+        message,
+        Modifier.width(width).padding(top = 4.dp),
+        theme.error,
+        theme.typography.caption,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+    )
+}

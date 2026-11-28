@@ -1,0 +1,373 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received annotation copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received annotation copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.api.config.v1.collect.impl;
+
+import kotlin.Unit;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.tg.tgoneconfig.api.config.v1.Config;
+import org.tg.tgoneconfig.api.config.v1.Properties;
+import org.tg.tgoneconfig.api.config.v1.Property;
+import org.tg.tgoneconfig.api.config.v1.SliderBounds;
+import org.tg.tgoneconfig.api.config.v1.Tree;
+import org.tg.tgoneconfig.api.config.v1.ValueFormatter;
+import org.tg.tgoneconfig.api.config.v1.annotations.*;
+import org.tg.tgoneconfig.utils.v1.MHUtils;
+
+import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.List;
+
+import static org.tg.tgoneconfig.api.config.v1.Node.strv;
+
+/**
+ * Collects properties from an object using reflection and from its inner classes
+ * <br>
+ * Ignores fields without an annotation with the {@link Option} annotation
+ */
+public class TGOneConfigCollector extends ReflectiveCollector {
+    public TGOneConfigCollector() {
+        super(4);
+    }
+
+    @Override
+    public @Nullable Tree collect(@NotNull Object src) {
+        if (!(src instanceof Config)) return null;
+        Tree tree = super.collect(src);
+        assert tree != null;
+        wireConditions(tree, new ArrayDeque<>());
+        return tree;
+    }
+
+    /**
+     * Resolves each option's conditions against its own tree, then every enclosing tree up to the root
+     */
+    private void wireConditions(Tree tree, Deque<Tree> enclosing) {
+        enclosing.push(tree);
+        tree.onAll((id, node) -> {
+            if (node instanceof Tree child) {
+                wireConditions(child, enclosing);
+            } else if (node instanceof Property<?> p) {
+                String[] conditions = p.consumeMetadata("conditions");
+                if (conditions == null) return;
+                for (String cond : conditions) {
+                    Property<?> condition = null;
+                    for (Tree scope : enclosing) {
+                        condition = scope.getProp(cond);
+                        if (condition == null && cond.indexOf('.') >= 0) condition = scope.getProp(cond.split("\\."));
+                        if (condition != null) break;
+                    }
+                    if (condition == null) throw new IllegalArgumentException("Property " + p.getID() + " is dependant on property " + cond + ", but that property does not exist");
+                    if (condition.type != boolean.class) throw new IllegalArgumentException("Property " + p.getID() + " is dependant on property " + cond + ", but it is not annotation boolean property");
+                    p.addDisplayCondition(Property.<Boolean>recast(condition), false);
+                }
+            }
+        });
+        enclosing.pop();
+    }
+
+    @Override
+    protected void handleField(@NotNull Field f, @NotNull Object src, @NotNull Tree tree) {
+        if (f.isAnnotationPresent(Primary.class) && !hasOptionAnnotation(f)) {
+            throw new IllegalArgumentException(String.format("@Primary field '%s' needs an option annotation such as @Switch", f.getName()));
+        }
+        if (f.isAnnotationPresent(MasterToggle.class)) {
+            Class<?> fieldType = f.getType();
+            if (fieldType != boolean.class && fieldType != Boolean.class) {
+                throw new IllegalArgumentException(String.format(
+                    "@MasterToggle field '%s' must be a boolean, but was %s.",
+                    f.getName(), fieldType.getTypeName()
+                ));
+            }
+            Property<?> p = Properties.field(null, null, f, src);
+            p.addMetadata("hidden", true);
+            p.addMetadata("masterToggle", true);
+            tree.put(p);
+            return;
+        }
+        for (Annotation a : f.getDeclaredAnnotations()) {
+            Class<? extends Annotation> type = a.annotationType();
+            if (type == Include.class) {
+                Property<?> p = Properties.field(null, null, f, src);
+                p.addMetadata("hidden", true);
+                tree.put(p);
+                continue;
+            }
+            if (type == Accordion.class) {
+                Tree t = Tree.tree(f.getName());
+                try {
+                    t.addMetadata(MHUtils.getAnnotationValues(a).getOrThrow());
+                    handle(t, MHUtils.instantiate(f.getType(), true).getOrThrow(), maxDepth);
+                } catch (Throwable e) {
+                    throw new RuntimeException("Failed to collect accordion-type field " + f.getName(), e);
+                }
+                requireSinglePrimary(t);
+                tree.put(t);
+                continue;
+            }
+            Option opt = type.getDeclaredAnnotation(Option.class);
+            if (opt == null) continue;
+            try {
+                Property<?> p = Properties.field(null, null, f, src);
+                handleMetadata(tree, p, a, opt, f);
+                if (f.isAnnotationPresent(Primary.class)) p.addMetadata("primary", true);
+                tree.put(p);
+            } catch (Throwable e) {
+                throw new RuntimeException("Failed to create setter for field " + f.getName() + "; ensure it is not static final", e);
+            }
+            break;
+        }
+    }
+
+    @Override
+    protected void handleMethod(@NotNull Method m, @NotNull Object src, @NotNull Tree builder) {
+        Button b = m.getDeclaredAnnotation(Button.class);
+        boolean primary = m.isAnnotationPresent(Primary.class);
+        if (b == null) {
+            if (primary) throw new IllegalArgumentException(String.format("@Primary method '%s' needs @Button", m.getName()));
+            return;
+        }
+        if (m.getParameterCount() != 0) throw new IllegalArgumentException("Button method " + m.getName() + " must have no parameters");
+        Property<?> p = Properties.dummy(m.getName(), b.title(), b.description());
+        final MethodHandle mh = MHUtils.getMethodHandle(m, src).getOrThrow();
+        final String methodString = m.toString();
+        p.addMetadata("runnable", (Runnable) () -> {
+            try {
+                mh.invokeExact();
+            } catch (Throwable e) {
+                LOGGER.error("Failed to invoke method for button {}", methodString, e);
+            }
+        });
+        p.addMetadata("visualizer", b.annotationType().getDeclaredAnnotation(Option.class).display());
+        p.addMetadata("text", strv(b.text()));
+        p.addMetadata("icon", strv(b.icon()));
+        p.addMetadata("category", b.category());
+        p.addMetadata("subcategory", b.subcategory());
+        if (primary) p.addMetadata("primary", true);
+        builder.put(p);
+    }
+
+    @Override
+    protected void handleInnerClass(@NotNull Class<?> c, @NotNull Object src, int depth, @NotNull Tree builder) {
+        Accordion a = c.getDeclaredAnnotation(Accordion.class);
+        Submenu s = c.getDeclaredAnnotation(Submenu.class);
+        if (a == null && s == null) return;
+        if (a != null && s != null) {
+            throw new IllegalArgumentException(String.format("%s cannot be both an @Accordion and a @Submenu", c.getName()));
+        }
+        Tree t = Tree.tree(c.getSimpleName());
+        try {
+            t.addMetadata(MHUtils.getAnnotationValues(a != null ? a : s).getOrThrow());
+            if (s != null) t.addMetadata("submenu", true);
+            handle(t, MHUtils.instantiate(c, false).getOrThrow(), s != null ? depth : maxDepth);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        requireSinglePrimary(t);
+        builder.put(t);
+    }
+
+    private boolean hasOptionAnnotation(Field f) {
+        for (Annotation a : f.getDeclaredAnnotations()) {
+            if (a.annotationType().isAnnotationPresent(Option.class)) return true;
+        }
+        return false;
+    }
+
+    private void requireSinglePrimary(Tree tree) {
+        long primaries = tree.map.values().stream()
+            .filter(n -> n instanceof Property<?> && n.getMetadata("primary") != null)
+            .count();
+        if (primaries > 1) {
+            throw new IllegalArgumentException(String.format("'%s' has %d @Primary options but only one is allowed", tree.getID(), primaries));
+        }
+    }
+
+    protected void handleMetadata(Tree tree, @NotNull Property<?> property, @NotNull Annotation annotation, Option option, Field field) {
+        property.addMetadata("visualizer", option.display());
+        var metadata = MHUtils.getAnnotationValues(annotation).getOrNull();
+        if (metadata != null) {
+            var tempData = new HashMap<>(metadata);
+
+            metadata.forEach((key, value) -> {
+                var translationKey = key + "Translation";
+                if (metadata.containsKey(translationKey) && metadata.get(translationKey) instanceof Boolean && ((Boolean) metadata.get(translationKey)) == true) {
+                    tempData.put(key + "Key", value);
+                } else if (isIsDefaultTranslation(annotation, key, value)) {
+                    tempData.put(key + "Key", value);
+                }
+            });
+
+            if (tempData.remove("formatter") instanceof Class<?> formatter && formatter != ValueFormatter.class) {
+                tempData.put("formatter", MHUtils.instantiate(formatter, false).getOrThrow());
+            }
+            if (tempData.remove("bounds") instanceof Class<?> bounds && bounds != SliderBounds.class) {
+                tempData.put("bounds", MHUtils.instantiate(bounds, false).getOrThrow());
+            }
+
+            property.addMetadata(tempData);
+        }
+        DependsOn dependsOn = field.getDeclaredAnnotation(DependsOn.class);
+        if (dependsOn != null) property.addMetadata("conditions", dependsOn.value());
+
+        switch (annotation) {
+            case Slider slider -> {
+                float range = slider.max() - slider.min();
+                if (slider.step() > 0f && slider.step() > range) {
+                    throw new IllegalArgumentException(String.format("@Slider field '%s' has step (%s) larger than its range (%s to %s, range=%s). The slider will not function correctly.",
+                        field.getName(), slider.step(), slider.min(), slider.max(), range));
+                }
+            }
+            case RangeSlider slider -> {
+                float range = slider.max() - slider.min();
+                if (slider.step() > 0f && slider.step() > range) {
+                    throw new IllegalArgumentException(String.format("@RangeSlider field '%s' has step (%s) larger than its range (%s to %s, range=%s). The slider will not function correctly.",
+                        field.getName(), slider.step(), slider.min(), slider.max(), range));
+                }
+                validateRangeField(field, property, "@RangeSlider");
+            }
+            case RangeNumber ignored -> validateRangeField(field, property, "@RangeNumber");
+            case SliderList slider -> {
+                float range = slider.max() - slider.min();
+                if (slider.step() > 0f && slider.step() > range) {
+                    throw new IllegalArgumentException(String.format("@SliderList field '%s' has step (%s) larger than its range (%s to %s, range=%s). The sliders will not function correctly.",
+                        field.getName(), slider.step(), slider.min(), slider.max(), range));
+                }
+            }
+            case RangeSliderList slider -> {
+                float range = slider.max() - slider.min();
+                if (slider.step() > 0f && slider.step() > range) {
+                    throw new IllegalArgumentException(String.format("@RangeSliderList field '%s' has step (%s) larger than its range (%s to %s, range=%s). The sliders will not function correctly.",
+                        field.getName(), slider.step(), slider.min(), slider.max(), range));
+                }
+                validateRangeListField(field, property, "@RangeSliderList");
+            }
+            case RangeNumberList ignored -> validateRangeListField(field, property, "@RangeNumberList");
+            case Color color -> {
+                if (!color.alpha()) property.addMetadata("noAlpha", Unit.INSTANCE);
+                if (color.gradient()) property.addMetadata("gradient", Unit.INSTANCE);
+            }
+            case ColorList color -> {
+                if (!color.alpha()) property.addMetadata("noAlpha", Unit.INSTANCE);
+            }
+            case ItemList itemList -> validateIdListField(field, "@ItemList", itemList.maxEntries());
+            case EffectList effectList -> validateIdListField(field, "@EffectList", effectList.maxEntries());
+            default -> {}
+        }
+
+        PreviousNames previousName = field.getDeclaredAnnotation(PreviousNames.class);
+        if (previousName != null) {
+            String[] names = previousName.value();
+            int len = names.length;
+            HashMap<String, String> map = tree.getOrPutMetadata("migrationMap", () -> new HashMap<>(len));
+            for (String s : names) {
+                map.put(s, property.getID());
+            }
+        }
+    }
+
+    /** A single range needs exactly a start and end, anything else shows min to max and the first write resizes it */
+    private void validateRangeField(Field field, Property<?> property, String annotationName) {
+        int size = rangeFieldSize(field, property, annotationName);
+        if (size >= 0 && size != 2) {
+            throw new IllegalArgumentException(String.format(
+                "%s field '%s' holds %d values but needs exactly a start and an end.",
+                annotationName, field.getName(), size
+            ));
+        }
+    }
+
+    private void validateRangeListField(Field field, Property<?> property, String annotationName) {
+        int size = rangeFieldSize(field, property, annotationName);
+        if (size >= 0 && size % 2 != 0) {
+            throw new IllegalArgumentException(String.format(
+                "%s field '%s' holds %d values but needs a start and end for every range, so an even count.",
+                annotationName, field.getName(), size
+            ));
+        }
+    }
+
+    /** The number of values a range field holds or -1 while it is null */
+    private int rangeFieldSize(Field field, Property<?> property, String annotationName) {
+        Object value = property.get();
+        if (value == null) return -1;
+        if (value.getClass().isArray()) return Array.getLength(value);
+        if (value instanceof Collection<?> c) return c.size();
+        throw new IllegalArgumentException(String.format(
+            "%s field '%s' must be a numeric array or List, but was %s.",
+            annotationName, field.getName(), field.getGenericType().getTypeName()
+        ));
+    }
+
+    private void validateIdListField(Field field, String annotation, int maxEntries) {
+        Class<?> type = field.getType();
+        boolean stringArray = type.isArray() && type.getComponentType() == String.class;
+        boolean stringList = List.class.isAssignableFrom(type) && hasStringListElements(field.getGenericType());
+        if (!stringArray && !stringList) {
+            throw new IllegalArgumentException(String.format(
+                "%s field '%s' must be a String[] or List<String>, but was %s.",
+                annotation, field.getName(), field.getGenericType().getTypeName()
+            ));
+        }
+        if (maxEntries < 0) {
+            throw new IllegalArgumentException(String.format(
+                "%s field '%s' has a negative maxEntries value (%s).",
+                annotation, field.getName(), maxEntries
+            ));
+        }
+    }
+
+    private boolean hasStringListElements(Type type) {
+        if (!(type instanceof ParameterizedType parameterized)) return false;
+        Type[] arguments = parameterized.getActualTypeArguments();
+        return arguments.length == 1 && arguments[0] == String.class;
+    }
+
+    private boolean isIsDefaultTranslation(@NonNull Annotation annotation, String key, Object value) {
+        try {
+            var method = annotation.annotationType().getMethod(key);
+            if (method.isAnnotationPresent(TranslatedDefault.class)){
+                var translated = method.getAnnotation(TranslatedDefault.class);
+                if (translated != null) {
+                    return translated.value().equals(value);
+                }
+            }
+        } catch (NoSuchMethodException ignored) {}
+        return false;
+    }
+
+}

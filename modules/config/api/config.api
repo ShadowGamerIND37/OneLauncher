@@ -1,0 +1,271 @@
+public final class org/tg/tgoneconfig/api/config/v1/MetaKey {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Class;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class org/tg/tgoneconfig/api/config/v1/MetaKeys {
+	public static final field CATEGORY Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field COLLAPSED Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field DESCRIPTION Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field FULL_WIDTH Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field HIDDEN Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field HIDE_LABEL Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field ICON Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field INSTANCE Lorg/tg/tgoneconfig/api/config/v1/MetaKeys;
+	public static final field LABELS Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field MAX Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field MIN Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field OPTIONS Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field ORDER Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field STEP Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field SUBCATEGORY Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field TITLE Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field UNIT Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+	public static final field VISUALIZER Lorg/tg/tgoneconfig/api/config/v1/MetaKey;
+}
+
+public final class org/tg/tgoneconfig/api/config/v1/MetaKeysKt {
+	public static final field ENABLE_TOGGLE_KEY Ljava/lang/String;
+	public static final field NO_MASTER_SWITCH_KEY Ljava/lang/String;
+	public static final fun get (Lorg/tg/tgoneconfig/api/config/v1/Node;Lorg/tg/tgoneconfig/api/config/v1/MetaKey;)Ljava/lang/Object;
+	public static final fun getEnableToggle (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun set (Lorg/tg/tgoneconfig/api/config/v1/Node;Lorg/tg/tgoneconfig/api/config/v1/MetaKey;Ljava/lang/Object;)V
+}
+
+public abstract class org/tg/tgoneconfig/api/config/v1/Node {
+	protected static final field LOGGER Lorg/apache/logging/log4j/Logger;
+	public field description Ljava/lang/Object;
+	public fun <init> (Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V
+	public final fun addMetadata (Ljava/lang/String;Ljava/lang/Object;)V
+	public final fun addMetadata (Ljava/util/Map;)V
+	protected final fun clearMetadata ()V
+	public final fun consumeMetadata (Ljava/lang/String;)Ljava/lang/Object;
+	public abstract fun deepEquals (Ljava/lang/Object;)Z
+	public fun getID ()Ljava/lang/String;
+	public final fun getMetadata ()Ljava/util/Map;
+	public final fun getMetadata (Ljava/lang/String;)Ljava/lang/Object;
+	public final fun getOrPutMetadata (Ljava/lang/String;Ljava/util/function/Supplier;)Ljava/lang/Object;
+	public fun getTitle ()Ljava/lang/Object;
+	public final fun hasMetadata ()Z
+	public final fun hashCode ()I
+	public fun overwrite (Lorg/tg/tgoneconfig/api/config/v1/Node;Z)V
+	public abstract fun overwrite (Lorg/tg/tgoneconfig/api/config/v1/Node;ZZLorg/tg/tgoneconfig/api/config/v1/Tree;)V
+	public final fun removeMetadata (Ljava/lang/String;)Z
+	public fun setID (Ljava/lang/String;)V
+	public fun setTitle (Ljava/lang/Object;)V
+	public static fun strv (Ljava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class org/tg/tgoneconfig/api/config/v1/Properties {
+	public static final field INSTANCE Lorg/tg/tgoneconfig/api/config/v1/Properties;
+	public static final fun dummy ()Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun dummy (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun dummy (Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun dummy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static synthetic fun dummy$default (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun field (Ljava/lang/String;Ljava/lang/String;Ljava/lang/reflect/Field;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun field (Ljava/lang/String;Ljava/lang/String;Ljava/lang/reflect/Field;Ljava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun field (Ljava/lang/String;Ljava/lang/reflect/Field;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun field (Ljava/lang/reflect/Field;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static synthetic fun field$default (Ljava/lang/String;Ljava/lang/String;Ljava/lang/reflect/Field;Ljava/lang/Object;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun functional (Ljava/util/function/Supplier;Ljava/util/function/Consumer;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun functional (Ljava/util/function/Supplier;Ljava/util/function/Consumer;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun functional (Ljava/util/function/Supplier;Ljava/util/function/Consumer;Ljava/lang/String;Ljava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun functional (Ljava/util/function/Supplier;Ljava/util/function/Consumer;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun functional (Ljava/util/function/Supplier;Ljava/util/function/Consumer;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Class;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static synthetic fun functional$default (Ljava/util/function/Supplier;Ljava/util/function/Consumer;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Class;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun simple ()Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun simple (Ljava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun simple (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun simple (Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun simple (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun simple (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static final fun simple (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Class;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public static synthetic fun simple$default (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Class;ILjava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+}
+
+public abstract class org/tg/tgoneconfig/api/config/v1/Property : org/tg/tgoneconfig/api/config/v1/Node, java/io/Serializable {
+	protected field callbacks Ljava/util/List;
+	public final field type Ljava/lang/Class;
+	protected fun <init> (Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Class;)V
+	public final fun addCallback (Ljava/util/Collection;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun addCallback (Ljava/util/function/Predicate;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun addCallback ([Ljava/util/function/Predicate;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun addDependent (Lorg/tg/tgoneconfig/api/config/v1/Property;)V
+	public final fun addDisplayCondition (Ljava/util/Collection;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun addDisplayCondition (Ljava/util/function/Supplier;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun addDisplayCondition (Lorg/tg/tgoneconfig/api/config/v1/Property;Z)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun addDisplayCondition ([Ljava/util/function/Supplier;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun addDisplayListener (Ljava/util/function/Consumer;)V
+	public final fun canDisplay ()Z
+	protected final fun clearCallbacks ()V
+	protected final fun clearDisplayConditions ()V
+	public fun deepEquals (Ljava/lang/Object;)Z
+	public final fun equals (Ljava/lang/Object;)Z
+	public abstract fun get ()Ljava/lang/Object;
+	public final fun getAs ()Ljava/lang/Object;
+	public final fun getDisplay ()Lorg/tg/tgoneconfig/api/config/v1/Property$Display;
+	public final fun isArray ()Z
+	public final fun isPrimitive ()Z
+	public fun onDisplayChange (Ljava/util/function/Consumer;)V
+	public fun overwrite (Lorg/tg/tgoneconfig/api/config/v1/Node;ZZLorg/tg/tgoneconfig/api/config/v1/Tree;)V
+	public static fun recast (Lorg/tg/tgoneconfig/api/config/v1/Property;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public final fun removeCallback (Ljava/util/function/Predicate;)Z
+	public final fun removeCallbackIf (Ljava/util/function/Predicate;)Z
+	public final fun removeDependent (Lorg/tg/tgoneconfig/api/config/v1/Property;)Z
+	public final fun removeDisplayConditionIf (Ljava/util/function/Predicate;)Z
+	public final fun removeDisplayListener (Ljava/util/function/Consumer;)Z
+	public fun revaluateDisplay ()V
+	public final fun set (Ljava/lang/Object;)Z
+	protected abstract fun set0 (Ljava/lang/Object;)V
+	public final fun setAs (Ljava/lang/Object;)Z
+	public final fun setAsReferential (Ljava/lang/Object;)Z
+	public final fun setAsSilently (Ljava/lang/Object;)V
+	public fun setReferential (Ljava/lang/Object;)Z
+	public final fun toString ()Ljava/lang/String;
+}
+
+public final class org/tg/tgoneconfig/api/config/v1/Property$Display : java/lang/Enum {
+	public static final field DISABLED Lorg/tg/tgoneconfig/api/config/v1/Property$Display;
+	public static final field HIDDEN Lorg/tg/tgoneconfig/api/config/v1/Property$Display;
+	public static final field SHOWN Lorg/tg/tgoneconfig/api/config/v1/Property$Display;
+	public static fun valueOf (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property$Display;
+	public static fun values ()[Lorg/tg/tgoneconfig/api/config/v1/Property$Display;
+}
+
+public final class org/tg/tgoneconfig/api/config/v1/Property$KtProperty : org/tg/tgoneconfig/api/config/v1/Property {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/reflect/KMutableProperty0;Ljava/lang/Class;)V
+	public fun get ()Ljava/lang/Object;
+}
+
+public class org/tg/tgoneconfig/api/config/v1/Tree : org/tg/tgoneconfig/api/config/v1/Node, java/io/Serializable {
+	public final field map Ljava/util/Map;
+	public fun <init> (Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;Ljava/util/Map;)V
+	public static fun beginFailureCollection ()V
+	public static fun collectFailures (Ljava/lang/Runnable;)Ljava/util/List;
+	public fun contentToString ()Ljava/lang/String;
+	public fun deepEquals (Ljava/lang/Object;)Z
+	public static fun endFailureCollection ()Ljava/util/List;
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun evaluatePath (Lorg/tg/tgoneconfig/api/config/v1/Tree;Lorg/tg/tgoneconfig/api/config/v1/Node;)Ljava/lang/String;
+	public fun get (Ljava/lang/Iterable;)Lorg/tg/tgoneconfig/api/config/v1/Node;
+	public fun get (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Node;
+	public fun get ([Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Node;
+	public fun getChild (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun getChild ([Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun getOrPutChild (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun getProp (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public fun getProp ([Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Property;
+	public fun onAll (Ljava/util/function/BiConsumer;)V
+	public fun onAllProps (Ljava/util/function/BiConsumer;)V
+	public fun overwrite (Lorg/tg/tgoneconfig/api/config/v1/Node;ZZLorg/tg/tgoneconfig/api/config/v1/Tree;)V
+	public fun overwrite (Lorg/tg/tgoneconfig/api/config/v1/Tree;Ljava/util/function/Function;ZZLorg/tg/tgoneconfig/api/config/v1/Tree;)V
+	public fun put (Lorg/tg/tgoneconfig/api/config/v1/Node;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun put ([Lorg/tg/tgoneconfig/api/config/v1/Node;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun remove (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Node;
+	public fun set (Ljava/lang/String;Lorg/tg/tgoneconfig/api/config/v1/Node;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun toString ()Ljava/lang/String;
+	public static fun tree ()Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public static fun tree (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public static fun tree (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun unpack ()Ljava/util/Map;
+}
+
+public abstract class org/tg/tgoneconfig/api/config/v1/backend/Backend {
+	public static final field CUSTOM_SAVE_DIRTY_METADATA Ljava/lang/String;
+	public static final field CUSTOM_SAVE_TRACKED_METADATA Ljava/lang/String;
+	protected static final field LOGGER Lorg/apache/logging/log4j/Logger;
+	public static final field UI_ONLY_METADATA Ljava/lang/String;
+	public static final field UI_PLACEHOLDER_METADATA Ljava/lang/String;
+	public fun <init> ()V
+	public final fun corrupt (Ljava/lang/String;)Z
+	protected abstract fun corrupt0 (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Z
+	public final fun delete (Ljava/lang/String;)Z
+	protected abstract fun delete0 (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Z
+	public fun exists (Ljava/lang/String;)Z
+	public final fun get (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public final fun getTrees ()Ljava/util/Collection;
+	public final fun lastSaveFailure ()Ljava/lang/Exception;
+	public final fun load (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public final fun load (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Z
+	protected abstract fun load0 (Ljava/lang/String;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	protected fun putSafe (Lorg/tg/tgoneconfig/api/config/v1/Tree;)V
+	public final fun register (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Lorg/tg/tgoneconfig/api/config/v1/backend/Backend$RegistrationResult;
+	protected fun requestUpdate (Ljava/lang/String;)V
+	protected fun requestUpdate (Ljava/lang/String;Ljava/util/function/BooleanSupplier;)V
+	public final fun save (Ljava/lang/String;)Z
+	public final fun save (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Z
+	protected abstract fun save0 (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Z
+	public final fun saveAll ()V
+	public final fun saveAll (Ljava/lang/String;)V
+}
+
+public final class org/tg/tgoneconfig/api/config/v1/backend/Backend$RegistrationResult {
+	public static final field LOADED B
+	public static final field MERGED B
+	public static final field NEW B
+	public final field state B
+	public final field tree Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public fun <init> (Lorg/tg/tgoneconfig/api/config/v1/Tree;B)V
+	public fun get ()Lorg/tg/tgoneconfig/api/config/v1/Tree;
+}
+
+public abstract interface class org/tg/tgoneconfig/api/config/v1/collect/PropertyCollector {
+	public abstract fun collect (Ljava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+}
+
+public class org/tg/tgoneconfig/api/config/v1/exceptions/SerializationException : java/lang/RuntimeException {
+	public fun <init> (Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+}
+
+public class org/tg/tgoneconfig/api/config/v1/serialize/ObjectSerializer {
+	public static final field FIELD_SKIP_MODIFIERS I
+	public static final field INSTANCE Lorg/tg/tgoneconfig/api/config/v1/serialize/ObjectSerializer;
+	public fun deserialize (Ljava/util/Map;)Ljava/lang/Object;
+	public static fun fieldStream (Ljava/lang/Class;)Ljava/util/stream/Stream;
+	public fun getAdapter (Ljava/lang/Class;)Lorg/tg/tgoneconfig/api/config/v1/serialize/adapter/Adapter;
+	public static fun getAllFields (Ljava/lang/Class;)[Ljava/lang/reflect/Field;
+	public static fun isImmutable (Ljava/lang/Class;)Z
+	public static fun isSerializable (Ljava/lang/Object;)Z
+	public static fun overwrite (Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+	public fun registerTypeAdapter (Lorg/tg/tgoneconfig/api/config/v1/serialize/adapter/Adapter;)V
+	public fun registerTypeAdapter ([Lorg/tg/tgoneconfig/api/config/v1/serialize/adapter/Adapter;)V
+	public fun serialize (Ljava/lang/Object;)Ljava/lang/Object;
+	public fun serialize (Ljava/lang/Object;Z)Ljava/lang/Object;
+	public fun serialize (Ljava/lang/Object;ZZ)Ljava/lang/Object;
+}
+
+public abstract interface class org/tg/tgoneconfig/api/config/v1/serialize/Serializer {
+	public abstract fun deserialize (Ljava/lang/Object;)Lorg/tg/tgoneconfig/api/config/v1/Tree;
+	public abstract fun serialize (Lorg/tg/tgoneconfig/api/config/v1/Tree;)Ljava/lang/Object;
+}
+
+public abstract class org/tg/tgoneconfig/api/config/v1/serialize/adapter/Adapter {
+	public fun <init> ()V
+	public abstract fun deserialize (Ljava/lang/Object;)Ljava/lang/Object;
+	public final fun equals (Ljava/lang/Object;)Z
+	public abstract fun getOutputClass ()Ljava/lang/Class;
+	public abstract fun getTargetClass ()Ljava/lang/Class;
+	public final fun hashCode ()I
+	public abstract fun serialize (Ljava/lang/Object;)Ljava/lang/Object;
+}
+
+public abstract class org/tg/tgoneconfig/api/config/v1/serialize/adapter/ComplexAdapter : org/tg/tgoneconfig/api/config/v1/serialize/adapter/Adapter {
+	public fun <init> ()V
+	public final fun getOutputClass ()Ljava/lang/Class;
+}
+
+public class org/tg/tgoneconfig/api/config/v1/serialize/adapter/impl/ColorAdapter : org/tg/tgoneconfig/api/config/v1/serialize/adapter/Adapter {
+	public fun <init> ()V
+	public synthetic fun deserialize (Ljava/lang/Object;)Ljava/lang/Object;
+	public fun deserialize ([I)Ljava/awt/Color;
+	public fun getOutputClass ()Ljava/lang/Class;
+	public fun getTargetClass ()Ljava/lang/Class;
+	public fun serialize (Ljava/awt/Color;)[I
+	public synthetic fun serialize (Ljava/lang/Object;)Ljava/lang/Object;
+}
+

@@ -1,0 +1,253 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.utils.v1;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
+import org.tg.tgoneconfig.api.platform.v1.DesktopHelper;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.zip.GZIPInputStream;
+
+/**
+ * Utility class for accessing the internet
+ */
+public final class NetworkUtils {
+    private static final Logger LOGGER = LogManager.getLogger("TG OneConfig/Network");
+    public static final String DEF_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36";
+
+    private NetworkUtils() {
+    }
+
+    /**
+     * Gets the contents of a URL as a String
+     *
+     * @param url       The URL to read
+     * @param userAgent The user agent to use
+     * @param timeout   The timeout in milliseconds
+     * @param useCaches Whether to use caches
+     * @return The contents of the URL or {@code null} if the request failed
+     */
+    @Nullable
+    public static String getString(String url, String userAgent, int timeout, boolean useCaches) {
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader input = new BufferedReader(new InputStreamReader(setupConnection(url, userAgent, timeout, useCaches), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = input.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to getString from {}", url, e);
+            return null;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Gets the contents of a URL as a String
+     *
+     * @param url The URL to read
+     * @return The contents of the URL or {@code null} if the request failed
+     * @see NetworkUtils#getString(String, String, int, boolean)
+     */
+    @Nullable
+    public static String getString(String url) {
+        return getString(url, DEF_AGENT, 5000, false);
+    }
+
+    @Nullable
+    @ApiStatus.Experimental
+    @SuppressWarnings("deprecation")
+    public static String post(String url, byte[] body, String contentType, Map<String, String> headers, int timeoutMillis) {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestMethod("POST");
+            connection.setUseCaches(false);
+            connection.setDoOutput(true);
+            connection.setReadTimeout(timeoutMillis);
+            connection.setConnectTimeout(timeoutMillis);
+            connection.setRequestProperty("User-Agent", DEF_AGENT);
+            connection.setRequestProperty("Content-Type", contentType);
+            for (Map.Entry<String, String> header : headers.entrySet()) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
+            }
+            connection.setFixedLengthStreamingMode(body.length);
+            try (OutputStream out = connection.getOutputStream()) {
+                out.write(body);
+            }
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                InputStream error = connection.getErrorStream();
+                String message = error == null ? "" : readBody(connection, error);
+                LOGGER.error("POST to {} failed with HTTP {}: {}", url, status, message);
+                return null;
+            }
+            return readBody(connection, connection.getInputStream());
+        } catch (Exception e) {
+            LOGGER.error("Failed to POST to {}", url, e);
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    @Nullable
+    @ApiStatus.Experimental
+    public static String post(String url, byte[] body, String contentType, Map<String, String> headers) {
+        return post(url, body, contentType, headers, 10000);
+    }
+
+    @Nullable
+    @ApiStatus.Experimental
+    public static String post(String url, byte[] body, String contentType) {
+        return post(url, body, contentType, Collections.emptyMap(), 10000);
+    }
+
+    @Nullable
+    @ApiStatus.Experimental
+    public static String postJson(String url, String json, Map<String, String> headers, int timeoutMillis) {
+        return post(url, json.getBytes(StandardCharsets.UTF_8), "application/json; charset=utf-8", headers, timeoutMillis);
+    }
+
+    @Nullable
+    @ApiStatus.Experimental
+    public static String postJson(String url, String json, Map<String, String> headers) {
+        return postJson(url, json, headers, 10000);
+    }
+
+    @Nullable
+    @ApiStatus.Experimental
+    public static String postJson(String url, String json) {
+        return postJson(url, json, Collections.emptyMap(), 10000);
+    }
+
+    @ApiStatus.Experimental
+    public static CompletableFuture<@Nullable String> postAsync(String url, byte[] body, String contentType, Map<String, String> headers, int timeoutMillis) {
+        return CompletableFuture.supplyAsync(() -> post(url, body, contentType, headers, timeoutMillis), Multithreading.getExecutor());
+    }
+
+    @ApiStatus.Experimental
+    public static CompletableFuture<@Nullable String> postAsync(String url, byte[] body, String contentType, Map<String, String> headers) {
+        return postAsync(url, body, contentType, headers, 10000);
+    }
+
+    @ApiStatus.Experimental
+    public static CompletableFuture<@Nullable String> postAsync(String url, byte[] body, String contentType) {
+        return postAsync(url, body, contentType, Collections.emptyMap(), 10000);
+    }
+
+    private static String readBody(HttpURLConnection connection, InputStream raw) throws IOException {
+        try (InputStream stream = "gzip".equalsIgnoreCase(connection.getContentEncoding()) ? new GZIPInputStream(raw) : raw) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = stream.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+        }
+    }
+
+    /**
+     * Downloads a path from a URL
+     *
+     * @param url       The URL to download from
+     * @param path      The path to download to
+     * @param userAgent The user agent to use
+     * @param timeout   The timeout in milliseconds
+     * @param useCaches Whether to use caches
+     * @return Whether the download was successful
+     */
+    public static boolean downloadFile(String url, Path path, String userAgent, int timeout, boolean useCaches) {
+        try (var stream = setupConnection(url, userAgent, timeout, useCaches)) {
+            Files.copy(stream, path, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            LOGGER.error("Failed to download file from {}", url, e);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Downloads a file from a URL
+     *
+     * @param url  The URL to download from
+     * @param path The file to download to
+     * @return Whether the download was successful
+     * @see NetworkUtils#downloadFile(String, Path, String, int, boolean)
+     */
+    public static boolean downloadFile(String url, Path path) {
+        return downloadFile(url, path, DEF_AGENT, 5000, false);
+    }
+
+    /**
+     * Launches a URL in the default browser
+     *
+     * @param uri The URI to launch
+     * @see java.awt.Desktop#browse(URI)
+     */
+    public static void browseLink(String uri) {
+        DesktopHelper.browse(URI.create(uri));
+    }
+
+    public static InputStream setupConnection(String url) throws IOException {
+        return setupConnection(url, DEF_AGENT, 5000, false);
+    }
+
+    @SuppressWarnings("deprecation") // the replacement goes through URI, which rejects URLs that callers can currently pass
+    public static InputStream setupConnection(String url, String userAgent, int timeout, boolean useCaches) throws IOException {
+        HttpURLConnection connection = ((HttpURLConnection) new URL(url).openConnection());
+        connection.setRequestMethod("GET");
+        connection.setUseCaches(useCaches);
+        connection.addRequestProperty("User-Agent", userAgent);
+        connection.setReadTimeout(timeout);
+        connection.setConnectTimeout(timeout);
+        connection.setDoOutput(true);
+        InputStream stream = connection.getInputStream();
+        return "gzip".equalsIgnoreCase(connection.getContentEncoding()) ? new GZIPInputStream(stream) : stream;
+    }
+}

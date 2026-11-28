@@ -1,0 +1,227 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.api.config.v1
+
+import androidx.compose.runtime.Composable
+
+/**
+ * Visualizers are procedures that take a [Property] and create a composable to represent it
+ *
+ * To create a custom visualizer implement this interface or pass a lambda
+ * ```kotlin
+ * val myVisualizer = Visualizer { prop -> Text(prop.get().toString()) }
+ * ```
+ *
+ * The built-in visualizer token classes such as [SwitchVisualizer] delegate their rendering
+ * to implementations registered via [register] which are provided by the UI layer
+ *
+ * There is no distinction between built-in and third-party visualizers because both use the same API
+ */
+@Suppress("UNCHECKED_CAST")
+public fun interface Visualizer {
+
+    @Composable
+    public fun visualize(prop: Property<*>)
+
+    public class ButtonVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[ButtonVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class ColorVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[ColorVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class DropdownVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[DropdownVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class KeybindVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[KeybindVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class InfoVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[InfoVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class DraggableListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[DraggableListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class MultiSelectDropdownVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[MultiSelectDropdownVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class NumberVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[NumberVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class RadioVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[RadioVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class SliderVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[SliderVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * A slider with two thumbs backed by a single property holding a start and end pair as a two-element
+     * numeric array or list
+     *
+     * Writes both ends at once keeping start below end
+     */
+    public class RangeSliderVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[RangeSliderVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * A start and end pair edited with two number inputs and no track, stored the same way as [RangeSliderVisualizer]
+     */
+    public class RangeNumberVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[RangeNumberVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * A user-editable list of [RangeSliderVisualizer] rows held in one property as a flat numeric array or list
+     *
+     * Each range takes two consecutive values so `[0, 10, 20, 30]` holds the ranges 0-10 and 20-30
+     */
+    public class RangeSliderListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[RangeSliderListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * A user-editable list of [RangeNumberVisualizer] rows stored the same way as [RangeSliderListVisualizer]
+     */
+    public class RangeNumberListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[RangeNumberListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * A slider with a third "inherited" state for overrides that fall back to a broader setting when unset
+     *
+     * The property stores a sentinel while inheriting which is either `null` or the value of the `inheritSentinel`
+     * metadata
+     *
+     * The inherited value itself comes from the `inheritedValue` metadata and is either a number or a
+     * `java.util.function.Supplier` of one so it can track a live global
+     *
+     * Prefer a numeric sentinel over `null` where the backing type allows it because [CompatSnapshots] cannot
+     * record a null
+     *
+     * On a foreign-backed config a null-sentinel property must opt out of snapshots with
+     * [CompatSnapshots.NO_SNAPSHOT_META] or an older value will resurrect itself and undo "inherit"
+     */
+    public class InheritableSliderVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[InheritableSliderVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * An ordered chain of numbers held in one property as a numeric array or list
+     *
+     * Entries can be reordered and edited in place and removed or appended
+     *
+     * `lockedLeading` metadata fixes that many entries at the front and `maxEntries` caps the length
+     *
+     * `entryLabel`/`nextValue` are both `java.util.function.Function`s that control how an entry reads and what "add" appends
+     */
+    public class NumberChainVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[NumberChainVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class SwitchVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[SwitchVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class CheckboxVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[CheckboxVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class TextVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[TextVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class TextListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[TextListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * A searchable Minecraft item selector backed by a `String[]` or `List<String>` of
+     * namespaced registry IDs
+     *
+     * A `maxEntries` metadata value of one makes it a single selector
+     */
+    public class ItemListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[ItemListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    /**
+     * A searchable status effect selector backed by a `String[]` or `List<String>` of
+     * namespaced registry IDs
+     *
+     * A `maxEntries` metadata value of one makes it a single selector
+     */
+    public class EffectListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[EffectListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class FileVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[FileVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class FileListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[FileListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class ColorListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[ColorListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class NumberListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[NumberListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public class SliderListVisualizer : Visualizer {
+        @Composable override fun visualize(prop: Property<*>) { Visualizer[SliderListVisualizer::class.java]?.visualize(prop) }
+    }
+
+    public companion object {
+        private val registry = HashMap<Class<out Visualizer>, Visualizer>()
+
+        /**
+         * Register a rendering implementation for a built-in [Visualizer] token class
+         *
+         * Called by the UI layer on startup to wire up the built-in visualizer types
+         *
+         * This will overwrite the existing visualizer if there is one already registered
+         */
+        public fun register(cls: Class<out Visualizer>, impl: Visualizer) {
+            registry[cls] = impl
+        }
+
+        public operator fun get(cls: Class<out Visualizer>): Visualizer? = registry[cls]
+    }
+}

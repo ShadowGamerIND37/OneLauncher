@@ -1,0 +1,48 @@
+package org.tg.tgoneconfig.api.ui.v1.internal
+
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
+import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
+import org.tg.tgoneconfig.api.ui.v1.InternalTGOneConfigUiApi
+
+@ExperimentalTGOneConfigUiApi
+@InternalTGOneConfigUiApi
+public interface TGOneConfigUIGlassBridge {
+    @Composable
+    public fun glassHover(modifier: Modifier, shape: Shape, pull: Dp): Modifier
+
+    @Composable
+    public fun liquidGlass(modifier: Modifier, shape: Shape): Modifier
+
+    public fun animatedFrame(modifier: Modifier, shape: Shape, fill: () -> Color, accentAlpha: () -> Float, border: () -> Color): Modifier
+
+    @Composable
+    public fun liquidGlass(modifier: Modifier, shape: Shape, frosted: Boolean): Modifier
+
+    @Composable
+    public fun backdropBlur(modifier: Modifier, shape: Shape): Modifier
+
+    @Composable
+    public fun hoverGlow(modifier: Modifier, shape: Shape): Modifier
+
+    @Composable
+    public fun liquidGlass(modifier: Modifier, shape: Shape, frosted: Boolean, alpha: () -> Float): Modifier
+
+    public fun wheelScroll(modifier: Modifier, state: ScrollableState, orientation: Orientation): Modifier
+
+    @Composable
+    public fun ProvideThemeVariant(dark: Boolean, keepAccent: Boolean, content: @Composable () -> Unit)
+}
+
+@ExperimentalTGOneConfigUiApi
+private val loadedGlassBridge: TGOneConfigUIGlassBridge? by lazy {
+    loadBridge(TGOneConfigUIGlassBridge::class.java, "kit controls draw without the shell's glass")
+}
+
+@ExperimentalTGOneConfigUiApi
+internal fun glassBridge(): TGOneConfigUIGlassBridge? = loadedGlassBridge

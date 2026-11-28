@@ -1,0 +1,100 @@
+package org.tg.tgoneconfig.internal.ui.components.settings
+
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.tg.tgoneconfig.api.ui.v1.api.TinyFdApi
+import org.tg.tgoneconfig.api.ui.v1.components.ControlSize
+import org.tg.tgoneconfig.api.ui.v1.components.IconButton
+import org.tg.tgoneconfig.api.ui.v1.components.TextField
+import org.tg.tgoneconfig.internal.ui.api.settings.FileListOptionData
+import org.tg.tgoneconfig.internal.ui.components.iconButtonLabel
+import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
+
+@Composable
+fun FileListOption(data: FileListOptionData) {
+    val scope = rememberCoroutineScope()
+
+    val state = rememberListEntries(data.prop, { data.strings() }) { values ->
+        data.setElements(values.filter { it.isNotBlank() })
+    }
+
+    // clicks while a dialog is open are ignored rather than queueing up another one
+    var dialogOpen by remember { mutableStateOf(false) }
+
+    fun openDialog(id: Int, current: String) {
+        if (dialogOpen) return
+        dialogOpen = true
+        scope.launch {
+            try {
+                val selected = withContext(Dispatchers.IO) {
+                    val tinyFd = TinyFdApi.getInstance()
+                    val start = current.takeIf { it.isNotBlank() }
+                    if (data.directory) {
+                        tinyFd.openFolderSelector(data.dialogTitle, start)
+                    } else {
+                        tinyFd.openFileSelector(data.dialogTitle, start, data.filterPatterns, data.filterName)
+                    }
+                } ?: return@launch // cancelled so leave the existing entry untouched
+                state.update(id, selected.toString())
+            } finally {
+                dialogOpen = false
+            }
+        }
+    }
+
+    ListOptionContainer(
+        state = state,
+        reorderable = data.reorderable,
+        maxEntries = data.maxEntries,
+        addText = data.addText,
+        onAdd = { state.add("") },
+    ) { entry, ctx ->
+        PathField(
+            value = entry.value,
+            placeholder = data.placeholder,
+            ctx = ctx,
+            onValueChange = { state.update(entry.id, it) },
+        )
+        IconButton(
+            "folder",
+            iconButtonLabel("folder"),
+            { openDialog(entry.id, entry.value) },
+            Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
+            size = ControlSize.Compact,
+            tooltip = null,
+            tint = ctx.contentColor,
+        )
+    }
+}
+
+@Composable
+private fun RowScope.PathField(
+    value: String,
+    placeholder: String?,
+    ctx: ListRowContext,
+    onValueChange: (String) -> Unit,
+) {
+    TextField(
+        value,
+        onValueChange,
+        Modifier.weight(1f),
+        placeholder = placeholder,
+        framed = false,
+        fontSize = LocalTheme.current.typography.label.fontSize,
+        interactionSource = ctx.fieldInteraction,
+        visualTransformation = rememberPathTransformation(),
+    )
+}

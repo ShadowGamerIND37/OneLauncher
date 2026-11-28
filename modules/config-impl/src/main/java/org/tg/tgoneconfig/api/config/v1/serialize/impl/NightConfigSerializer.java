@@ -1,0 +1,177 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.api.config.v1.serialize.impl;
+
+import com.electronwill.nightconfig.core.*;
+import com.electronwill.nightconfig.core.io.ConfigParser;
+import com.electronwill.nightconfig.core.io.ConfigWriter;
+import com.electronwill.nightconfig.json.JsonFormat;
+import com.electronwill.nightconfig.toml.TomlParser;
+import com.electronwill.nightconfig.toml.TomlWriter;
+import com.electronwill.nightconfig.yaml.YamlFormat;
+import com.electronwill.nightconfig.yaml.YamlParser;
+import com.electronwill.nightconfig.yaml.YamlWriter;
+import org.jetbrains.annotations.NotNull;
+import org.tg.tgoneconfig.api.config.v1.Node;
+import org.tg.tgoneconfig.api.config.v1.Properties;
+import org.tg.tgoneconfig.api.config.v1.Property;
+import org.tg.tgoneconfig.api.config.v1.Tree;
+import org.tg.tgoneconfig.api.config.v1.serialize.ObjectSerializer;
+import org.tg.tgoneconfig.utils.v1.WrappingUtils;
+import org.yaml.snakeyaml.DumperOptions;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.tg.tgoneconfig.api.config.v1.Tree.tree;
+
+public class NightConfigSerializer implements FileSerializer<String> {
+    public static final FileSerializer<String> TOML = new NightConfigSerializer(new TomlWriter(), new TomlParser(), ".toml");       // 90 KB
+    public static final FileSerializer<String> JSON = new NightConfigSerializer(JsonFormat.fancyInstance().createWriter(), JsonFormat.fancyInstance().createParser(), ".json");  // 55KB
+    private static final DumperOptions YAML_DUMPER_OPTIONS = new DumperOptions();
+
+    static {
+        YAML_DUMPER_OPTIONS.setPrettyFlow(true);
+    }
+
+    public static final FileSerializer<String> YAML = new NightConfigSerializer(new YamlWriter(YAML_DUMPER_OPTIONS), new YamlParser(YamlFormat.defaultInstance()), ".yaml", ".yml");       // 1.2MB
+    public static final FileSerializer<?>[] ALL = {TOML, JSON, YAML};
+
+    final ConfigWriter writer;
+    final ConfigParser<?> reader;
+    final String[] formats;
+
+    public NightConfigSerializer(ConfigWriter writer, ConfigParser<?> reader, String... formats) {
+        this.writer = writer;
+        this.reader = reader;
+        this.formats = formats;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void write(Tree c, Config cfg) {
+        for (Map.Entry<String, Node> e : c.map.entrySet()) {
+            Node n = e.getValue();
+            if (n instanceof Property<?>) {
+                Property<?> p = (Property<?>) n;
+                if (p.type == Void.class) continue;
+                Object o = p.get();
+                if (o == null) continue;
+                if (!WrappingUtils.isSimpleObject(o) && ObjectSerializer.isSerializable(o)) {
+                    Object out = ObjectSerializer.INSTANCE.serialize(o, true);
+                    if (out instanceof Map) cfg.add(n.getID(), mapsToConfigs((Map<String, Object>) out));
+                    else cfg.add(n.getID(), out);
+                } else cfg.add(n.getID(), o);
+            } else {
+                Tree in = (Tree) n;
+                Config child = new BackedConfig(new HashMap<>(in.map.size(), 1f));
+                write(in, child);
+                cfg.add(n.getID(), child);
+            }
+        }
+    }
+
+    private static Tree read(Config cfg, Tree b) {
+        for (Config.Entry e : cfg.entrySet()) {
+            Object v = e.getRawValue();
+            if (v instanceof Config) {
+                Config c = (Config) v;
+                if (c.get("class") != null) {
+                    b.put(Properties.simple(
+                            e.getKey(), null, null,
+                            ObjectSerializer.INSTANCE.deserialize(configsToMaps(c))
+                    ));
+                } else b.put(read(c, tree(e.getKey())));
+            } else {
+                b.put(Properties.simple(e.getKey(), null, null, v == NullObject.NULL_OBJECT ? null : v));
+            }
+        }
+        return b;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Config mapsToConfigs(Map<String, Object> map) {
+        Config c = new BackedConfig(map);
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            if (e.getValue() instanceof Map) {
+                Config cc = mapsToConfigs((Map<String, Object>) e.getValue());
+                c.set(e.getKey(), cc);
+            } else {
+                c.add(e.getKey(), e.getValue());
+            }
+        }
+        return c;
+    }
+
+    private static Map<String, Object> configsToMaps(Config cfg) {
+        Map<String, Object> out = new HashMap<>(cfg.size(), 1f);
+        for (Config.Entry e : cfg.entrySet()) {
+            Object v = e.getRawValue();
+            out.put(e.getKey(), v instanceof Config ? configsToMaps((Config) v) : v);
+        }
+        return out;
+    }
+
+    @Override
+    public String[] getExtensions() {
+        return formats;
+    }
+
+    @Override
+    public @NotNull String serialize(@NotNull Tree c) {
+        Config cfg = Config.inMemory();
+        write(c, cfg);
+        return writer.writeToString(cfg);
+    }
+
+    @Override
+    public @NotNull Tree deserialize(@NotNull String src) {
+        if (src.isEmpty()) throw new IllegalArgumentException("cannot deserialize empty string");
+        Config cfg = reader.parse(src);
+        return read(cfg, tree());
+    }
+
+    private static class BackedConfig extends AbstractConfig {
+        BackedConfig(Map<String, Object> map) {
+            super(map);
+        }
+
+        @Override
+        public AbstractConfig clone() {
+            return new BackedConfig(valueMap());
+        }
+
+        @Override
+        public Config createSubConfig() {
+            return new BackedConfig(new HashMap<>());
+        }
+
+        @Override
+        public ConfigFormat<?> configFormat() {
+            return InMemoryFormat.withUniversalSupport();
+        }
+    }
+}

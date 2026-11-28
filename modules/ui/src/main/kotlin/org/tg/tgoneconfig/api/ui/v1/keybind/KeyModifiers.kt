@@ -1,0 +1,37 @@
+package org.tg.tgoneconfig.api.ui.v1.keybind
+
+import org.tg.tgoneconfig.api.platform.v1.Platform
+import kotlin.experimental.and
+
+public object KeyModifiers {
+    public const val NONE: Byte = 0
+    public const val SHIFT: Byte = 1
+    public const val CTRL: Byte = 2
+    public const val ALT: Byte = 4
+    public const val META: Byte = 8
+
+    /**
+     * The modifier flag a key code stands for, or [NONE] when it is not a modifier
+     *
+     * Codes are platform input codes (GLFW key syms up to 26.2, SDL scancodes from 26.3) so they are
+     * resolved through the platform rather than hardcoded
+     */
+    @JvmStatic
+    public fun of(key: Int): Byte = BY_KEY[key] ?: NONE
+
+    public fun has(mask: Byte, flag: Byte): Boolean = (mask and flag) == flag
+
+    private val BY_KEY: Map<Int, Byte> by lazy {
+        val keys = Platform.compatibility().keys()
+        mapOf(
+            keys.keyLeftShift to SHIFT,
+            keys.keyRightShift to SHIFT,
+            keys.keyLeftControl to CTRL,
+            keys.keyRightControl to CTRL,
+            keys.keyLeftAlt to ALT,
+            keys.keyRightAlt to ALT,
+            keys.keyLeftSuper to META,
+            keys.keyRightSuper to META,
+        )
+    }
+}

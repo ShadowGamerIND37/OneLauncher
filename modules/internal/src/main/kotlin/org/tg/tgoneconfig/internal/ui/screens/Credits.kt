@@ -1,0 +1,271 @@
+package org.tg.tgoneconfig.internal.ui.screens
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import org.tg.tgoneconfig.api.platform.v1.ModInfo
+import org.tg.tgoneconfig.api.platform.v1.Platform
+import org.tg.tgoneconfig.api.ui.v1.components.Badge
+import org.tg.tgoneconfig.api.ui.v1.components.CardBorder
+import org.tg.tgoneconfig.api.ui.v1.components.EmptyState
+import org.tg.tgoneconfig.api.ui.v1.components.PlayerHead
+import org.tg.tgoneconfig.api.ui.v1.components.ScrollContainer
+import org.tg.tgoneconfig.api.ui.v1.components.SectionHeader
+import org.tg.tgoneconfig.api.ui.v1.components.SectionHeaderDefaults
+import org.tg.tgoneconfig.api.ui.v1.components.cardSurface
+import org.tg.tgoneconfig.api.ui.v1.theme.TGOneConfigTheme
+import org.tg.tgoneconfig.internal.ui.api.TranslationCredits
+import org.tg.tgoneconfig.internal.ui.components.Icon
+import org.tg.tgoneconfig.internal.ui.components.Text
+import org.tg.tgoneconfig.internal.ui.components.accentGradientFill
+import org.tg.tgoneconfig.internal.ui.components.rememberAccentBrandTint
+import org.tg.tgoneconfig.internal.ui.components.rememberSvgResourcePainter
+import org.tg.tgoneconfig.internal.ui.components.translated
+import org.tg.tgoneconfig.internal.ui.search.searchMatches
+import org.tg.tgoneconfig.internal.ui.shell.PageGutter
+import org.tg.tgoneconfig.internal.ui.shell.pageSearchQuery
+import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
+import java.util.UUID
+
+private val oneConfigVersion: String? by lazy {
+    runCatching {
+        ModInfo.loadedMods.firstOrNull { it.id == "tgoneconfig" }?.version
+    }.getOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+private class Person(val name: String, private val roleText: RoleText, uuid: String?) {
+    val role: String get() = translated(roleText.key, roleText.fallback)
+
+    val id: UUID = uuid?.let { UUID(java.lang.Long.parseUnsignedLong(it.substring(0, 16), 16), java.lang.Long.parseUnsignedLong(it.substring(16), 16)) }
+        ?: UUID.nameUUIDFromBytes("OfflinePlayer:$name".toByteArray(Charsets.UTF_8))
+}
+
+private class RoleText(val key: String, val fallback: String)
+
+private fun role(id: String, fallback: String) = RoleText("tgoneconfig.credits.role.$id", fallback)
+
+private class Thanks(val icon: String, val title: String, val detail: String)
+
+private val people = listOf(
+    Person("Wyvest", role("ceo", "CEO"), "a53314040e77440e8bef24c071dac1ae"),
+    Person("Lynith", role("cto", "CTO"), "f247be7c5b8241c69148793ded77e71f"),
+    Person("nextdaydelivery", role("tgoneconfig_founding", "TG OneConfig founding engineer"), "0dee60d49ff840a9a79fbb415bbaa909"),
+    Person("Deftu", role("tgoneconfig_major", "TG OneConfig major engineer"), "63677969c51746fbb60fa130b3d9beb9"),
+    Person("Lunasa", role("polycompose_founding", "PolyCompose founding engineer"), "4614dcc468244d1c9a352e2844c6c9b2"),
+    Person("Mona", role("compatengine_founding", "CompatEngine founding engineer"), "e90ea9ec080a401b8d106a53c407ac53"),
+    Person("DeDiamondPro", role("config_gui_hud", "Config backend, GUI frontend, HUD"), "0b4d470ff2fb487493341eaef8ba4804"),
+    Person("rachel", role("cosmetics_lead", "Lead cosmetics designer, OneClient"), "22e98637ba974b6ba84ffb57a461ce43"),
+    Person("Qewer", role("designer", "Designer"), "9d139c40d3494916ba4b3d348a284e32"),
+    Person("Caledonian", role("designer", "Designer"), "e5de6a33a9e04a4e8a493201d74875a6"),
+    Person("Mo2men", role("designer", "Designer"), "bdad0d588e35422d938ae1a4c0d5d026"),
+    Person("Zetvue", role("sound", "Sound design"), "9a23f6435e334101a5f2d63f248b49c2"),
+    Person("Pauline", role("utilities", "TG OneConfig utilities"), "56e2a469477c41f7b0bdcb94dad100f6"),
+    Person("xtrm", role("utilities", "TG OneConfig utilities"), "7740d6e39f204381a56a060991a1c41c"),
+    Person("MoonTidez", role("designer_v0", "Designer, v0"), "acbfaeb2bcfe49bcb605ac1ebe16c2d1"),
+    Person("ThinkSeal", role("tester", "Major tester"), "94418374e58a497cbcba29d34727eca4"),
+)
+
+private val thankedPeople = listOf(
+    Person("Scherso", role("saving", "For saving us"), "466d70e6fe944960ac17597948f437b3"),
+    Person("FireStorm", role("saving", "For saving us"), "37f1d5edb9a14b99accb0c6b23493a62"),
+    Person("ImToggle", role("contributions", "Contributions to TGOneConfig and TG mods"), "c8bf4768af4448cba25901e42fb7bc79"),
+    Person("Sk1er", role("modding_impact", "Lasting impact on Minecraft modding"), "1a5c41c8a9524ddfa19c66f6bb3707a1"),
+)
+
+private fun translationCredit(): String {
+    val i18n = Platform.i18n()
+    val loaded = ModInfo.loadedMods
+    val mods = (TranslationCredits.namespaces - "tgoneconfig")
+        .map { namespace -> loaded.firstOrNull { it.id == namespace }?.name ?: namespace }
+        .distinct()
+        .sortedWith(String.CASE_INSENSITIVE_ORDER)
+    val credit = if (mods.isEmpty()) {
+        i18n.translateString("tgoneconfig.credits.translations")
+    } else {
+        i18n.translateString("tgoneconfig.credits.translations.mods", mods.joinToString(", "))
+    }
+    val packs = TranslationCredits.packs
+        .filter { pack -> loaded.any { it.id == pack.modId } }
+        .map { i18n.translateString("tgoneconfig.credits.translations.pack", it.name, it.author) }
+    if (packs.isEmpty()) return credit
+    return i18n.translateString("tgoneconfig.credits.translations.packs", credit, packs.joinToString(", "))
+}
+
+private fun specialThanks() = listOf(
+    Thanks(
+        "profiles",
+        translated("tgoneconfig.credits.thanks.team", "The TG team"),
+        translated("tgoneconfig.credits.thanks.team.detail", "For their support and contributions"),
+    ),
+    Thanks("text", translated("tgoneconfig.credits.thanks.translators", "Translators"), translationCredit()),
+    Thanks(
+        "star",
+        translated("tgoneconfig.credits.thanks.contributors", "Contributors and testers"),
+        translated("tgoneconfig.credits.thanks.contributors.detail", "For helping make modding accessible to everyone"),
+    ),
+)
+
+@Composable
+fun Credits() {
+    val scrollState = rememberScrollState()
+    val query = pageSearchQuery().trim().lowercase()
+    val thanks = remember { specialThanks() }
+    val shownPeople = remember(query) { if (query.isEmpty()) people else people.filter { searchMatches("${it.name} ${it.role}", query) } }
+    val shownThankedPeople = remember(query) { if (query.isEmpty()) thankedPeople else thankedPeople.filter { searchMatches("${it.name} ${it.role}", query) } }
+    val shownThanks = remember(query) { if (query.isEmpty()) thanks else thanks.filter { searchMatches("${it.title} ${it.detail}", query) } }
+
+    ScrollContainer(scrollState, Modifier.fillMaxSize(), gutter = PageGutter, fadingEdges = true) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(start = PageGutter, bottom = PageGutter),
+        ) {
+            if (query.isEmpty()) Masthead()
+            if (shownPeople.isNotEmpty()) {
+                GroupHeading(translated("tgoneconfig.credits.people", "People"))
+                PeopleGrid(shownPeople)
+            }
+            if (shownThankedPeople.isNotEmpty() || shownThanks.isNotEmpty()) {
+                GroupHeading(translated("tgoneconfig.credits.thanks", "Special thanks"))
+                if (shownThankedPeople.isNotEmpty()) PeopleGrid(shownThankedPeople)
+                if (shownThanks.isNotEmpty()) {
+                    Column(
+                        Modifier.padding(top = if (shownThankedPeople.isEmpty()) 0.dp else 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        shownThanks.forEach { ThanksCard(it) }
+                    }
+                }
+            }
+            if (shownPeople.isEmpty() && shownThankedPeople.isEmpty() && shownThanks.isEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(top = 16.dp), contentAlignment = Alignment.Center) {
+                    EmptyState(translated("tgoneconfig.credits.nomatch", "No credits match \"%s\"", query), icon = "search")
+                }
+            }
+            if (query.isEmpty()) Legal()
+        }
+    }
+}
+
+@Composable
+private fun Masthead() {
+    val theme = LocalTheme.current
+    Column(Modifier.padding(top = 8.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        rememberSvgResourcePainter(theme.logoPath)?.let { logo ->
+            Image(
+                painter = logo,
+                contentDescription = null,
+                colorFilter = rememberAccentBrandTint(theme.logoPath),
+                modifier = Modifier.size(263.dp, 30.dp).accentGradientFill(),
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(translated("tgoneconfig.credits.by", "by"), color = theme.textColorSecondary, fontSize = theme.typography.small.fontSize)
+            rememberSvgResourcePainter("assets/tgoneconfig/brand/by-tg.svg")?.let { poly ->
+                Image(painter = poly, contentDescription = "TG", modifier = Modifier.size(104.dp, 18.dp))
+            }
+            oneConfigVersion?.let { version ->
+                Badge("v$version", Modifier.padding(start = 4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupHeading(title: String) {
+    SectionHeader(
+        title,
+        contentPadding = PaddingValues(top = 24.dp, bottom = 10.dp, start = 2.dp),
+        textStyle = SectionHeaderDefaults.labelStyle,
+        color = TGOneConfigTheme.current.textColor.copy(0.8f),
+    )
+}
+
+@Composable
+private fun PeopleGrid(people: List<Person>) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val fit = (maxWidth / 240.dp).toInt().coerceIn(1, 4)
+        val columns = (fit downTo (fit - 1).coerceAtLeast(1)).firstOrNull { people.size % it == 0 } ?: fit
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            people.chunked(columns).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { PersonCard(it, Modifier.weight(1f)) }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonCard(person: Person, modifier: Modifier) {
+    val theme = LocalTheme.current
+    Row(
+        modifier
+            .height(72.dp)
+            .cardSurface(border = CardBorder.Solid)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        PlayerHead(person.id, 40.dp, Modifier, shape = theme.buttonShape)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(person.name, theme.typography.bodyMedium, color = theme.textColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(person.role, color = theme.textColorSecondary, fontSize = theme.typography.small.fontSize, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun ThanksCard(thanks: Thanks) {
+    val theme = LocalTheme.current
+    Row(
+        Modifier.fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .cardSurface(border = CardBorder.Solid)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(40.dp).background(theme.chipBackground, theme.buttonShape), contentAlignment = Alignment.Center) {
+            Icon(thanks.icon, color = theme.textColor, modifier = Modifier.size(18.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(thanks.title, theme.typography.bodyMedium, color = theme.textColor)
+            Text(thanks.detail, color = theme.textColorSecondary, fontSize = theme.typography.small.fontSize, lineHeight = 18.sp)
+        }
+    }
+}
+
+@Composable
+private fun Legal() {
+    val theme = LocalTheme.current
+    Row(
+        Modifier.fillMaxWidth().padding(top = 28.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(translated("tgoneconfig.credits.legal", "Legal and corporate"), color = theme.textColorSecondary, fontSize = theme.typography.caption.fontSize)
+        rememberSvgResourcePainter("assets/tgoneconfig/brand/atmofrost.svg")?.let { atmofrost ->
+            Image(painter = atmofrost, contentDescription = "Atmofrost", modifier = Modifier.size(68.dp, 28.dp))
+        }
+    }
+}

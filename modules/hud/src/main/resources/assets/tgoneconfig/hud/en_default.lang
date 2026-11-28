@@ -1,0 +1,43 @@
+tgoneconfig.huds.edit=Edit HUD...
+
+tgoneconfig.huds.all=All
+tgoneconfig.huds.pvp=PvP
+tgoneconfig.huds.info=World & Server
+tgoneconfig.huds.player=Player
+
+tgoneconfig.hudeditor.title=HUD Editor
+tgoneconfig.hudeditor.designer.title=Designer
+tgoneconfig.hudeditor.settings.title=Settings
+tgoneconfig.hudeditor.general.title=Component Options
+tgoneconfig.hudeditor.choosesomething=Click on an element to continue.
+tgoneconfig.hudeditor.cantedit.aslegacy=This HUD is running in legacy compatibility mode and cannot be edited.
+
+tgoneconfig.hudeditor.padding.title=ALIGNMENT & PADDING
+tgoneconfig.hudeditor.padding.info=These settings control the distance between the edge of the background and the HUD, as well as its alignment.
+tgoneconfig.hudeditor.padding.between=Pad between
+tgoneconfig.hudeditor.padding.edges=Edge padding
+tgoneconfig.hudeditor.staticwidth=Static width
+tgoneconfig.hudeditor.corner.radius=Corner radius
+
+tgoneconfig.hudeditor.color.title=COLORS
+tgoneconfig.hudeditor.color.info=These settings control the color of the HUD element.
+tgoneconfig.hudeditor.bg.color.info=These settings control the color of the background.
+
+tgoneconfig.hudeditor.component.title=Component settings
+tgoneconfig.hudeditor.component.info=These settings control the size and alignment of the component.
+tgoneconfig.hudeditor.component.notimplemented=Unfortunately, this component is not currently supported by the HUD editor.\nIf you are a developer, please contact TG for more information.
+
+tgoneconfig.hudeditor.color.fill=Fill color
+tgoneconfig.hudeditor.color.border=Border color
+
+tgoneconfig.hudeditor.opacity=Opacity
+tgoneconfig.hudeditor.rotation=Rotation
+tgoneconfig.hudeditor.radii=Corner radius
+tgoneconfig.hudeditor.skew=Skew
+
+tgoneconfig.hudeditor.text.title=TEXT OPTIONS
+tgoneconfig.hudeditor.text.example=The quick brown fox jumps over the lazy dog
+tgoneconfig.hudeditor.text.size=Font size
+tgoneconfig.hudeditor.text.weight=Weight
+tgoneconfig.hudeditor.text.font=Font
+tgoneconfig.hudeditor.text.effects=Case type

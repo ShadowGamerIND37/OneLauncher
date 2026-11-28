@@ -1,0 +1,427 @@
+package org.tg.tgoneconfig.internal.ui.components.settings
+
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
+import org.tg.tgoneconfig.api.ui.v1.components.ControlSize
+import org.tg.tgoneconfig.api.ui.v1.components.IconButton
+import org.tg.tgoneconfig.api.ui.v1.components.MenuAction
+import org.tg.tgoneconfig.api.ui.v1.components.MenuEntry
+import org.tg.tgoneconfig.api.ui.v1.components.MenuSeparator
+import org.tg.tgoneconfig.api.ui.v1.components.ScrollContainer
+import org.tg.tgoneconfig.api.ui.v1.components.TextButton
+import org.tg.tgoneconfig.api.ui.v1.components.contextMenu
+import org.tg.tgoneconfig.api.ui.v1.components.rememberReorderState
+import org.tg.tgoneconfig.api.ui.v1.components.reorderHandle
+import org.tg.tgoneconfig.api.ui.v1.components.reorderItem
+import org.tg.tgoneconfig.internal.ui.components.Icon
+import org.tg.tgoneconfig.internal.ui.components.animatedFrame
+import org.tg.tgoneconfig.internal.ui.components.containVerticalScroll
+import org.tg.tgoneconfig.internal.ui.components.rememberInteractionSource
+import org.tg.tgoneconfig.internal.ui.components.translated
+import org.tg.tgoneconfig.internal.ui.components.wheelScroll
+import org.tg.tgoneconfig.internal.ui.sound.UiSoundEvent
+import org.tg.tgoneconfig.internal.ui.sound.UiSounds
+import org.tg.tgoneconfig.internal.ui.themes.LocalTheme
+import org.tg.tgoneconfig.internal.ui.themes.concentric
+import java.util.ArrayDeque
+import kotlin.math.roundToInt
+
+/**
+ * Shared machinery for the user-editable drag-reorderable list options
+ *
+ * Each option supplies the contents of a single row while adding removing reordering scrolling and the
+ * surrounding chrome live here
+ */
+
+internal val ListEntryHeight = 34.dp
+internal val ListEntrySpacing = 8.dp
+
+private val ContainerPadding = 8.dp
+private val ContainerShape @Composable get() = LocalTheme.current.modCardShape
+private val EntryShape @Composable get() = ContainerShape.concentric(ContainerPadding)
+
+internal data class ListRowEntry<T>(val id: Int, val value: T)
+
+/**
+ * Holds the working copy of the list
+ *
+ * Every mutation rewrites the state and immediately reports the new values through [onCommit] where the
+ * option writes back to its property
+ */
+internal class ListEntriesState<T>(initial: List<T>, private val onCommit: (List<T>) -> Unit) {
+    private var nextId = 0
+
+    var entries by mutableStateOf(initial.map { ListRowEntry(nextId++, it) })
+        private set
+
+    val values: List<T> get() = entries.map { it.value }
+
+    val size: Int get() = entries.size
+
+    private var insertAt = -1
+
+    private var pending = false
+
+    fun add(value: T) {
+        val at = insertAt
+        if (at in 0..entries.size) {
+            insertAt = at + 1
+            val list = entries.toMutableList()
+            list.add(at, ListRowEntry(nextId++, value))
+            apply(list)
+        } else {
+            apply(entries + ListRowEntry(nextId++, value))
+        }
+    }
+
+    fun update(id: Int, value: T) = apply(entries.map { if (it.id == id) it.copy(value = value) else it })
+
+    fun remove(id: Int) {
+        insertAt = -1
+        apply(entries.filterNot { it.id == id })
+    }
+
+    fun move(from: Int, to: Int) {
+        insertAt = -1
+        val list = entries.toMutableList()
+        list.add(to, list.removeAt(from))
+        apply(list)
+    }
+
+    fun reorder(from: Int, to: Int) {
+        if (from !in entries.indices || to !in entries.indices) return
+        insertAt = -1
+        val list = entries.toMutableList()
+        list.add(to, list.removeAt(from))
+        entries = list
+        pending = true
+    }
+
+    fun commitReorder() {
+        if (!pending) return
+        pending = false
+        apply(entries)
+    }
+
+    fun indexOf(id: Int): Int = entries.indexOfFirst { it.id == id }
+
+    fun moveBy(id: Int, delta: Int): Boolean {
+        val from = indexOf(id)
+        val to = from + delta
+        if (from < 0 || to !in entries.indices) return false
+        move(from, to)
+        return true
+    }
+
+    fun duplicate(id: Int) {
+        val index = indexOf(id)
+        if (index < 0) return
+        val list = entries.toMutableList()
+        list.add(index + 1, ListRowEntry(nextId++, entries[index].value))
+        apply(list)
+    }
+
+    fun addAtEnd(onAdd: () -> Unit) {
+        insertAt = -1
+        onAdd()
+    }
+
+    fun insertAbove(id: Int, onAdd: () -> Unit) {
+        val index = indexOf(id)
+        if (index < 0) return
+        val before = entries.size
+        insertAt = index
+        onAdd()
+        if (entries.size != before) insertAt = -1
+    }
+
+    fun replace(values: List<T>) {
+        insertAt = -1
+        val existing = HashMap<T, ArrayDeque<ListRowEntry<T>>>()
+        entries.forEach { entry ->
+            existing.getOrPut(entry.value) { ArrayDeque() }.addLast(entry)
+        }
+        apply(values.map { value ->
+            existing[value]?.pollFirst() ?: ListRowEntry(nextId++, value)
+        })
+    }
+
+    private fun apply(list: List<ListRowEntry<T>>) {
+        entries = list
+        onCommit(list.map { it.value })
+    }
+}
+
+/** Per-row state handed to the row content so it can match the row's hover and focus styling */
+internal class ListRowContext(
+    private val color: State<Color>,
+    val fieldInteraction: MutableInteractionSource,
+    val focused: Boolean,
+    val rowEntries: () -> List<MenuEntry> = { emptyList() },
+) {
+    val contentColor: Color get() = color.value
+}
+
+@Composable
+internal fun <T> rememberListEntries(key: Any?, initial: () -> List<T>, onCommit: (List<T>) -> Unit): ListEntriesState<T> =
+    remember(key) { ListEntriesState(initial(), onCommit) }
+
+@Composable
+internal fun <T> ListOptionContainer(
+    state: ListEntriesState<T>,
+    reorderable: Boolean,
+    maxEntries: Int,
+    addText: Any,
+    onAdd: () -> Unit,
+    showAddWhenFull: Boolean = false,
+    rowInsertActions: Boolean = true,
+    entryHeight: Dp = ListEntryHeight,
+    maxHeight: Dp = 280.dp,
+    containScroll: Boolean = false,
+    invalid: (T) -> Boolean = { false },
+    row: @Composable RowScope.(entry: ListRowEntry<T>, ctx: ListRowContext) -> Unit,
+) {
+    val theme = LocalTheme.current
+    val density = LocalDensity.current
+    val entries = state.entries
+
+    val stridePx = with(density) { (entryHeight + ListEntrySpacing).toPx() }
+    val contentHeight = entryHeight * entries.size + ListEntrySpacing * (entries.size - 1).coerceAtLeast(0)
+
+    val reorder = rememberReorderState(
+        Orientation.Vertical,
+        { from, to -> state.reorder(from, to) },
+        { state.commitReorder() },
+    )
+
+    val full = maxEntries > 0 && entries.size >= maxEntries
+
+    fun rowMenu(entry: ListRowEntry<T>): List<MenuEntry> {
+        val index = state.indexOf(entry.id)
+        if (index < 0) return emptyList()
+        val canAdd = maxEntries <= 0 || state.size < maxEntries
+        return buildList<MenuEntry> {
+            if (reorderable) {
+                add(
+                    MenuAction(
+                        translated("tgoneconfig.list.move_up", "Move up"),
+                        { state.moveBy(entry.id, -1) },
+                        icon = "up",
+                        enabled = index > 0,
+                        shortcutHint = translated("tgoneconfig.list.move_up.shortcut", "Alt+Up"),
+                    ),
+                )
+                add(
+                    MenuAction(
+                        translated("tgoneconfig.list.move_down", "Move down"),
+                        { state.moveBy(entry.id, 1) },
+                        icon = "down",
+                        enabled = index < state.size - 1,
+                        shortcutHint = translated("tgoneconfig.list.move_down.shortcut", "Alt+Down"),
+                    ),
+                )
+                add(MenuSeparator)
+            }
+            if (rowInsertActions) {
+                add(MenuAction(translated("tgoneconfig.list.duplicate", "Duplicate"), { state.duplicate(entry.id) }, icon = "copy-plus", enabled = canAdd))
+                add(MenuAction(translated("tgoneconfig.list.insert_above", "Insert above"), { state.insertAbove(entry.id, onAdd) }, icon = "plus", enabled = canAdd))
+                add(MenuSeparator)
+            }
+            add(MenuAction(translated("tgoneconfig.list.remove", "Remove"), { state.remove(entry.id) }, icon = "trash", danger = true))
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .width(LocalOptionWidth.current)
+            .clip(ContainerShape)
+            .background(theme.componentBackground, ContainerShape)
+            .border(1.dp, theme.borderColor, ContainerShape)
+            .padding(ContainerPadding),
+        verticalArrangement = Arrangement.spacedBy(ListEntrySpacing),
+    ) {
+        if (entries.isNotEmpty()) {
+            val scrollState = rememberScrollState()
+            val containment = if (containScroll) {
+                Modifier
+                    .containVerticalScroll(scrollState)
+                    .wheelScroll(scrollState, contain = { scrollState.maxValue > 0 })
+            } else {
+                Modifier
+            }
+            ScrollContainer(
+                state = scrollState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxHeight)
+                    .then(containment),
+                scrollbar = scrollState.maxValue > 0,
+                fadingEdges = true,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(contentHeight),
+                ) {
+                    entries.forEachIndexed { index, entry ->
+                        key(entry.id) {
+                            val isDragging = reorder.draggingKey == entry.id
+                            val baseOffset = index * stridePx
+                            val animatedOffset = Motion.animateFloatAsState(baseOffset, if (isDragging) snap() else spring(), label = "listEntryOffset")
+
+                            EntryRow(
+                                valid = !invalid(entry.value),
+                                dragging = isDragging,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(entryHeight)
+                                    .offset { IntOffset(0, baseOffset.roundToInt()) }
+                                    .reorderItem(reorder, entry.id, index, false)
+                                    .graphicsLayer { translationY = animatedOffset.value - baseOffset }
+                                    .contextMenu { rowMenu(entry) }
+                                    .onPreviewKeyEvent { event ->
+                                        val delta = event.reorderDelta()
+                                        reorderable && delta != 0 && state.moveBy(entry.id, delta).also { moved ->
+                                            if (moved) UiSounds.play(UiSoundEvent.SLIDER_TICK)
+                                        }
+                                    },
+                                dragHandle = if (!reorderable) null else { handleModifier ->
+                                    handleModifier.reorderHandle(reorder, entry.id)
+                                },
+                                onRemove = { state.remove(entry.id) },
+                                rowEntries = { rowMenu(entry) },
+                                content = { ctx -> row(entry, ctx) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showAddWhenFull || !full) {
+            AddEntryButton(addText, entryHeight) { state.addAtEnd(onAdd) }
+        }
+    }
+}
+
+internal fun KeyEvent.reorderDelta(): Int {
+    if (type != KeyEventType.KeyDown || !isAltPressed) return 0
+    return when (key) {
+        Key.DirectionUp -> -1
+        Key.DirectionDown -> 1
+        else -> 0
+    }
+}
+
+@Composable
+private fun EntryRow(
+    valid: Boolean,
+    dragging: Boolean,
+    modifier: Modifier,
+    dragHandle: ((Modifier) -> Modifier)?,
+    onRemove: () -> Unit,
+    rowEntries: () -> List<MenuEntry>,
+    content: @Composable RowScope.(ListRowContext) -> Unit,
+) {
+    val theme = LocalTheme.current
+    val rowInteraction = rememberInteractionSource()
+    val isHovered by rowInteraction.collectIsHoveredAsState()
+    val fieldInteraction = rememberInteractionSource()
+    val isFocused by fieldInteraction.collectIsFocusedAsState()
+
+    val contentColor = Motion.animateColorAsState(
+        if (dragging || isHovered || isFocused) theme.textColor else theme.textColorSecondary
+    )
+    val borderColor = Motion.animateColorAsState(if (valid) theme.borderColor else theme.error)
+
+    Row(
+        modifier = modifier
+            .clip(EntryShape)
+            .graphicsLayer {}
+            .animatedFrame(EntryShape, fill = { theme.modCardBackground }, border = { borderColor.value })
+            .hoverable(rowInteraction)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (dragHandle != null) {
+            Icon(
+                "dots-grid",
+                modifier = dragHandle(
+                    Modifier
+                        .size(16.dp)
+                        .pointerHoverIcon(PointerIcon.Hand)
+                ),
+                tint = { contentColor.value },
+            )
+        }
+
+        content(ListRowContext(contentColor, fieldInteraction, isFocused, rowEntries))
+
+        IconButton(
+            "trash",
+            translated("tgoneconfig.list.remove", "Remove"),
+            onRemove,
+            size = ControlSize.Compact,
+            danger = true,
+        )
+    }
+}
+
+@Composable
+private fun AddEntryButton(label: Any, entryHeight: Dp, onClick: () -> Unit) {
+    TextButton(
+        label.asStyledLabel(),
+        "plus",
+        onClick,
+        Modifier.height(entryHeight),
+        size = ControlSize.Compact,
+        fillWidth = true,
+    )
+}

@@ -1,0 +1,85 @@
+package org.tg.tgoneconfig.internal.ui.keybind
+
+import org.tg.tgoneconfig.api.config.v1.Property
+import org.tg.tgoneconfig.api.config.v1.Tree
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeybindManager
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeybindMetadata
+import org.tg.tgoneconfig.api.ui.v1.keybind.TGOneConfigKeybind
+import org.tg.tgoneconfig.internal.ui.components.localizedString
+import org.tg.tgoneconfig.internal.ui.components.localizedTitle
+import java.util.WeakHashMap
+
+object MinecraftKeybindRegistrar {
+    /**
+     * Set on a keybind property to keep it out of Minecraft's Controls menu
+     *
+     * Use it when the property is a view onto a [net.minecraft.client.KeyMapping] the owning mod already
+     * registered since mirroring it would splice in a duplicate mapping
+     */
+    const val NO_MIRROR_METADATA = KeybindMetadata.NO_MIRROR
+
+    private const val MIRROR_TO_VANILLA_METADATA = "mirrorToVanilla"
+
+    private val propByBind = WeakHashMap<TGOneConfigKeybind, Property<*>>()
+    private val wiredProps = WeakHashMap<Property<*>, Boolean>()
+
+    private val scannedTrees = WeakHashMap<Tree, Boolean>()
+    private var listenerInstalled = false
+
+    @JvmStatic
+    @JvmOverloads
+    fun scan(tree: Tree, force: Boolean = true) {
+        if (!force && scannedTrees.containsKey(tree)) return
+        scannedTrees[tree] = true
+        installRebindListener()
+        val category = "${tree.localizedTitle()} (TGOneConfig)"
+        walk(tree, category)
+    }
+
+    private fun installRebindListener() {
+        if (listenerInstalled) return
+        listenerInstalled = true
+        KeybindManager.addRebindListener { old, new ->
+            val prop = propByBind.remove(old) ?: return@addRebindListener
+            propByBind[new] = prop
+            @Suppress("UNCHECKED_CAST")
+            (prop as Property<Any>).set(new)
+        }
+        KeybindManager.addMenuEditListener { bind ->
+            val prop = propByBind[bind] ?: return@addMenuEditListener
+            @Suppress("UNCHECKED_CAST")
+            (prop as Property<Any>).setReferential(bind)
+        }
+    }
+
+    private fun walk(tree: Tree, category: String) {
+        for (node in tree.map.values) {
+            when (node) {
+                is Tree -> walk(node, category)
+                is Property<*> -> wire(node, category)
+            }
+        }
+    }
+
+    private fun wire(prop: Property<*>, category: String) {
+        if (prop.getMetadata<Any?>(NO_MIRROR_METADATA) != null) return
+        val bind = prop.get() as? TGOneConfigKeybind ?: return
+        bind.name = resolveName(prop)
+        bind.category = category
+        bind.defaultKeybind = prop.getMetadata<Any?>("default") as? TGOneConfigKeybind
+        if (prop.getMetadata<Any?>(MIRROR_TO_VANILLA_METADATA) == false) bind.mirrorToVanilla = false
+        if (KeybindManager.isRegistered(bind)) KeybindManager.refreshMinecraftBinding(bind)
+        else KeybindManager.register(bind)
+        propByBind[bind] = prop
+        if (wiredProps.put(prop, true) == null) {
+            @Suppress("UNCHECKED_CAST")
+            (prop as Property<Any>).addCallback { value ->
+                (value as? TGOneConfigKeybind)?.let { propByBind[it] = prop }
+                false
+            }
+        }
+    }
+
+    private fun resolveName(prop: Property<*>): String =
+        localizedString(prop.getMetadata("titleKey"), prop.title ?: prop.id ?: "Keybind")
+}

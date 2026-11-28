@@ -1,0 +1,2512 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+@file:OptIn(ExperimentalTGOneConfigUiApi::class)
+
+package org.tg.tgoneconfig.api.hud.v1
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.Snapshot
+import org.jetbrains.annotations.ApiStatus
+import org.jetbrains.annotations.MustBeInvokedByOverriders
+import org.tg.compose.composables.PolyModifier
+import org.tg.compose.composables.background
+import org.tg.compose.composables.border
+import org.tg.compose.host.LocalContentScale
+import org.tg.compose.layout.PolyAlign
+import org.tg.compose.render.PolyColor
+import org.tg.compose.runtime.PolyComposeRuntime
+import org.tg.tgoneconfig.api.config.v1.Config
+import org.tg.tgoneconfig.api.config.v1.ConfigManager
+import org.tg.tgoneconfig.api.config.v1.Properties.ktProperty
+import org.tg.tgoneconfig.api.config.v1.Properties.simple
+import org.tg.tgoneconfig.api.config.v1.Property
+import org.tg.tgoneconfig.api.config.v1.Tree
+import org.tg.tgoneconfig.api.config.v1.annotations.Switch
+import org.tg.tgoneconfig.api.config.v1.backend.Backend
+import org.tg.tgoneconfig.api.hud.v1.HudManager.LOGGER
+import org.tg.tgoneconfig.api.platform.v1.Platform
+import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
+import org.tg.tgoneconfig.api.ui.v1.keybind.BindNotInScreen
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeyModifiers
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeyPressMode
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeyPressState
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeybindHelper
+import org.tg.tgoneconfig.api.ui.v1.keybind.KeybindManager
+import org.tg.tgoneconfig.api.ui.v1.keybind.TGOneConfigKeybind
+import org.tg.tgoneconfig.api.ui.v1.page.PageText
+import java.lang.ref.WeakReference
+import java.util.WeakHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
+
+@ApiStatus.Internal
+public val LocalHud: ProvidableCompositionLocal<Hud?> = compositionLocalOf<Hud?> { null }
+
+public enum class Font {
+    Minecraft,
+    Poppins;
+}
+
+public enum class Weight {
+    Thin,
+    Regular,
+    Medium,
+    Bold,
+    Black;
+}
+
+public enum class Section {
+    TopLeft, TopCenter, TopRight,
+    CenterLeft, Center, CenterRight,
+    BottomLeft, BottomCenter, BottomRight
+}
+
+public enum class HudAnchor {
+    Auto,
+    TopLeft, Top, TopRight,
+    Left, Center, Right,
+    BottomLeft, Bottom, BottomRight;
+
+    public fun toAlign(): PolyAlign? = when (this) {
+        Auto -> null
+        TopLeft -> PolyAlign.TopLeft
+        Top -> PolyAlign.Top
+        TopRight -> PolyAlign.TopRight
+        Left -> PolyAlign.Left
+        Center -> PolyAlign.Center
+        Right -> PolyAlign.Right
+        BottomLeft -> PolyAlign.BottomLeft
+        Bottom -> PolyAlign.Bottom
+        BottomRight -> PolyAlign.BottomRight
+    }
+
+    public companion object {
+        @JvmStatic
+        public fun of(align: PolyAlign): HudAnchor = when (align) {
+            PolyAlign.TopLeft -> TopLeft
+            PolyAlign.Top -> Top
+            PolyAlign.TopRight -> TopRight
+            PolyAlign.Left -> Left
+            PolyAlign.Center -> Center
+            PolyAlign.Right -> Right
+            PolyAlign.BottomLeft -> BottomLeft
+            PolyAlign.Bottom -> Bottom
+            PolyAlign.BottomRight -> BottomRight
+        }
+    }
+}
+
+/** The part of a HUD the editor snapped to a guide on one axis, [Start] being its left or top edge */
+public enum class HudSnapEdge {
+    None, Start, Center, End;
+
+    internal val fraction: Float? get() = when (this) {
+        None -> null
+        Start -> 0f
+        Center -> 0.5f
+        End -> 1f
+    }
+}
+
+internal const val GRID_SIZE = 3
+
+/** How close a position write must land to where the HUD already sits to count as not moving it */
+private const val SNAP_HOLD = 0.01f
+
+/** Backstop for walking a chain of HUDs anchored to one another */
+private const val MAX_ANCHOR_DEPTH = 16
+
+private const val MIN_VISIBLE = 12f
+
+private val REDRAW_GETTERS = arrayOf("getAlwaysRedraw", "getBorderEnabled", "getBorderChroma")
+
+private val BORDER_OPTIONS = arrayOf("border", "borderEnabled", "borderColor", "borderChroma", "borderChromaSpeed", "borderSize")
+
+internal const val POS_SCHEMA = 1
+
+/** Mirrors `MinecraftKeybindRegistrar.NO_MIRROR_METADATA` which this module cannot see */
+private const val NO_MC_MIRROR_METADATA = "oc_no_mc_mirror"
+
+// every open getter the cached frame geometry or the background merge key reads
+// a subclass overriding one of these is read live, so a new open geometry property must be added here
+// or an override of it would be served a stale cached value
+private val GEOMETRY_GETTERS = arrayOf(
+    "getX", "getY", "getRelativeX", "getRelativeY", "getRenderedW", "getRenderedH",
+    "getCustomScale", "getScaledWidth", "getScaledHeight", "getHidden",
+)
+
+private fun Class<*>.overrides(getter: String): Boolean =
+    runCatching { getMethod(getter).declaringClass != Hud::class.java }.getOrDefault(true)
+
+private val externalGeometry = object : ClassValue<Boolean>() {
+    override fun computeValue(type: Class<*>): Boolean = GEOMETRY_GETTERS.any(type::overrides)
+}
+
+private val externalStaticSize = object : ClassValue<Boolean>() {
+    override fun computeValue(type: Class<*>): Boolean = type.overrides("getStaticW") || type.overrides("getStaticH")
+}
+
+internal val hudStateWrites = AtomicInteger()
+
+private val externalRedraw = object : ClassValue<Boolean>() {
+    override fun computeValue(type: Class<*>): Boolean = type.overrides("getAlwaysRedraw")
+}
+
+private val liveRedrawInputs = object : ClassValue<Boolean>() {
+    override fun computeValue(type: Class<*>): Boolean = REDRAW_GETTERS.any(type::overrides)
+}
+
+private val stateOnlyMinimumSize = object : ClassValue<Boolean>() {
+    override fun computeValue(type: Class<*>): Boolean = runCatching {
+        type.getMethod("minimumSize").declaringClass.let { it == Hud::class.java || it == TextHud::class.java }
+    }.getOrDefault(false)
+}
+
+private val replacesIdsOverridden = object : ClassValue<Boolean>() {
+    override fun computeValue(type: Class<*>): Boolean = try {
+        type.getMethod("getReplacesIds").declaringClass != Hud::class.java
+    } catch (_: ReflectiveOperationException) {
+        true
+    }
+}
+
+private const val TRAITS_READY = 1
+private const val TRAIT_EXTERNAL_GEOMETRY = 1 shl 1
+private const val TRAIT_EXTERNAL_STATIC_SIZE = 1 shl 2
+private const val TRAIT_EXTERNAL_REDRAW = 1 shl 3
+private const val TRAIT_LIVE_REDRAW_INPUTS = 1 shl 4
+private const val TRAIT_STATE_ONLY_MINIMUM_SIZE = 1 shl 5
+private const val TRAIT_REPLACES_IDS = 1 shl 6
+
+private fun classTraits(type: Class<*>): Int {
+    var traits = TRAITS_READY
+    if (externalGeometry.get(type)) traits = traits or TRAIT_EXTERNAL_GEOMETRY
+    if (externalStaticSize.get(type)) traits = traits or TRAIT_EXTERNAL_STATIC_SIZE
+    if (externalRedraw.get(type)) traits = traits or TRAIT_EXTERNAL_REDRAW
+    if (liveRedrawInputs.get(type)) traits = traits or TRAIT_LIVE_REDRAW_INPUTS
+    if (stateOnlyMinimumSize.get(type)) traits = traits or TRAIT_STATE_ONLY_MINIMUM_SIZE
+    if (replacesIdsOverridden.get(type)) traits = traits or TRAIT_REPLACES_IDS
+    return traits
+}
+
+@Suppress("EqualsOrHashCode", "UnstableApiUsage")
+public abstract class Hud(
+    id: String,
+    title: String,
+    // public API whose type differs from the Config.Category field it hides, so neither can be renamed or merged
+    @Suppress("PROPERTY_HIDES_JAVA_FIELD") public val category: Category,
+) : Cloneable, Config(id, null, title, null) {
+    public open val description: String? = null
+
+    /**
+     * Search tags and synonyms
+     *
+     * What your users might search for
+     */
+    public open val searchTags: List<String> = emptyList()
+
+    /**
+     * Override this when another mod moves or scales this HUD (for example a vanilla element repositioned by
+     * another mod), so the HUD editor can tell the user why it is not where or how big they set it.
+     *
+     * Return the current state each time it is read, or null (the default) if no other mod affects this HUD.
+     * TGOneConfig only uses it to show a badge in the editor and a note in the position settings; it never
+     * changes the HUD's position or scale.
+     */
+    @get:ApiStatus.Experimental
+    public open val externalPlacement: ExternalPlacement? get() = null
+
+    @ExperimentalTGOneConfigUiApi
+    public open val replacesIds: Set<String> get() = emptySet()
+
+    @ExperimentalTGOneConfigUiApi
+    public open val defaultStaticWidth: Boolean get() = false
+
+    private var _staticWidth: MutableState<Boolean> = mutableStateOf(false)
+    public var staticWidth: Boolean
+        get() = _staticWidth.value
+        set(v) {
+            val wasStatic = _staticWidth.value
+            _staticWidth.put(v)
+            if (!wasStatic && v) {
+                val (minW, minH) = minimumSize()
+                if (renderedW > 0f || renderedH > 0f) {
+                    val scale = effectiveScale
+                    staticW = maxOf(renderedW / scale, minW)
+                    staticH = maxOf(renderedH / scale, minH)
+                } else {
+                    val natural = measureNaturalContentSize()
+                    if (natural != null) {
+                        staticW = maxOf(natural.first, minW)
+                        staticH = maxOf(natural.second, minH)
+                    }
+                }
+            } else if (wasStatic && !v) {
+                // seed rendered dimensions from the static values so the HUD does not
+                // collapse to 0x0 until the render loop recalculates the natural size
+                val (minW, minH) = minimumSize()
+                val scale = effectiveScale
+                renderedW = maxOf(staticW, minW) * scale
+                renderedH = maxOf(staticH, minH) * scale
+            }
+        }
+
+    protected fun measureNaturalContentSize(): Pair<Float, Float>? {
+        val rt = _runtime ?: return null
+        val wasStatic = _staticWidth.value
+        return try {
+            _staticWidth.value = false
+            rt.frame(2000f, 2000f)
+            val w = rt.root.width
+            val h = rt.root.height
+            if (w > 0f && h > 0f) w to h else null
+        } catch (_: Throwable) {
+            null
+        } finally {
+            _staticWidth.value = wasStatic
+        }
+    }
+
+    /**
+     * Fills in [staticW]/[staticH] when static sizing is enabled but dimensions are unset or invalid
+     *
+     * One such invalid value is [TextHud]'s unmeasured sentinel of {@code -1f}
+     *
+     * Safe to call after a reset-to-default
+     */
+    public fun reseedStaticSizeIfNeeded() {
+        if (!staticWidth) return
+        if (staticW > 0f && staticH > 0f) return
+        reseedStaticWidth()
+        reseedStaticHeight()
+    }
+
+    /** Re-measures content and applies a new static width */
+    public fun reseedStaticWidth() {
+        if (!staticWidth) return
+        val (minW, _) = minimumSize()
+        val natural = measureNaturalContentSize()
+        staticW = if (natural != null && natural.first > 0f) {
+            maxOf(natural.first, minW)
+        } else {
+            maxOf(padLeft + padRight + 80f, minW)
+        }
+    }
+
+    /** Re-measures content and applies a new static height */
+    public fun reseedStaticHeight() {
+        if (!staticWidth) return
+        val (_, minH) = minimumSize()
+        val natural = measureNaturalContentSize()
+        staticH = if (natural != null && natural.second > 0f) {
+            maxOf(natural.second, minH)
+        } else {
+            maxOf(padTop + padBottom + 16f, minH)
+        }
+    }
+
+    /**
+     * Stores reset defaults for [staticW]/[staticH]
+     *
+     * The default is the *natural* content size and never the current one
+     *
+     * This runs after stored values have been loaded so recording [staticW] directly would capture
+     * whatever size the user last resized to and make "reset to default" a no-op
+     *
+     * When the content cannot be measured yet no default is stored and resetting falls back to
+     * re-measuring at that point (see `reseedStaticWidth`)
+     */
+    public fun captureStaticSizeDefaults(force: Boolean = false) {
+        val t = tree ?: return
+        if (!staticWidth) return
+        val wProp = t.getProp("staticW")
+        val hProp = t.getProp("staticH")
+        val needW = wProp != null && (force || wProp.getMetadata<Any?>("default") == null)
+        val needH = hProp != null && (force || hProp.getMetadata<Any?>("default") == null)
+        if (!needW && !needH) return
+        val (naturalW, naturalH) = measureNaturalContentSize() ?: return
+        val (minW, minH) = minimumSize()
+        if (needW && naturalW > 0f) wProp.addMetadata("default", maxOf(naturalW, minW))
+        if (needH && naturalH > 0f) hProp.addMetadata("default", maxOf(naturalH, minH))
+    }
+
+    /**
+     * Stores the reset defaults for [section]/[relativeX]/[relativeY] derived from [defaultPosition], removing them
+     * when it is null so nothing resets the HUD to wherever it happened to be when its config was built
+     */
+    public fun capturePositionDefaults() {
+        val t = tree ?: return
+        if (!persistOwnState) return
+        val (dx, dy) = defaultPosition() ?: run {
+            for (id in listOf("section", "relativeX", "relativeY")) t.getProp(id)?.removeMetadata("default")
+            return
+        }
+        val curSection = section
+        val curX = relativeX
+        val curY = relativeY
+        val curSchema = posSchema
+        val curOffX = anchorOffsetX
+        val curOffY = anchorOffsetY
+        val curLinkX = mergeLinkX
+        val curLinkY = mergeLinkY
+        val curSnapX = snapEdgeX
+        val curSnapY = snapEdgeY
+        // the defaults are measured without a snapped edge
+        snapEdgeX = HudSnapEdge.None
+        snapEdgeY = HudSnapEdge.None
+        withSystemPosition {
+            setAbsolutePosition(dx, dy)
+            t.getProp("section")?.addMetadata("default", section)
+            t.getProp("relativeX")?.addMetadata("default", relativeX)
+            t.getProp("relativeY")?.addMetadata("default", relativeY)
+        }
+        section = curSection
+        relativeX = curX
+        relativeY = curY
+        posSchema = curSchema
+        anchorOffsetX = curOffX
+        anchorOffsetY = curOffY
+        mergeLinkX = curLinkX
+        mergeLinkY = curLinkY
+        snapEdgeX = curSnapX
+        snapEdgeY = curSnapY
+    }
+
+    @ExperimentalTGOneConfigUiApi
+    public fun <T> withSystemPosition(block: () -> T): T {
+        val wasSystem = HudManager.systemReposition
+        HudManager.systemReposition = true
+        try {
+            return block()
+        } finally {
+            HudManager.systemReposition = wasSystem
+        }
+    }
+
+    @ExperimentalTGOneConfigUiApi
+    public open fun onUserMoved() {}
+
+    private var _movedByPlayer: MutableState<Boolean> = mutableStateOf(false)
+    private var movedByPlayer: Boolean get() = _movedByPlayer.value; set(v) { _movedByPlayer.put(v) }
+
+    @ExperimentalTGOneConfigUiApi
+    public val hasBeenMoved: Boolean get() {
+        if (!movedByPlayer) return false
+        val defaults = storedPositionDefaults() ?: return true
+        return isAnchored || !matchesPosition(defaults)
+    }
+
+    @ExperimentalTGOneConfigUiApi
+    public val isAtDefaultPosition: Boolean get() {
+        val defaults = storedPositionDefaults() ?: return !movedByPlayer
+        return !isAnchored && matchesPosition(defaults)
+    }
+
+    private class PositionDefaults(val section: Any, val x: Float, val y: Float)
+
+    private fun storedPositionDefaults(): PositionDefaults? {
+        val t = tree ?: return null
+        val sec = t.getProp("section")?.getMetadata<Any?>("default") ?: return null
+        val x = (t.getProp("relativeX")?.getMetadata<Any?>("default") as? Number)?.toFloat() ?: return null
+        val y = (t.getProp("relativeY")?.getMetadata<Any?>("default") as? Number)?.toFloat() ?: return null
+        return PositionDefaults(sec, x, y)
+    }
+
+    private fun matchesPosition(d: PositionDefaults): Boolean =
+        d.section == section && abs(d.x - relativeX) < 1e-4f && abs(d.y - relativeY) < 1e-4f
+
+    @Transient private var positionKeep = 0
+    @Transient private var positionBatch = 0
+    @Transient private var positionMovePending = false
+
+    private inline fun <T> keepingPosition(block: () -> T): T {
+        positionKeep++
+        try {
+            return block()
+        } finally {
+            positionKeep--
+        }
+    }
+
+    private fun notePositionWrite() {
+        if (positionKeep > 0 || HudManager.systemReposition || !HudManager.isEditing || tree == null) return
+        if (positionBatch > 0) positionMovePending = true else markMovedByPlayer()
+    }
+
+    private fun markMovedByPlayer() {
+        movedByPlayer = true
+        onUserMoved()
+    }
+
+    @Switch(title = "Show in F3")
+    public var showInF3: Boolean = true
+
+    @Switch(title = "Show in Tab")
+    public var showInTab: Boolean = true
+
+    @Switch(title = "Show in GUIs")
+    public var showInScreens: Boolean = true
+
+    @Switch(title = "Show in Chat")
+    public var showInChat: Boolean = true
+
+    @Deprecated("Binary compatibility, replaced by visibilityKeybind", level = DeprecationLevel.HIDDEN)
+    public var toggleKey: Int
+        get() = -1
+        set(_) {}
+
+    @Deprecated("Binary compatibility, replaced by visibilityKeybind", level = DeprecationLevel.HIDDEN)
+    public var showKey: Int
+        get() = -1
+        set(_) {}
+
+    /**
+     * Key which temporarily flips this HUD between shown and hidden without touching [hidden]
+     *
+     * Whether it shows or hides the HUD depends on [hidden] so a shown HUD is hidden by it and a hidden HUD shown
+     */
+    public var visibilityKeybind: TGOneConfigKeybind
+        get() = _visibilityKeybind.value
+        set(v) {
+            _visibilityKeybind.value = v
+            refreshVisibilityKeybind()
+        }
+
+    private var _visibilityKeybind: MutableState<TGOneConfigKeybind> = mutableStateOf(KeybindHelper.builder().build())
+
+    private var _visibilityKeyMode: MutableState<KeyPressMode> = mutableStateOf(KeyPressMode.Held)
+    public var visibilityKeyMode: KeyPressMode
+        get() = _visibilityKeyMode.value
+        set(v) {
+            if (_visibilityKeyMode.value != v) resetVisibilityKey()
+            _visibilityKeyMode.value = v
+        }
+
+    private var _visibilityKeyHoldThreshold: MutableState<Int> = mutableStateOf(300)
+
+    /** How long in milliseconds a [KeyPressMode.QuickPress] press must be held to act as a hold */
+    public var visibilityKeyHoldThreshold: Int
+        get() = _visibilityKeyHoldThreshold.value
+        set(v) { _visibilityKeyHoldThreshold.value = v }
+
+    @Transient
+    private var visibilityKeyState = KeyPressState()
+
+    @Transient
+    private var registeredVisibilityKeybind: TGOneConfigKeybind? = null
+
+    @Transient
+    private var _visibilityKeyActive: MutableState<Boolean> = mutableStateOf(false)
+
+    /** Whether [visibilityKeybind] is currently flipping this HUD's visibility */
+    public val visibilityKeyActive: Boolean get() = _visibilityKeyActive.value
+
+    /**
+     * Whether this HUD has its own [visibilityKeybind]
+     *
+     * Return `false` for a HUD which is shown and hidden by some other input, and override
+     * [hasVisibilityKeyMode] to keep offering the press mode settings for that input
+     */
+    public open fun hasVisibilityKeybind(): Boolean = true
+
+    /** Whether the [visibilityKeyMode] and [visibilityKeyHoldThreshold] settings apply to this HUD */
+    public open fun hasVisibilityKeyMode(): Boolean = hasVisibilityKeybind()
+
+    /** Whether this HUD is hidden right now, taking [visibilityKeybind] into account */
+    public val effectivelyHidden: Boolean get() = hidden != visibilityKeyActive
+
+    /**
+     * Feeds the held state of whatever key flips this HUD's visibility through [visibilityKeyMode]
+     *
+     * [visibilityKeybind] does this on its own, so call it only for a HUD driven by another input (see
+     * [hasVisibilityKeybind]). Repeated calls with the same [down] change nothing
+     *
+     * Presses are ignored while the editor is open, releases still count so a held key never sticks
+     */
+    public fun visibilityKeyInput(down: Boolean) {
+        if (HudManager.isEditing && down) return
+        visibilityKeyState.input(down, visibilityKeyMode, visibilityKeyHoldThreshold.toLong())
+        _visibilityKeyActive.put(visibilityKeyState.active)
+    }
+
+    /**
+     * Whether this HUD is switched on, which is what its switch in the HUD library shows and changes
+     *
+     * Defaults to not [hidden]. A HUD which stays hidden until its key shows it should override this with a
+     * switch of its own, or switching it on in the library would leave it shown for good
+     */
+    public open var hudEnabled: Boolean
+        get() = !hidden
+        set(v) { hidden = !v }
+
+    /**
+     * Puts this HUD back to its configured visibility and forgets any key press in progress
+     *
+     * Called when the editor's show/hide action is used on this HUD, the world unloads or the key or its mode
+     * changes, so a HUD driven by
+     * another input (see [hasVisibilityKeybind]) can override it to reset that input too
+     */
+    @MustBeInvokedByOverriders
+    public open fun resetVisibilityKey() {
+        visibilityKeyState.reset()
+        _visibilityKeyActive.put(false)
+    }
+
+    private fun refreshVisibilityKeybind() {
+        registeredVisibilityKeybind?.let(KeybindManager::unregister)
+        registeredVisibilityKeybind = null
+        resetVisibilityKey()
+        val src = visibilityKeybind
+        if (!isReal || !hasVisibilityKeybind() || !src.isBound) return
+        registeredVisibilityKeybind = KeybindManager.register(
+            BindNotInScreen(src.keyCodes, src.mouseBtns, src.mods, 0L) { visibilityKeyInput(it); true }
+        )
+    }
+
+    @Transient
+    private var toggleBind: TGOneConfigKeybind? = null
+
+    @Transient
+    internal var clonedKeybinds: MutableList<TGOneConfigKeybind> = ArrayList()
+
+    @ExperimentalTGOneConfigUiApi
+    public var toggleKeybind: TGOneConfigKeybind?
+        get() = toggleBind
+        set(v) {
+            val current = toggleBind
+            if (v == null) {
+                if (current != null) KeybindManager.unregister(current)
+                toggleBind = null
+                return
+            }
+            val bind = current ?: TGOneConfigKeybind(null, null, KeyModifiers.NONE, 0L, ::onToggleKeybind)
+            if (v !== bind) {
+                bind.keyCodes = v.keyCodes?.copyOf()
+                bind.mouseBtns = v.mouseBtns?.copyOf()
+                bind.mods = v.mods
+                bind.durationNanos = v.durationNanos
+                bind.unresolvedKeyInputs = v.unresolvedKeyInputs
+                bind.unresolvedMouseInputs = v.unresolvedMouseInputs
+            }
+            toggleBind = bind
+            if (isReal) syncToggleKeybind()
+        }
+
+    private fun onToggleKeybind(down: Boolean): Boolean {
+        if (down) hidden = !hidden
+        return true
+    }
+
+    private fun syncToggleKeybind() {
+        val bind = toggleBind ?: return
+        if (KeybindManager.isRegistered(bind)) KeybindManager.replace(bind, bind) else KeybindManager.register(bind)
+    }
+
+    private var _section: MutableState<Section> = mutableStateOf(Section.TopLeft)
+    public var section: Section get() = _section.value; set(v) { _section.put(v) }
+
+    private var _relativeX: MutableState<Float> = mutableStateOf(0f)
+
+    public open var relativeX: Float get() = _relativeX.value; set(v) { _relativeX.put(v) }
+
+    private var _relativeY: MutableState<Float> = mutableStateOf(0f)
+
+    public open var relativeY: Float get() = _relativeY.value; set(v) { _relativeY.put(v) }
+
+    @set:ApiStatus.Internal
+    public var posSchema: Int = POS_SCHEMA
+
+    @get:ApiStatus.Internal
+    public var layoutRefW: Float
+        get() = HudManager.layoutRefWidth
+        set(v) { if (v > 0f) HudManager.layoutRefWidth = v }
+
+    @get:ApiStatus.Internal
+    public var layoutRefH: Float
+        get() = HudManager.layoutRefHeight
+        set(v) { if (v > 0f) HudManager.layoutRefHeight = v }
+
+    private var _renderedW: MutableState<Float> = mutableStateOf(0f)
+    public open var renderedW: Float get() = _renderedW.value; set(v) { _renderedW.put(v) }
+
+    private var _renderedH: MutableState<Float> = mutableStateOf(0f)
+    public open var renderedH: Float get() = _renderedH.value; set(v) { _renderedH.put(v) }
+
+    private var minSizeFrame = Long.MIN_VALUE
+    private var minSize: Pair<Float, Float> = 0f to 0f
+
+    @ApiStatus.Internal
+    public fun frameMinimumSize(): Pair<Float, Float> {
+        val frame = HudManager.frameId
+        if (minSizeFrame != frame) {
+            minSizeFrame = frame
+            val size = minimumSize()
+            if (size != minSize) {
+                minSize = size
+                bumpRevision()
+            }
+        }
+        return minSize
+    }
+
+    /** Drops the size measured this frame for a caller which has just changed what it depends on */
+    internal fun forgetMinimumSize() {
+        minSizeFrame = Long.MIN_VALUE
+    }
+
+    public open val scaledWidth: Float get() {
+        if (isCollapsed) return 0f
+        val scale = effectiveScale
+        val w = if (staticWidth || renderedW <= 0f) staticW * scale else renderedW
+        val (minW, _) = frameMinimumSize()
+        return maxOf(w, minW * scale).coerceAtLeast(1f)
+    }
+
+    public open val scaledHeight: Float get() {
+        if (isCollapsed) return 0f
+        val scale = effectiveScale
+        val h = if (staticWidth || renderedH <= 0f) staticH * scale else renderedH
+        val (_, minH) = frameMinimumSize()
+        return maxOf(h, minH * scale).coerceAtLeast(1f)
+    }
+
+    private fun fracX(anchor: HudAnchor): Float = when (anchor) {
+        HudAnchor.Auto -> when (section) {
+            Section.TopLeft, Section.CenterLeft, Section.BottomLeft -> 0f
+            Section.TopCenter, Section.Center, Section.BottomCenter -> 0.5f
+            Section.TopRight, Section.CenterRight, Section.BottomRight -> 1f
+        }
+        HudAnchor.TopLeft, HudAnchor.Left, HudAnchor.BottomLeft -> 0f
+        HudAnchor.Top, HudAnchor.Center, HudAnchor.Bottom -> 0.5f
+        HudAnchor.TopRight, HudAnchor.Right, HudAnchor.BottomRight -> 1f
+    }
+
+    private fun fracY(anchor: HudAnchor): Float = when (anchor) {
+        HudAnchor.Auto -> when (section) {
+            Section.TopLeft, Section.TopCenter, Section.TopRight -> 0f
+            Section.CenterLeft, Section.Center, Section.CenterRight -> 0.5f
+            Section.BottomLeft, Section.BottomCenter, Section.BottomRight -> 1f
+        }
+        HudAnchor.TopLeft, HudAnchor.Top, HudAnchor.TopRight -> 0f
+        HudAnchor.Left, HudAnchor.Center, HudAnchor.Right -> 0.5f
+        HudAnchor.BottomLeft, HudAnchor.Bottom, HudAnchor.BottomRight -> 1f
+    }
+
+    private val growthFracX: Float get() = snapEdgeX.fraction ?: fracX(growthAnchor)
+
+    private val growthFracY: Float get() = snapEdgeY.fraction ?: fracY(growthAnchor)
+
+    private val anchorFracX: Float get() = pinnedCorner?.let(::fracX) ?: growthFracX
+
+    private val anchorFracY: Float get() = pinnedCorner?.let(::fracY) ?: growthFracY
+
+    private fun pinnedFracX(point: HudAnchor): Float = fracX(pinnedCorner ?: point)
+
+    private fun pinnedFracY(point: HudAnchor): Float = fracY(pinnedCorner ?: point)
+
+    /** Screen-space X of [point] on this HUD's box such as the middle of its right edge */
+    public fun anchorPointX(point: HudAnchor): Float = x + fracX(point) * scaledWidth
+
+    /** Screen-space Y of [point] on this HUD's box */
+    public fun anchorPointY(point: HudAnchor): Float = y + fracY(point) * scaledHeight
+
+    private fun sectionX(sw: Float): Float {
+        val secPos = Math.round(relativeX).toFloat()
+        return when (section) {
+            Section.TopLeft, Section.CenterLeft, Section.BottomLeft -> secPos
+            Section.TopCenter, Section.Center, Section.BottomCenter -> sw / 2f + secPos
+            Section.TopRight, Section.CenterRight, Section.BottomRight -> sw - secPos
+        }
+    }
+
+    private fun sectionY(sh: Float): Float {
+        val secPos = Math.round(relativeY).toFloat()
+        return when (section) {
+            Section.TopLeft, Section.TopCenter, Section.TopRight -> secPos
+            Section.CenterLeft, Section.Center, Section.CenterRight -> sh / 2f + secPos
+            Section.BottomLeft, Section.BottomCenter, Section.BottomRight -> sh - secPos
+        }
+    }
+
+    private val screenX: Float get() = sectionX(HudManager.guiScreenWidth)
+
+    private val screenY: Float get() = sectionY(HudManager.guiScreenHeight)
+
+    internal fun layoutX(sw: Float): Float {
+        resolvedAnchorX?.let { a ->
+            resolvingAnchor = true
+            try {
+                return a.parent.layoutX(sw) + a.parent.fracX(a.targetPoint) * a.parent.scaledWidth +
+                    a.offset - pinnedFracX(a.selfPoint) * scaledWidth
+            } finally {
+                resolvingAnchor = false
+            }
+        }
+        return sectionX(sw) - anchorFracX * scaledWidth
+    }
+
+    internal fun layoutY(sh: Float): Float {
+        resolvedAnchorY?.let { a ->
+            resolvingAnchor = true
+            try {
+                return a.parent.layoutY(sh) + a.parent.fracY(a.targetPoint) * a.parent.scaledHeight +
+                    a.offset - pinnedFracY(a.selfPoint) * scaledHeight
+            } finally {
+                resolvingAnchor = false
+            }
+        }
+        return sectionY(sh) - anchorFracY * scaledHeight
+    }
+
+    internal val rawX: Float get() = rawX(resolvedAnchorX, scaledWidth)
+
+    internal val rawY: Float get() = rawY(resolvedAnchorY, scaledHeight)
+
+    private fun rawX(a: ResolvedAnchor?, w: Float): Float {
+        if (a != null) {
+            resolvingAnchor = true
+            try {
+                return a.parent.anchorPointX(a.targetPoint) + a.offset - pinnedFracX(a.selfPoint) * w
+            } finally {
+                resolvingAnchor = false
+            }
+        }
+        return screenX - anchorFracX * w
+    }
+
+    private fun rawY(a: ResolvedAnchor?, h: Float): Float {
+        if (a != null) {
+            resolvingAnchor = true
+            try {
+                return a.parent.anchorPointY(a.targetPoint) + a.offset - pinnedFracY(a.selfPoint) * h
+            } finally {
+                resolvingAnchor = false
+            }
+        }
+        return screenY - anchorFracY * h
+    }
+
+    public open var x: Float
+        get() {
+            val a = resolvedAnchorX
+            val pw = predictedW
+            val w = if (pw.isNaN()) scaledWidth else pw
+            val raw = rawX(a, w)
+            return if (a != null) raw else keepVisibleX(raw, w)
+        }
+        set(v) {
+            releaseSnapEdges(v, Float.NaN)
+            updateRelativeX(v)
+        }
+
+    public open var y: Float
+        get() {
+            val a = resolvedAnchorY
+            val ph = predictedH
+            val h = if (ph.isNaN()) scaledHeight else ph
+            val raw = rawY(a, h)
+            return if (a != null) raw else keepVisibleY(raw, h)
+        }
+        set(v) {
+            releaseSnapEdges(Float.NaN, v)
+            updateRelativeY(v)
+        }
+
+    private fun keepVisibleX(absX: Float, w: Float): Float {
+        val sw = HudManager.guiScreenWidth
+        if (sw <= 0f) return absX
+        val keep = minOf(w, MIN_VISIBLE)
+        return absX.coerceIn(minOf(keep - w, 0f), maxOf(sw - keep, 0f))
+    }
+
+    private fun keepVisibleY(absY: Float, h: Float): Float {
+        val sh = HudManager.guiScreenHeight
+        if (sh <= 0f) return absY
+        val keep = minOf(h, MIN_VISIBLE)
+        return absY.coerceIn(minOf(keep - h, 0f), maxOf(sh - keep, 0f))
+    }
+
+    protected open fun updateRelativeX(absX: Float) {
+        val sw = HudManager.guiScreenWidth
+        resolvedAnchorX?.let { a ->
+            val pin = absX + pinnedFracX(a.selfPoint) * scaledWidth
+            resolvingAnchor = true
+            try {
+                val offset = pin - a.parent.anchorPointX(a.targetPoint)
+                val link = mergeLinkX
+                if (a.fromMerge && link != null) mergeLinkX = link.withOffset(offset)
+                else anchorOffsetX = offset
+            } finally {
+                resolvingAnchor = false
+            }
+        }
+        // kept up to date even while anchored so dropping the anchor (or losing the target HUD)
+        // leaves the HUD exactly where it was instead of jumping back to a stale screen position
+        relativeX = relativeXFor(absX, sw).let { if (HudManager.systemReposition) it else it.coerceIn(-sw, sw * 2f) }
+        posSchema = POS_SCHEMA
+        HudManager.noteLayoutArranged()
+        notePositionWrite()
+    }
+
+    protected open fun updateRelativeY(absY: Float) {
+        val sh = HudManager.guiScreenHeight
+        resolvedAnchorY?.let { a ->
+            val pin = absY + pinnedFracY(a.selfPoint) * scaledHeight
+            resolvingAnchor = true
+            try {
+                val offset = pin - a.parent.anchorPointY(a.targetPoint)
+                val link = mergeLinkY
+                if (a.fromMerge && link != null) mergeLinkY = link.withOffset(offset)
+                else anchorOffsetY = offset
+            } finally {
+                resolvingAnchor = false
+            }
+        }
+        relativeY = relativeYFor(absY, sh).let { if (HudManager.systemReposition) it else it.coerceIn(-sh, sh * 2f) }
+        posSchema = POS_SCHEMA
+        HudManager.noteLayoutArranged()
+        notePositionWrite()
+    }
+
+    private fun relativeXFor(absX: Float, sw: Float): Float {
+        val anchor = absX + anchorFracX * scaledWidth
+        return when (section) {
+            Section.TopLeft, Section.CenterLeft, Section.BottomLeft -> anchor
+            Section.TopCenter, Section.Center, Section.BottomCenter -> anchor - sw / 2f
+            else -> sw - anchor
+        }
+    }
+
+    private fun relativeYFor(absY: Float, sh: Float): Float {
+        val anchor = absY + anchorFracY * scaledHeight
+        return when (section) {
+            Section.TopLeft, Section.TopCenter, Section.TopRight -> anchor
+            Section.CenterLeft, Section.Center, Section.CenterRight -> anchor - sh / 2f
+            else -> sh - anchor
+        }
+    }
+
+    public fun setAbsolutePosition(absX: Float, absY: Float) {
+        positionBatch++
+        try {
+            placeAbsolute(absX, absY)
+        } finally {
+            positionBatch--
+            if (positionBatch == 0 && positionMovePending) {
+                positionMovePending = false
+                markMovedByPlayer()
+            }
+        }
+    }
+
+    private fun placeAbsolute(absX: Float, absY: Float) {
+        releaseSnapEdges(absX, absY)
+        val sw = HudManager.guiScreenWidth
+        val sh = HudManager.guiScreenHeight
+        val gridW = sw / GRID_SIZE
+        val gridH = sh / GRID_SIZE
+
+        val centerX = absX + scaledWidth / 2f
+        val centerY = absY + scaledHeight / 2f
+        section = when {
+            centerX < gridW -> when {
+                centerY > 2 * gridH -> Section.BottomLeft
+                centerY > gridH -> Section.CenterLeft
+                else -> Section.TopLeft
+            }
+            centerX < 2 * gridW -> when {
+                centerY > 2 * gridH -> Section.BottomCenter
+                centerY > gridH -> Section.Center
+                else -> Section.TopCenter
+            }
+            else -> when {
+                centerY > 2 * gridH -> Section.BottomRight
+                centerY > gridH -> Section.CenterRight
+                else -> Section.TopRight
+            }
+        }
+
+        updateRelativeX(absX)
+        updateRelativeY(absY)
+    }
+
+    public open fun onEditorDragStart() {}
+
+    public open fun onEditorDragEnd() {}
+
+    private var _hidden: MutableState<Boolean> = mutableStateOf(false)
+    public open var hidden: Boolean get() = _hidden.value; set(v) { _hidden.put(v) }
+
+    private var _locked: MutableState<Boolean> = mutableStateOf(false)
+    public open var locked: Boolean get() = _locked.value; set(v) { _locked.value = v }
+
+    internal open val persistOwnState: Boolean get() = true
+
+    public open val resizeAxes: HudResize get() = HudResize.Both
+
+    @ApiStatus.Internal
+    public open fun applyEditorWidth(width: Float) {
+        staticWidth = true
+        staticW = width
+    }
+
+    // compose state so a composable reading the pivot is invalidated when an editor resize pins or unpins
+    private var _pinnedCorner: MutableState<HudAnchor?> = mutableStateOf(null)
+    private var pinnedCorner: HudAnchor?
+        get() = _pinnedCorner.value
+        set(v) { _pinnedCorner.put(v) }
+    private var unpinPending = false
+
+    /**
+     * The corner that holds still while this HUD is resized, or `null` to use the anchor
+     *
+     * Subclasses that track their own pin override this
+     */
+    protected open val resizePin: HudAnchor? get() = pinnedCorner
+
+    @ApiStatus.Internal
+    public open fun pinCorner(pin: HudAnchor) {
+        val absX = x
+        val absY = y
+        pinnedCorner = pin
+        unpinPending = false
+        keepingPosition {
+            updateRelativeX(absX)
+            updateRelativeY(absY)
+        }
+    }
+
+    /** Only takes effect on the next [settlePin] because the final size is not laid out yet */
+    @ApiStatus.Internal
+    public open fun unpinCorner() {
+        if (pinnedCorner != null) unpinPending = true
+    }
+
+    @ApiStatus.Internal
+    public open fun settlePin() {
+        if (!unpinPending) return
+        val absX = rawX
+        val absY = rawY
+        pinnedCorner = null
+        unpinPending = false
+        keepingPosition { Snapshot.withMutableSnapshot { setAbsolutePosition(absX, absY) } }
+    }
+
+    private var _alignment: MutableState<PolyAlign> = mutableStateOf(PolyAlign.Center)
+    public var alignment: PolyAlign get() = _alignment.value; set(v) { _alignment.value = v }
+
+    private var _growthAnchor: MutableState<HudAnchor> = mutableStateOf(HudAnchor.Auto)
+    public var growthAnchor: HudAnchor get() = _growthAnchor.value; set(v) { _growthAnchor.put(v) }
+
+    public val effectiveGrowthAnchor: HudAnchor get() {
+        val fx = growthFracX
+        val fy = growthFracY
+        return when {
+            fy == 0f -> when (fx) { 0f -> HudAnchor.TopLeft; 0.5f -> HudAnchor.Top; else -> HudAnchor.TopRight }
+            fy == 0.5f -> when (fx) { 0f -> HudAnchor.Left; 0.5f -> HudAnchor.Center; else -> HudAnchor.Right }
+            else -> when (fx) { 0f -> HudAnchor.BottomLeft; 0.5f -> HudAnchor.Bottom; else -> HudAnchor.BottomRight }
+        }
+    }
+
+    public fun setGrowthAnchorKeepingPosition(anchor: HudAnchor) {
+        val absX = rawX
+        val absY = rawY
+        growthAnchor = anchor
+        snapEdgeX = HudSnapEdge.None
+        snapEdgeY = HudSnapEdge.None
+        keepingPosition {
+            updateRelativeX(absX)
+            updateRelativeY(absY)
+        }
+    }
+
+    private var _snapEdgeX: MutableState<HudSnapEdge> = mutableStateOf(HudSnapEdge.None)
+
+    /**
+     * The edge the HUD editor last snapped to a guide on the horizontal axis
+     *
+     * While set, this edge holds still when the HUD changes width, taking priority over [growthAnchor].
+     * Moving the HUD on this axis or [setGrowthAnchorKeepingPosition] clears it, writing [growthAnchor] does not
+     */
+    public var snapEdgeX: HudSnapEdge
+        get() = _snapEdgeX.value
+        private set(v) { _snapEdgeX.put(v) }
+
+    private var _snapEdgeY: MutableState<HudSnapEdge> = mutableStateOf(HudSnapEdge.None)
+
+    /** [snapEdgeX] for the vertical axis */
+    public var snapEdgeY: HudSnapEdge
+        get() = _snapEdgeY.value
+        private set(v) { _snapEdgeY.put(v) }
+
+    /** Sets the snapped edges without moving the HUD, leaving an axis held by a merge link alone */
+    @ApiStatus.Internal
+    public fun setSnapEdgesKeepingPosition(edgeX: HudSnapEdge, edgeY: HudSnapEdge) {
+        val newX = if (mergeLinkX != null) snapEdgeX else edgeX
+        val newY = if (mergeLinkY != null) snapEdgeY else edgeY
+        if (this is LegacyHudMarker || (newX == snapEdgeX && newY == snapEdgeY)) return
+        val absX = rawX
+        val absY = rawY
+        snapEdgeX = newX
+        snapEdgeY = newY
+        keepingPosition {
+            updateRelativeX(absX)
+            updateRelativeY(absY)
+        }
+    }
+
+    /**
+     * Clears the snapped edge on each axis a position write is about to move, [Float.NaN] leaving an axis alone
+     *
+     * Must run before the write changes [section], which [x] and [y] are read through
+     */
+    private fun releaseSnapEdges(absX: Float, absY: Float) {
+        if (positionKeep > 0 || HudManager.systemReposition) return
+        if (snapEdgeX != HudSnapEdge.None && !absX.isNaN() && abs(absX - x) > SNAP_HOLD) snapEdgeX = HudSnapEdge.None
+        if (snapEdgeY != HudSnapEdge.None && !absY.isNaN() && abs(absY - y) > SNAP_HOLD) snapEdgeY = HudSnapEdge.None
+    }
+
+    private var _anchorTargetId: MutableState<String> = mutableStateOf("")
+
+    /**
+     * Config tree id of the HUD this one hangs off or empty when it is positioned against the
+     * screen
+     *
+     * Prefer [anchorTo] and [clearAnchor] over setting this directly
+     */
+    public var anchorTargetId: String get() = _anchorTargetId.value; set(v) { _anchorTargetId.put(v) }
+
+    private var _anchorPoint: MutableState<HudAnchor> = mutableStateOf(HudAnchor.TopLeft)
+
+    /** Which of the nine points on the target HUD's box this HUD is pinned to */
+    public var anchorPoint: HudAnchor get() = _anchorPoint.value; set(v) { _anchorPoint.put(v) }
+
+    private var _selfAnchorPoint: MutableState<HudAnchor> = mutableStateOf(HudAnchor.Auto)
+
+    /**
+     * Which of the nine points on *this* HUD's own box sits on the anchor
+     *
+     * That is the point held against [anchorPoint] on the target
+     *
+     * [HudAnchor.Auto] uses the growth anchor
+     */
+    public var selfAnchorPoint: HudAnchor get() = _selfAnchorPoint.value; set(v) { _selfAnchorPoint.put(v) }
+
+    /** [selfAnchorPoint] with [HudAnchor.Auto] resolved and the merge link taking priority */
+    public val effectiveSelfAnchorPoint: HudAnchor get() = when {
+        isAnchored -> selfAnchorPoint.takeUnless { it == HudAnchor.Auto } ?: effectiveGrowthAnchor
+        else -> (mergeLinkX ?: mergeLinkY)?.selfPoint
+            ?: selfAnchorPoint.takeUnless { it == HudAnchor.Auto } ?: effectiveGrowthAnchor
+    }
+
+    /**
+     * How far across this HUD's box the point that holds still while it resizes horizontally sits
+     *
+     * 0 is the left edge and 1 the right. Measured from [xForWidth] so it agrees with it, including
+     * overrides of [x] and the keep-on-screen clamp
+     *
+     * A merge can hold each axis against a different neighbour so this can disagree with
+     * [effectiveSelfAnchorPoint]
+     */
+    public open val pivotFractionX: Float get() {
+        val w = scaledWidth
+        return xForWidth(w) - xForWidth(w + 1f)
+    }
+
+    /**
+     * How far down this HUD's box the point that holds still while it resizes vertically sits
+     *
+     * 0 is the top edge and 1 the bottom. Measured from [yForHeight] so it agrees with it
+     *
+     * A merge can hold each axis against a different neighbour so this can disagree with
+     * [effectiveSelfAnchorPoint]
+     */
+    public open val pivotFractionY: Float get() {
+        val h = scaledHeight
+        return yForHeight(h) - yForHeight(h + 1f)
+    }
+
+    // anchor targets resolve by instance and the section offset by screen size, neither of which is a state write
+    private fun observeLayoutInputs() {
+        HudManager.instancesRevision.intValue
+        HudManager.screenRevision.intValue
+    }
+
+    @Transient
+    private var predictedW = Float.NaN
+
+    @Transient
+    private var predictedH = Float.NaN
+
+    /**
+     * Where [x] ends up if this HUD's width becomes [width]
+     *
+     * Reads [x] with [width] standing in for [scaledWidth], so overrides of [x] that build on the
+     * default and the keep-on-screen clamp are both included
+     */
+    public open fun xForWidth(width: Float): Float {
+        observeLayoutInputs()
+        val prev = predictedW
+        predictedW = width
+        try {
+            return x
+        } finally {
+            predictedW = prev
+        }
+    }
+
+    /** Where [y] ends up if this HUD's height becomes [height], see [xForWidth] */
+    public open fun yForHeight(height: Float): Float {
+        observeLayoutInputs()
+        val prev = predictedH
+        predictedH = height
+        try {
+            return y
+        } finally {
+            predictedH = prev
+        }
+    }
+
+    /** Moves this HUD's own anchor point to [point] without moving the HUD on screen */
+    public fun setSelfAnchorPointKeepingPosition(point: HudAnchor) {
+        val absX = rawX
+        val absY = rawY
+        selfAnchorPoint = point
+        keepingPosition {
+            updateRelativeX(absX)
+            updateRelativeY(absY)
+        }
+    }
+
+    private var _anchorOffsetX: MutableState<Float> = mutableStateOf(0f)
+
+    /** Distance from the target's anchor point to this HUD's own growth anchor along X */
+    public var anchorOffsetX: Float get() = _anchorOffsetX.value; set(v) { _anchorOffsetX.put(v) }
+
+    private var _anchorOffsetY: MutableState<Float> = mutableStateOf(0f)
+
+    /** Distance from the target's anchor point to this HUD's own growth anchor along Y */
+    public var anchorOffsetY: Float get() = _anchorOffsetY.value; set(v) { _anchorOffsetY.put(v) }
+
+    // set while this HUD is asking its target where it is so a chain that loops back here falls
+    // through to the screen-relative position instead of recursing forever
+    @Transient
+    private var resolvingAnchor = false
+
+    /** The HUD this one is anchored to or `null` when it is not anchored or the target is gone */
+    public val anchorParent: Hud? get() {
+        if (resolvingAnchor) return null
+        val id = anchorTargetId
+        if (id.isEmpty()) return null
+        return HudManager.instanceById(id)?.takeUnless { it === this }
+    }
+
+    public val isAnchored: Boolean get() = anchorParent != null
+
+    /**
+     * A HUD held against a neighbour on one axis because their backgrounds are fused
+     *
+     * Rebuilt from the merge groups every time the layout changes and never persisted
+     *
+     * Unmerging the HUDs drops it again
+     */
+    internal class MergeLink(
+        val parent: Hud,
+        val selfPoint: HudAnchor,
+        val targetPoint: HudAnchor,
+        val offset: Float,
+    ) {
+        fun withOffset(offset: Float) = if (offset == this.offset) this else MergeLink(parent, selfPoint, targetPoint, offset)
+    }
+
+    @Transient
+    private var _mergeLinkX: MutableState<MergeLink?> = mutableStateOf(null)
+
+    internal var mergeLinkX: MergeLink?
+        get() = _mergeLinkX.value
+        private set(v) { _mergeLinkX.put(v) }
+
+    @Transient
+    private var _mergeLinkY: MutableState<MergeLink?> = mutableStateOf(null)
+
+    internal var mergeLinkY: MergeLink?
+        get() = _mergeLinkY.value
+        private set(v) { _mergeLinkY.put(v) }
+
+    private fun mergeLink(axis: MergeAxis) = if (axis == MergeAxis.X) mergeLinkX else mergeLinkY
+
+    private val resolvedAnchorX: ResolvedAnchor? get() = resolvedAnchor(MergeAxis.X)
+
+    private val resolvedAnchorY: ResolvedAnchor? get() = resolvedAnchor(MergeAxis.Y)
+
+    private fun resolvedAnchor(axis: MergeAxis): ResolvedAnchor? {
+        if (resolvingAnchor) return null
+        anchorParent?.let { parent ->
+            val self = selfAnchorPoint.takeUnless { it == HudAnchor.Auto } ?: effectiveGrowthAnchor
+            val offset = if (axis == MergeAxis.X) anchorOffsetX else anchorOffsetY
+            return ResolvedAnchor(parent, anchorPoint, self, offsetPastCollapsed(parent, anchorPoint, self, offset, axis), false)
+        }
+        val link = mergeLink(axis) ?: return null
+        if (link.parent === this) return null
+        return ResolvedAnchor(link.parent, link.targetPoint, link.selfPoint, offsetPastCollapsed(link.parent, link.targetPoint, link.selfPoint, link.offset, axis), true)
+    }
+
+    private fun offsetPastCollapsed(parent: Hud, target: HudAnchor, self: HudAnchor, offset: Float, axis: MergeAxis): Float {
+        if (!parent.isCollapsed) return offset
+        val stacked = if (axis == MergeAxis.X) parent.fracX(target) != pinnedFracX(self) else parent.fracY(target) != pinnedFracY(self)
+        return if (stacked) 0f else offset
+    }
+
+    private class ResolvedAnchor(
+        val parent: Hud,
+        val targetPoint: HudAnchor,
+        val selfPoint: HudAnchor,
+        val offset: Float,
+        val fromMerge: Boolean,
+    )
+
+    /** The HUD this one is held against right now whether by its own anchor or by a merge */
+    public val effectiveAnchorParent: Hud? get() = anchorParent ?: (mergeLinkX ?: mergeLinkY)?.parent
+
+    /** The point on [effectiveAnchorParent] this HUD hangs off */
+    public val effectiveAnchorPoint: HudAnchor get() =
+        if (isAnchored) anchorPoint else (mergeLinkX ?: mergeLinkY)?.targetPoint ?: anchorPoint
+
+    /** `true` while this HUD is held against a neighbour because their backgrounds are fused */
+    public val isMergeAnchored: Boolean get() = mergeLinkX != null || mergeLinkY != null
+
+    /**
+     * Holds this HUD against [parent] on [axis] for as long as the two stay merged
+     *
+     * [selfPoint] on its own box sits on [targetPoint] of the parent's box
+     *
+     * Keeps the HUD exactly where it is now
+     */
+    internal fun applyMergeLink(parent: Hud, selfPoint: HudAnchor, targetPoint: HudAnchor, axis: MergeAxis) {
+        if (parent === this) return
+        // an anchor the user set by hand outranks a merge
+        // and a merge must never loop back into one
+        if (isAnchored || parent.anchorChainContains(this)) return
+        val existing = mergeLink(axis)
+        if (existing != null && existing.parent === parent &&
+            existing.selfPoint == selfPoint && existing.targetPoint == targetPoint
+        ) return
+        if (axis == MergeAxis.X) {
+            val refW = HudManager.layoutRefWidth.takeIf { it > 0f } ?: HudManager.guiScreenWidth
+            val offset = layoutX(refW) + pinnedFracX(selfPoint) * scaledWidth -
+                (parent.layoutX(refW) + parent.fracX(targetPoint) * parent.scaledWidth)
+            mergeLinkX = MergeLink(parent, selfPoint, targetPoint, offset)
+        } else {
+            val refH = HudManager.layoutRefHeight.takeIf { it > 0f } ?: HudManager.guiScreenHeight
+            val offset = layoutY(refH) + pinnedFracY(selfPoint) * scaledHeight -
+                (parent.layoutY(refH) + parent.fracY(targetPoint) * parent.scaledHeight)
+            mergeLinkY = MergeLink(parent, selfPoint, targetPoint, offset)
+        }
+    }
+
+    internal fun clearMergeLink() = clearMergeLinks(clearX = true, clearY = true)
+
+    internal fun keepMergedPosition() {
+        if (anchorParent != null) return
+        val linkX = mergeLinkX
+        val linkY = mergeLinkY
+        if (linkX != null && linkX.parent !== this) {
+            val sw = HudManager.guiScreenWidth
+            relativeX = relativeXFor(layoutX(sw), sw)
+        }
+        if (linkY != null && linkY.parent !== this) {
+            val sh = HudManager.guiScreenHeight
+            relativeY = relativeYFor(layoutY(sh), sh)
+        }
+    }
+
+    internal fun releaseMergeLinks(clearX: Boolean, clearY: Boolean) {
+        if (clearX && mergeLinkX != null) mergeLinkX = null
+        if (clearY && mergeLinkY != null) mergeLinkY = null
+    }
+
+    /** Drops the merge links without touching the stored position, for a caller about to overwrite it */
+    @ApiStatus.Internal
+    public fun dropMergeLinks() {
+        mergeLinkX = null
+        mergeLinkY = null
+    }
+
+    /** Drops the merge link on the given axes leaving the HUD where it currently sits on screen */
+    internal fun clearMergeLinks(clearX: Boolean, clearY: Boolean) {
+        val dropX = clearX && mergeLinkX != null
+        val dropY = clearY && mergeLinkY != null
+        if (!dropX && !dropY) return
+        val absX = layoutX(HudManager.guiScreenWidth)
+        val absY = layoutY(HudManager.guiScreenHeight)
+        if (dropX) mergeLinkX = null
+        if (dropY) mergeLinkY = null
+        withSystemPosition {
+            updateRelativeX(absX)
+            updateRelativeY(absY)
+        }
+    }
+
+    /**
+     * Pins [self] on this HUD to [point] on [target] without moving it
+     *
+     * From here on it follows the target when the target moves or resizes instead of following the
+     * screen
+     *
+     * Does nothing if that would make a loop of anchors
+     */
+    @JvmOverloads
+    public fun anchorTo(target: Hud, point: HudAnchor, self: HudAnchor = HudAnchor.Auto) {
+        if (target === this) return
+        val id = target.tree?.id ?: return
+        if (target.anchorChainContains(this)) return
+        val absX = rawX
+        val absY = rawY
+        // the user placed this HUD by hand so a merge no longer gets to move it around
+        mergeLinkX = null
+        mergeLinkY = null
+        anchorTargetId = id
+        anchorPoint = point
+        selfAnchorPoint = self
+        setAbsolutePosition(absX, absY)
+    }
+
+    /** Drops the anchor leaving the HUD where it currently sits on screen */
+    public fun clearAnchor() {
+        if (anchorTargetId.isEmpty()) return
+        val absX = rawX
+        val absY = rawY
+        anchorTargetId = ""
+        anchorOffsetX = 0f
+        anchorOffsetY = 0f
+        selfAnchorPoint = HudAnchor.Auto
+        setAbsolutePosition(absX, absY)
+    }
+
+    @Transient
+    private var _collapsed: MutableState<Boolean> = mutableStateOf(false)
+
+    /** Whether this HUD currently measures 0 by 0 because it is not being drawn, which needs [collapsesWhenNotShown] */
+    @get:ApiStatus.Experimental
+    public val isCollapsed: Boolean get() = _collapsed.value && !HudManager.ignoreCollapse
+
+    internal fun setCollapsed(collapsed: Boolean) {
+        _collapsed.put(collapsed)
+    }
+
+    private var _groupPath: MutableState<String> = mutableStateOf("")
+
+    /**
+     * The ids of the groups this HUD is in from the outermost down to the one it sits directly in,
+     * joined by [HudGroups.SEPARATOR], or empty when it is not grouped
+     *
+     * Prefer [HudGroups] over setting this directly
+     */
+    @get:ApiStatus.Experimental
+    @set:ApiStatus.Experimental
+    public var groupPath: String get() = _groupPath.value; set(v) { _groupPath.put(v) }
+
+    /** The group this HUD sits directly in or `null` when it is not grouped */
+    @get:ApiStatus.Experimental
+    public val group: HudGroup? get() = HudGroups.of(this)
+
+    /** Whether [hud] is this HUD's anchor target or the target of one of its targets */
+    public fun anchorChainContains(hud: Hud): Boolean {
+        var current = anchorParent
+        var depth = 0
+        while (current != null && depth < MAX_ANCHOR_DEPTH) {
+            if (current === hud) return true
+            current = current.anchorParent
+            depth++
+        }
+        return false
+    }
+
+    private var _padTop: MutableState<Float> = mutableStateOf(0f)
+    public var padTop: Float get() = _padTop.value; set(v) { _padTop.put(v) }
+
+    private var _padBottom: MutableState<Float> = mutableStateOf(0f)
+    public var padBottom: Float get() = _padBottom.value; set(v) { _padBottom.put(v) }
+
+    private var _padLeft: MutableState<Float> = mutableStateOf(0f)
+    public var padLeft: Float get() = _padLeft.value; set(v) { _padLeft.put(v) }
+
+    private var _padRight: MutableState<Float> = mutableStateOf(0f)
+    public var padRight: Float get() = _padRight.value; set(v) { _padRight.put(v) }
+
+    private var _staticW: MutableState<Float> = mutableStateOf(200f)
+    public open var staticW: Float get() = _staticW.value; set(v) { _staticW.put(v) }
+
+    private var _staticH: MutableState<Float> = mutableStateOf(48f)
+    public open var staticH: Float get() = _staticH.value; set(v) { _staticH.put(v) }
+
+    private var _font: MutableState<Font> = mutableStateOf(Font.Minecraft)
+    public var font: Font get() = _font.value; set(v) { _font.value = v }
+
+    private var _caseType: MutableState<Int> = mutableStateOf(0)
+    public var caseType: Int get() = _caseType.value; set(v) { _caseType.value = v }
+
+    private var _textScale: MutableState<Float> = mutableStateOf(1f)
+    public var textScale: Float get() = _textScale.value; set(v) { _textScale.value = v }
+
+    private var _textBold: MutableState<Boolean> = mutableStateOf(false)
+    public var textBold: Boolean get() = _textBold.value; set(v) { _textBold.value = v }
+
+    private var _textItalic: MutableState<Boolean> = mutableStateOf(false)
+    public var textItalic: Boolean get() = _textItalic.value; set(v) { _textItalic.value = v }
+
+    private var _textUnderline: MutableState<Boolean> = mutableStateOf(false)
+    public var textUnderline: Boolean get() = _textUnderline.value; set(v) { _textUnderline.value = v }
+
+    private var _textWeight: MutableState<Weight> = mutableStateOf(Weight.Regular)
+    public var textWeight: Weight get() = _textWeight.value; set(v) { _textWeight.value = v }
+
+    private var _textAlign: MutableState<Int> = mutableStateOf(1)
+    public var textAlign: Int get() = _textAlign.value; set(v) { _textAlign.value = v }
+
+    private var _useGuiScale: MutableState<Boolean> = mutableStateOf(true)
+    public var useGuiScale: Boolean get() = _useGuiScale.value; set(v) { _useGuiScale.put(v) }
+
+    private var _customScale: MutableState<Float> = mutableStateOf(1f)
+    public open var customScale: Float get() = _customScale.value; set(v) { _customScale.put(v) }
+
+    private var _fixedGuiScale: MutableState<Float> = mutableStateOf(1f)
+
+    /** Minecraft's GUI scale when this HUD stopped following it, so it keeps its size while [useGuiScale] is off */
+    @get:ApiStatus.Internal
+    @set:ApiStatus.Internal
+    public var fixedGuiScale: Float get() = _fixedGuiScale.value; set(v) { _fixedGuiScale.put(v) }
+
+    public val effectiveScale: Float
+        get() = if (useGuiScale) customScale else scaleAtFixedGuiScale(customScale, fixedGuiScale)
+
+    private fun scaleAtFixedGuiScale(scale: Float, fixed: Float): Float {
+        val gui = Platform.compatibility().options().guiScale
+        return if (gui > 0f) scale * fixed / gui else scale
+    }
+
+    public fun getPoppinsFontName(): String {
+        val base = when {
+            textBold || textWeight == Weight.Bold -> "poppins-bold"
+            textWeight == Weight.Thin -> "poppins-thin"
+            textWeight == Weight.Medium -> "poppins-medium"
+            textWeight == Weight.Black -> "poppins-black"
+            else -> "poppins"
+        }
+        return if (textItalic) "$base-italic" else base
+    }
+
+    private var _showBackground: MutableState<Boolean> = mutableStateOf(true)
+    public var showBackground: Boolean get() = _showBackground.value; set(v) { _showBackground.put(v) }
+
+    private var _bgColor: MutableState<Int> = mutableStateOf(0x80000000.toInt())
+    public var bgColor: Int get() = _bgColor.value; set(v) { _bgColor.put(v) }
+
+    private var _bgChroma: MutableState<Boolean> = mutableStateOf(false)
+    public var bgChroma: Boolean get() = _bgChroma.value; set(v) { _bgChroma.put(v) }
+
+    private var _bgChromaSpeed: MutableState<Float> = mutableStateOf(1f)
+    public var bgChromaSpeed: Float get() = _bgChromaSpeed.value; set(v) { _bgChromaSpeed.put(v) }
+
+    private var _bgRadius: MutableState<Float> = mutableStateOf(4f)
+    public var bgRadius: Float get() = _bgRadius.value; set(v) { _bgRadius.put(v) }
+
+    private var _mergeBackground: MutableState<Boolean> = mutableStateOf(true)
+
+    public var mergeBackground: Boolean get() = _mergeBackground.value; set(v) { _mergeBackground.put(v) }
+
+    private var _mergeDiagonally: MutableState<Boolean> = mutableStateOf(false)
+
+    public var mergeDiagonally: Boolean get() = _mergeDiagonally.value; set(v) { _mergeDiagonally.put(v) }
+
+    private var _mergeAcrossColours: MutableState<Boolean> = mutableStateOf(false)
+
+    public var mergeAcrossColours: Boolean get() = _mergeAcrossColours.value; set(v) { _mergeAcrossColours.put(v) }
+
+    private var _keepBgWhenHidden: MutableState<Boolean> = mutableStateOf(false)
+
+    public var keepBgWhenHidden: Boolean get() = _keepBgWhenHidden.value; set(v) { _keepBgWhenHidden.put(v) }
+
+    internal val keepsHiddenBackground: Boolean
+        get() = effectivelyHidden && keepBgWhenHidden && showBackground &&
+            (mergeBackground || HudGroups.wholeGroupBackgroundOf(this) != null) &&
+            hasBackground() && canMergeBackground() && this !is LegacyHudMarker
+
+    /**
+     * `true` while TGOneConfig draws this HUD's background as part of a fused or whole-group shape
+     *
+     * A HUD which draws its own background **must** skip it while this is set, see [hudBackground]
+     */
+    public val bgMerged: Boolean get() = _bgFused.value || _bgGrouped.value
+
+    @Transient
+    private var _bgFused: MutableState<Boolean> = mutableStateOf(false)
+
+    @get:ApiStatus.Internal
+    public var bgFused: Boolean
+        get() = _bgFused.value
+        internal set(v) { _bgFused.put(v) }
+
+    @Transient
+    private var _bgGrouped: MutableState<Boolean> = mutableStateOf(false)
+
+    internal var bgGrouped: Boolean
+        get() = _bgGrouped.value
+        set(v) { _bgGrouped.put(v) }
+
+    private var _groupBackground: MutableState<String> = mutableStateOf("")
+
+    /** The id of the group whose single shared background this HUD is drawn on, or empty for none, see [HudGroups.setSingleBackground] */
+    @get:ApiStatus.Experimental
+    @set:ApiStatus.Experimental
+    public var groupBackground: String get() = _groupBackground.value; set(v) { _groupBackground.put(v) }
+
+    private var _textColor: MutableState<Int> = mutableStateOf(0xFFFFFFFF.toInt())
+    public var textColor: Int get() = _textColor.value; set(v) { _textColor.value = v }
+
+    private var _textChroma: MutableState<Boolean> = mutableStateOf(false)
+    public var textChroma: Boolean get() = _textChroma.value; set(v) { _textChroma.put(v) }
+
+    private var _textChromaSpeed: MutableState<Float> = mutableStateOf(1f)
+    public var textChromaSpeed: Float get() = _textChromaSpeed.value; set(v) { _textChromaSpeed.value = v }
+
+    private var _showShadow: MutableState<Boolean> = mutableStateOf(false)
+    public var showShadow: Boolean get() = _showShadow.value; set(v) { _showShadow.value = v }
+
+    private var _fullShadow: MutableState<Boolean> = mutableStateOf(false)
+    public var fullShadow: Boolean get() = _fullShadow.value; set(v) { _fullShadow.value = v }
+
+    private var _shadowColor: MutableState<Int> = mutableStateOf(0x40000000)
+    public var shadowColor: Int get() = _shadowColor.value; set(v) { _shadowColor.value = v }
+
+    private var _shadowChroma: MutableState<Boolean> = mutableStateOf(false)
+    public var shadowChroma: Boolean get() = _shadowChroma.value; set(v) { _shadowChroma.put(v) }
+
+    private var _shadowChromaSpeed: MutableState<Float> = mutableStateOf(1f)
+    public var shadowChromaSpeed: Float get() = _shadowChromaSpeed.value; set(v) { _shadowChromaSpeed.value = v }
+
+    private var _shadowOffsetX: MutableState<Float> = mutableStateOf(2f)
+    public var shadowOffsetX: Float get() = _shadowOffsetX.value; set(v) { _shadowOffsetX.value = v }
+
+    private var _shadowOffsetY: MutableState<Float> = mutableStateOf(2f)
+    public var shadowOffsetY: Float get() = _shadowOffsetY.value; set(v) { _shadowOffsetY.value = v }
+
+    @get:ApiStatus.Internal
+    @set:ApiStatus.Internal
+    @Transient
+    public var hasBuiltInBorderOptions: Boolean = false
+
+    private var _borderEnabled: MutableState<Boolean> = mutableStateOf(false)
+
+    @ExperimentalTGOneConfigUiApi
+    public open var borderEnabled: Boolean get() = _borderEnabled.value; set(v) { _borderEnabled.put(v) }
+
+    private var _borderColor: MutableState<Int> = mutableStateOf(0xFF000000.toInt())
+
+    @ExperimentalTGOneConfigUiApi
+    public open var borderColor: Int get() = _borderColor.value; set(v) { _borderColor.put(v) }
+
+    private var _borderChroma: MutableState<Boolean> = mutableStateOf(false)
+
+    @ExperimentalTGOneConfigUiApi
+    public open var borderChroma: Boolean get() = _borderChroma.value; set(v) { _borderChroma.put(v) }
+
+    private var _borderChromaSpeed: MutableState<Float> = mutableStateOf(1f)
+
+    @ExperimentalTGOneConfigUiApi
+    public open var borderChromaSpeed: Float get() = _borderChromaSpeed.value; set(v) { _borderChromaSpeed.put(v) }
+
+    private var _borderSize: MutableState<Float> = mutableStateOf(1f)
+
+    @ExperimentalTGOneConfigUiApi
+    public open var borderSize: Float get() = _borderSize.value; set(v) { _borderSize.put(v) }
+
+    @ExperimentalTGOneConfigUiApi
+    public var textPolyColor: PolyColor
+        get() = PolyColor(textColor, textChroma, textChromaSpeed)
+        set(v) {
+            textColor = v.rawArgb
+            textChroma = v.chroma
+            textChromaSpeed = v.chromaSpeed
+        }
+
+    @ExperimentalTGOneConfigUiApi
+    public var shadowPolyColor: PolyColor
+        get() = PolyColor(shadowColor, shadowChroma, shadowChromaSpeed)
+        set(v) {
+            shadowColor = v.rawArgb
+            shadowChroma = v.chroma
+            shadowChromaSpeed = v.chromaSpeed
+        }
+
+    @ExperimentalTGOneConfigUiApi
+    public var bgPolyColor: PolyColor
+        get() = PolyColor(bgColor, bgChroma, bgChromaSpeed)
+        set(v) {
+            bgColor = v.rawArgb
+            bgChroma = v.chroma
+            bgChromaSpeed = v.chromaSpeed
+        }
+
+    @ExperimentalTGOneConfigUiApi
+    public var borderPolyColor: PolyColor
+        get() = PolyColor(borderColor, borderChroma, borderChromaSpeed)
+        set(v) {
+            borderColor = v.rawArgb
+            borderChroma = v.chroma
+            borderChromaSpeed = v.chromaSpeed
+        }
+
+    public open val alwaysRedraw: Boolean
+        get() = bgChroma || textChroma || shadowChroma || (borderEnabled && borderChroma)
+
+    @ApiStatus.Internal
+    @JvmField
+    public var lastLayoutFrame: Long = -1L
+
+    @Volatile
+    @Transient
+    internal var drawReads = 0
+
+    @Transient
+    internal var lastDraw: HudManager.HudDraw? = null
+
+    @Transient
+    internal var lastDrawRender = -1L
+
+    @Transient
+    internal var sizedScale = Float.NaN
+
+    @Transient
+    internal var sizedW = 0f
+
+    @Transient
+    internal var sizedH = 0f
+
+    @Transient
+    internal var sizedRevision = -1
+
+    @Volatile
+    @Transient
+    internal var contentStamp = 0
+
+    protected fun contentChanged() {
+        contentStamp++
+        _runtime?.contentChanged()
+    }
+
+    @ApiStatus.Internal
+    @JvmField
+    public var lastUpdate: Long = Long.MIN_VALUE
+
+    @Transient
+    internal var updateFailing = false
+
+    @Transient private var revision = AtomicInteger()
+
+    internal val stateRevision: Int get() = revision.get()
+
+    private fun bumpRevision() {
+        revision.incrementAndGet()
+    }
+
+    private fun <T> MutableState<T>.put(v: T) {
+        if (Snapshot.withoutReadObservation { value } == v) return
+        value = v
+        if (Snapshot.isInSnapshot) synchronized(pendingWrites) { pendingWrites[this] = PendingWrite(this@Hud) }
+        else bumpRevision()
+    }
+
+    @Transient private var chainHuds = -1
+    @Transient private var chainExternal: List<Hud> = emptyList()
+    @Transient private var chainParents: List<Hud> = emptyList()
+
+
+    private fun walkChain() {
+        chainHuds = instancesRevision
+        var external: ArrayList<Hud>? = null
+        val parents = ArrayList<Hud>(0)
+        fun visit(parent: Hud?) {
+            if (parent == null || parent === this || parents.any { it === parent }) return
+            parents.add(parent)
+            if (parent.hasTrait(TRAIT_EXTERNAL_GEOMETRY or TRAIT_EXTERNAL_STATIC_SIZE)) {
+                (external ?: ArrayList<Hud>(1).also { external = it }).add(parent)
+            }
+        }
+        var node = this
+        var next = 0
+        while (true) {
+            val anchor = node.anchorParent
+            if (anchor != null) {
+                visit(anchor)
+            } else {
+                visit(node.mergeLinkX?.parent)
+                visit(node.mergeLinkY?.parent)
+            }
+            if (next == parents.size) break
+            node = parents[next++]
+        }
+        chainExternal = external ?: emptyList()
+        chainParents = parents
+    }
+
+    @Transient private var geomValid = false
+    @Transient private var geomStamp = 0
+    @Transient private var geomRev = 0
+    @Transient private var geomParentRevs = IntArray(0)
+    @Transient private var geomW = Float.NaN
+    @Transient private var geomH = Float.NaN
+    @Transient private var geomGuiScale = Float.NaN
+    @Transient private var geomStaticW = Float.NaN
+    @Transient private var geomStaticH = Float.NaN
+    @Transient private var cachedScale = 1f
+    @Transient private var cachedX = 0f
+    @Transient private var cachedY = 0f
+
+    @Transient private var parentCheckFrame = Long.MIN_VALUE
+    @Transient private var parentGeom = FloatArray(0)
+
+    @Transient private var hudTraitBits = 0
+
+    private val hudTraits: Int
+        get() {
+            val bits = hudTraitBits
+            if (bits != 0) return bits
+            return classTraits(javaClass).also { hudTraitBits = it }
+        }
+
+    private fun hasTrait(mask: Int): Boolean = (hudTraits and mask) != 0
+
+    internal val hasExternalGeometry: Boolean get() = hasTrait(TRAIT_EXTERNAL_GEOMETRY)
+
+    internal val overridesReplacesIds: Boolean get() = hasTrait(TRAIT_REPLACES_IDS)
+
+    private fun frameGuiScale(): Float = Platform.compatibility().options().guiScale
+
+    private fun externalParentMoved(): Boolean {
+        val ext = chainExternal
+        if (parentGeom.size != ext.size * 4) return true
+        for (i in ext.indices) {
+            val p = ext[i]
+            val o = i * 4
+            if (p.x != parentGeom[o] || p.y != parentGeom[o + 1] ||
+                p.scaledWidth != parentGeom[o + 2] || p.scaledHeight != parentGeom[o + 3]
+            ) return true
+        }
+        return false
+    }
+
+    private fun chainChanged(): Boolean {
+        if (geomRev != revision.get() || chainHuds != instancesRevision) return true
+        val parents = chainParents
+        for (i in parents.indices) {
+            if (parents[i].revision.get() != geomParentRevs[i]) return true
+        }
+        return false
+    }
+
+    private fun staticSizeChanged(): Boolean =
+        hasTrait(TRAIT_EXTERNAL_STATIC_SIZE) && (staticW != geomStaticW || staticH != geomStaticH)
+
+    private val frameUseGuiScale: Boolean
+        get() = if (!hasExternalGeometry && refreshFrameFlags()) flagUseGuiScale else useGuiScale
+
+    private fun guiScaleInput(): Float =
+        if (!frameUseGuiScale || anyParentIgnoresGuiScale()) Platform.compatibility().options().guiScale else 0f
+
+    private fun anyParentIgnoresGuiScale(): Boolean {
+        val parents = chainParents
+        for (i in parents.indices) if (!parents[i].frameUseGuiScale) return true
+        return false
+    }
+
+    private fun allParentsStateOnly(): Boolean {
+        val parents = chainParents
+        for (i in parents.indices) if (!parents[i].hasTrait(TRAIT_STATE_ONLY_MINIMUM_SIZE)) return false
+        return true
+    }
+
+    private fun measureParents() {
+        val parents = chainParents
+        for (i in parents.indices) parents[i].frameMinimumSize()
+    }
+
+    @Transient private var geomWrites = -1
+    @Transient private var geomStateOnly = false
+    @Transient private var geomScaleFromOption = false
+
+    private fun refreshFrameGeometry(): Boolean {
+        if (HudManager.isEditing) {
+            geomValid = false
+            return false
+        }
+        if (hasExternalGeometry || Snapshot.isInSnapshot) return false
+        val writes = hudStateWrites.get()
+        if (geomValid && writes == geomWrites && (geomStateOnly || parentCheckFrame == HudManager.frameId) &&
+            HudManager.guiScreenWidth == geomW && HudManager.guiScreenHeight == geomH &&
+            (!geomScaleFromOption || frameGuiScale() == geomGuiScale)
+        ) return true
+        val frame = HudManager.frameId
+        var parentMoved = false
+        if (parentCheckFrame != frame) {
+            parentCheckFrame = frame
+            frameMinimumSize()
+            measureParents()
+            parentMoved = externalParentMoved()
+        }
+        val sw = HudManager.guiScreenWidth
+        val sh = HudManager.guiScreenHeight
+        if (geomValid && sw == geomW && sh == geomH && !parentMoved && !staticSizeChanged() && !chainChanged() && guiScaleInput() == geomGuiScale) {
+            geomWrites = writes
+            return true
+        }
+        walkChain()
+        geomWrites = writes
+        geomStateOnly = chainExternal.isEmpty() && !hasTrait(TRAIT_EXTERNAL_STATIC_SIZE) && hasTrait(TRAIT_STATE_ONLY_MINIMUM_SIZE) &&
+            allParentsStateOnly()
+        measureParents()
+        val parents = chainParents
+        geomValid = true
+        geomStamp++
+        geomRev = revision.get()
+        geomParentRevs = IntArray(parents.size) { parents[it].revision.get() }
+        geomW = sw
+        geomH = sh
+        geomStaticW = staticW
+        geomStaticH = staticH
+        geomGuiScale = guiScaleInput()
+        geomScaleFromOption = !frameUseGuiScale || anyParentIgnoresGuiScale()
+        cachedScale = effectiveScale
+        cachedX = x
+        cachedY = y
+        val ext = chainExternal
+        if (parentGeom.size != ext.size * 4) parentGeom = FloatArray(ext.size * 4)
+        for (i in ext.indices) {
+            val p = ext[i]
+            val o = i * 4
+            parentGeom[o] = p.x
+            parentGeom[o + 1] = p.y
+            parentGeom[o + 2] = p.scaledWidth
+            parentGeom[o + 3] = p.scaledHeight
+        }
+        return true
+    }
+
+    internal val geometryStateOnly: Boolean get() = geomValid && geomStateOnly && !hasExternalGeometry
+
+    internal val geometryPollable: Boolean get() = geomValid && chainExternal.isEmpty() && !hasExternalGeometry
+
+    internal val geometryStamp: Int get() = if (refreshFrameGeometry()) geomStamp and Int.MAX_VALUE else -1
+
+    @get:ApiStatus.Internal
+    public val frameScale: Float get() = if (refreshFrameGeometry()) cachedScale else effectiveScale
+
+    @Transient private var flagRevision = -1
+    @Transient private var flagRedraw = false
+    @Transient private var flagHidden = false
+    @Transient private var flagUseGuiScale = true
+    @Transient private var flagCustomScale = 1f
+    @Transient private var flagFixedGuiScale = 1f
+
+    private fun refreshFrameFlags(): Boolean {
+        if (HudManager.isEditing || Snapshot.isInSnapshot) return false
+        val rev = revision.get()
+        if (rev != flagRevision) {
+            flagRevision = rev
+            if (!hasTrait(TRAIT_LIVE_REDRAW_INPUTS)) flagRedraw = alwaysRedraw
+            if (!hasExternalGeometry) {
+                flagHidden = effectivelyHidden
+                flagUseGuiScale = useGuiScale
+                flagCustomScale = customScale
+                flagFixedGuiScale = fixedGuiScale
+            }
+        }
+        return true
+    }
+
+    internal val redrawOverridden: Boolean get() = hasTrait(TRAIT_EXTERNAL_REDRAW)
+
+    internal val frameAlwaysRedraw: Boolean
+        get() = if (!hasTrait(TRAIT_LIVE_REDRAW_INPUTS) && refreshFrameFlags()) flagRedraw else alwaysRedraw
+
+    internal val frameHidden: Boolean
+        get() = if (!hasExternalGeometry && refreshFrameFlags()) flagHidden else effectivelyHidden
+
+    internal val frameEffectiveScale: Float
+        get() {
+            if (hasExternalGeometry || !refreshFrameFlags()) return effectiveScale
+            return if (flagUseGuiScale) flagCustomScale else scaleAtFixedGuiScale(flagCustomScale, flagFixedGuiScale)
+        }
+
+    @get:ApiStatus.Internal
+    public val frameX: Float get() = if (refreshFrameGeometry()) cachedX else x
+
+    @get:ApiStatus.Internal
+    public val frameY: Float get() = if (refreshFrameGeometry()) cachedY else y
+
+    override fun addToInitQueue() {}
+
+    public val isReal: Boolean get() = tree != null
+
+    @Transient
+    public var configId: String? = null
+
+    @Transient
+    internal var _runtime: PolyComposeRuntime? = null
+
+    @Transient
+    @ApiStatus.Internal
+    public var isVisible: MutableState<Boolean> = mutableStateOf(false)
+
+    @Transient
+    private var visibleState: Any? = null
+    @Transient
+    private var visibleWritten = false
+
+    internal fun setVisible(visible: Boolean) {
+        val state = isVisible
+        if (state === visibleState && visible == visibleWritten) return
+        visibleState = state
+        visibleWritten = visible
+        state.value = visible
+    }
+
+    @Transient
+    private var capturedDefaults: Tree? = null
+
+    /** the runtime only if it has already been created */
+    public val runtimeOrNull: PolyComposeRuntime? get() = _runtime
+
+    public val runtime: PolyComposeRuntime
+        get() = _runtime ?: PolyComposeRuntime().also {
+            _runtime = it
+            it.setContent {
+                CompositionLocalProvider(LocalHud provides this, LocalContentScale provides effectiveScale) {
+                    Content()
+                }
+            }
+        }
+
+    @Composable
+    public abstract fun Content()
+
+    internal val singletonTreeId: String get() = "huds/$id"
+
+    @ApiStatus.Internal
+    public fun make(with: Tree? = null): Hud = build(with).also { it.registerTree() }
+
+    internal fun build(with: Tree? = null): Hud {
+        if (tree != null) throw IllegalArgumentException("HUD is already made, it cannot be made again")
+        val out = if (multipleInstancesAllowed()) clone() else this
+        val treeId = with?.id ?: if (multipleInstancesAllowed()) "huds/${(1000..9999).random()}-$id" else singletonTreeId
+        if (out.defaultStaticWidth) out.staticWidth = true
+        HudStyles.applyDefaultTo(out)
+        val tree = ConfigManager.collect(out, treeId)
+        out.apply {
+            tree.title = title
+            tree.addMetadata("category", category)
+            tree.addMetadata("hidden", true)
+            if (out.profileLocalTree) tree.addMetadata(ConfigManager.PROFILE_LOCAL_METADATA, true)
+            if (!out.persistOwnState) tree.addMetadata(Backend.UI_ONLY_METADATA, true)
+            val hideFromConfigUi = { Property.Display.HIDDEN }
+            if (out.persistOwnState) {
+                tree["hidden"] = ktProperty(out::hidden).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["locked"] = ktProperty(out::locked).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["section"] = ktProperty(out::section).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["relativeX"] = ktProperty(out::relativeX).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["relativeY"] = ktProperty(out::relativeY).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["posSchema"] = ktProperty(out::posSchema).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["layoutRefW"] = ktProperty(out::layoutRefW).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["layoutRefH"] = ktProperty(out::layoutRefH).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["anchorTargetId"] = ktProperty(out::anchorTargetId).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["anchorPoint"] = ktProperty(out::anchorPoint).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["selfAnchorPoint"] = ktProperty(out::selfAnchorPoint).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["anchorOffsetX"] = ktProperty(out::anchorOffsetX).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["anchorOffsetY"] = ktProperty(out::anchorOffsetY).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["movedByPlayer"] = ktProperty(out::movedByPlayer).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["groupPath"] = ktProperty(out::groupPath).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["snapEdgeX"] = ktProperty(out::snapEdgeX).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["snapEdgeY"] = ktProperty(out::snapEdgeY).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["groupBackground"] = ktProperty(out::groupBackground).apply { addDisplayCondition(hideFromConfigUi) }
+            }
+            if (tree["toggleKeybind"] == null) {
+                tree["toggleKeybind"] = ktProperty(out::toggleKeybind).apply { addDisplayCondition(hideFromConfigUi) }
+            }
+            if (out.hasVisibilityKeybind()) {
+                tree["visibilityKeybind"] = ktProperty(out::visibilityKeybind, "Visibility Keybind").apply {
+                    description = "Temporarily shows this HUD if it is hidden, or hides it if it is shown."
+                    addMetadata(NO_MC_MIRROR_METADATA, true)
+                    addDisplayCondition(hideFromConfigUi)
+                }
+            }
+            if (out.hasVisibilityKeyMode()) {
+                tree["visibilityKeyMode"] = ktProperty(out::visibilityKeyMode, "Key Mode").apply {
+                    description = "Held: only while the key is held. Toggle: each press switches. Quick Press: a tap switches, holding switches back on release."
+                    addMetadata("optionLabels", arrayOf("Held", "Toggle", "Quick Press"))
+                    addDisplayCondition(hideFromConfigUi)
+                }
+                tree["visibilityKeyHoldThreshold"] = ktProperty(out::visibilityKeyHoldThreshold, "Hold Threshold").apply {
+                    description = "How long the key must be held in Quick Press mode before releasing it switches back."
+                    addDisplayCondition(hideFromConfigUi)
+                }
+            }
+            tree["alignment"] = ktProperty(out::alignment).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["growthAnchor"] = ktProperty(out::growthAnchor).apply {
+                description = "The point this HUD stays pinned to when its size changes, so it only ever grows away from that point."
+                addDisplayCondition(hideFromConfigUi)
+            }
+            tree["padTop"] = ktProperty(out::padTop).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["padBottom"] = ktProperty(out::padBottom).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["padLeft"] = ktProperty(out::padLeft).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["padRight"] = ktProperty(out::padRight).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["staticWidth"] = ktProperty(out::staticWidth).apply {
+                description = "Keeps this HUD at a fixed width and height. This also enables content alignment inside the HUD box."
+                addDisplayCondition(hideFromConfigUi)
+            }
+            if (out.persistOwnState) {
+                tree["staticW"] = ktProperty(out::staticW).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["staticH"] = ktProperty(out::staticH).apply { addDisplayCondition(hideFromConfigUi) }
+            }
+            tree["font"] = ktProperty(out::font).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["caseType"] = ktProperty(out::caseType).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textScale"] = ktProperty(out::textScale).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textBold"] = ktProperty(out::textBold).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textItalic"] = ktProperty(out::textItalic).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textUnderline"] = ktProperty(out::textUnderline).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textWeight"] = ktProperty(out::textWeight).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textAlign"] = ktProperty(out::textAlign).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["useGuiScale"] = ktProperty(out::useGuiScale).apply {
+                description = "Scale this HUD with Minecraft's GUI scale. Turn this off to keep it the same size at any GUI scale."
+                addDisplayCondition(hideFromConfigUi)
+            }
+            tree["fixedGuiScale"] = ktProperty(out::fixedGuiScale).apply { addDisplayCondition(hideFromConfigUi) }
+            if (out.persistOwnState) {
+                tree["customScale"] = ktProperty(out::customScale).apply { addDisplayCondition(hideFromConfigUi) }
+            }
+            tree["showBackground"] = ktProperty(out::showBackground).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["bgColor"] = ktProperty(out::bgColor).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["bgChroma"] = ktProperty(out::bgChroma).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["bgChromaSpeed"] = ktProperty(out::bgChromaSpeed).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["bgRadius"] = ktProperty(out::bgRadius).apply { addDisplayCondition(hideFromConfigUi) }
+            // legacy HUDs draw their own background through the compat bridge so there is nothing
+            // to fuse and no reason to persist merge settings for them or for opted-out HUDs
+            if (out !is LegacyHudMarker && out.canMergeBackground()) {
+                tree["mergeBackground"] = ktProperty(out::mergeBackground).apply {
+                    description = "Fuses this HUD's background with the background of HUDs it touches, so they draw as one shape."
+                    addDisplayCondition(hideFromConfigUi)
+                }
+                tree["mergeDiagonally"] = ktProperty(out::mergeDiagonally).apply {
+                    description = "Also fuses backgrounds with HUDs sitting diagonally from this one, which meet it at a corner or only partly along an edge."
+                    addDisplayCondition(hideFromConfigUi)
+                }
+                tree["mergeAcrossColours"] = ktProperty(out::mergeAcrossColours).apply {
+                    description = "Also fuses backgrounds with touching HUDs of a different colour, blending the colours where they meet."
+                    addDisplayCondition(hideFromConfigUi)
+                }
+                tree["keepBgWhenHidden"] = ktProperty(out::keepBgWhenHidden).apply {
+                    description = "Keeps this HUD's background in the fused shape while the HUD is hidden, so the shape stays whole instead of losing a piece."
+                    addDisplayCondition(hideFromConfigUi)
+                }
+            }
+            tree["textColor"] = ktProperty(out::textColor).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textChroma"] = ktProperty(out::textChroma).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["textChromaSpeed"] = ktProperty(out::textChromaSpeed).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["showShadow"] = ktProperty(out::showShadow).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["fullShadow"] = ktProperty(out::fullShadow).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["shadowColor"] = ktProperty(out::shadowColor).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["shadowChroma"] = ktProperty(out::shadowChroma).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["shadowChromaSpeed"] = ktProperty(out::shadowChromaSpeed).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["shadowOffsetX"] = ktProperty(out::shadowOffsetX).apply { addDisplayCondition(hideFromConfigUi) }
+            tree["shadowOffsetY"] = ktProperty(out::shadowOffsetY).apply { addDisplayCondition(hideFromConfigUi) }
+            out.hasBuiltInBorderOptions = out.hasBorder() && BORDER_OPTIONS.none { tree[it] != null }
+            if (out.hasBuiltInBorderOptions) {
+                tree["borderEnabled"] = ktProperty(out::borderEnabled).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["borderColor"] = ktProperty(out::borderColor).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["borderChroma"] = ktProperty(out::borderChroma).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["borderChromaSpeed"] = ktProperty(out::borderChromaSpeed).apply { addDisplayCondition(hideFromConfigUi) }
+                tree["borderSize"] = ktProperty(out::borderSize).apply { addDisplayCondition(hideFromConfigUi) }
+            }
+            (tree["showInF3"] as? Property<*>)?.addDisplayCondition(hideFromConfigUi)
+            (tree["showInTab"] as? Property<*>)?.addDisplayCondition(hideFromConfigUi)
+            (tree["showInScreens"] as? Property<*>)?.addDisplayCondition(hideFromConfigUi)
+            (tree["showInChat"] as? Property<*>)?.addDisplayCondition(hideFromConfigUi)
+            addToSerialized(tree)
+            tree["hudClass"] = simple(value = out::class.java.name).apply {
+                addDisplayCondition { Property.Display.HIDDEN }
+            }
+            addCallbacks(tree)
+            if (with == null) LOGGER.info("generated new HUD config for $title -> ${tree.id}")
+            Config.captureDefaults(tree)
+            if (out.capturedDefaults == null) out.capturedDefaults = tree
+            this.tree = tree
+        }
+        return out
+    }
+
+    internal fun registerTree() {
+        val tree = tree ?: return
+        ConfigManager.active().register(tree)
+        sanitizeHudCapturedDefaults(tree)
+        syncToggleKeybind()
+        for (bind in clonedKeybinds) KeybindManager.register(bind)
+        refreshVisibilityKeybind()
+    }
+
+    internal fun loadStoredValues() {
+        val tree = tree ?: return
+        ConfigManager.active().load(tree.id)?.let { tree.overwrite(it, true) }
+    }
+
+    protected open fun addCallbacks(tree: Tree) {}
+    protected open fun addToSerialized(tree: Tree) {}
+
+    protected fun updateWhenChanged(optionName: String) {
+        if (isReal) addCallback(optionName, this::updateAndRecalculate)
+        else LOGGER.warn("attempted to add callback to {}'s option '{}', but it is not real.", title, optionName)
+    }
+
+    public fun updateAndRecalculate() {
+        update()
+    }
+
+    public open fun setup() {}
+
+    public open fun migrateLoaded(saved: Tree): Boolean = false
+    public abstract fun update(): Boolean
+    public open fun updateFrequency(): Long = -1L
+    /**
+     * Where this HUD belongs on screen, for example the spot the vanilla element it replaces sits in
+     *
+     * Null when it has no natural place, in which case it starts in the top left corner and the editor offers no
+     * way to reset its position
+     */
+    public open fun defaultPosition(): Pair<Float, Float>? = null
+
+    /**
+     * Return `false` to skip drawing this HUD while it has nothing to show. Unlike [hidden], this
+     * doesn't change the user's visibility setting
+     *
+     * Called every frame after [update], so return state computed there
+     */
+    public open fun shouldShow(): Boolean = true
+
+    /**
+     * Return `false` for HUDs that only show up in game now and then (titles, tab list, chat), so the TGOneConfig
+     * menu leaves them as they are in game. The HUD editor still previews them
+     */
+    public open val previewsBehindMenu: Boolean get() = true
+
+    /**
+     * Return `true` while this HUD still has something to draw after being hidden, such as a closing
+     * animation, so it keeps being drawn until that finishes
+     *
+     * Called every frame while the HUD is hidden outside the editor
+     */
+    public open fun drawsWhileHidden(): Boolean = false
+
+    public open fun showByDefault(): Boolean = false
+    public open fun hasBackground(): Boolean = true
+
+    @ExperimentalTGOneConfigUiApi
+    public open fun hasBorder(): Boolean = true
+
+    /**
+     * Whether this HUD's background may be fused with the backgrounds of the HUDs it touches
+     *
+     * Fusing only works when the HUD leaves its own background to TGOneConfig while [bgMerged] is set
+     *
+     * A HUD which unconditionally draws its own background would have it drawn twice once by itself
+     * and once by the fused shape which reads as a doubled (darker) background
+     *
+     * So this defaults to `true` only for [TextHud] which already does that
+     *
+     * Anything drawing its own content should override it to `true` *and* apply its background
+     * through [hudBackground] (or check [bgMerged] by hand)
+     *
+     * Otherwise leave it `false` to opt out of merging entirely
+     *
+     * When `false` the merge settings are hidden from the HUD settings panel and not persisted
+     */
+    public open fun canMergeBackground(): Boolean = this is TextHud
+
+    /** Whether this HUD takes no space while it is not being drawn outside the editor, so HUDs anchored to it close up the gap */
+    @ApiStatus.Experimental
+    public open fun collapsesWhenNotShown(): Boolean = false
+
+    @JvmOverloads
+    public fun hudBackground(modifier: PolyModifier = PolyModifier): PolyModifier {
+        if (!showBackground || !hasBackground() || bgMerged) return modifier
+        val filled = modifier.background(PolyColor(bgColor, bgChroma, bgChromaSpeed), bgRadius)
+        val size = borderSize
+        return if (borderEnabled && size > 0f && hasBorder()) filled.border(borderPolyColor, size, bgRadius) else filled
+    }
+
+    public open fun backgroundColor(): PolyColor? = null
+    public open fun multipleInstancesAllowed(): Boolean = true
+    public open fun minimumSize(): Pair<Float, Float> = 0f to 0f
+
+    /**
+     * Whether the user is ever allowed to delete this HUD
+     *
+     * When `false` the settings panel and the canvas context menu hide the delete button so the
+     * HUD cannot be removed (it can still be hidden or moved)
+     *
+     * Useful for HUDs that are intrinsic to a mod and cannot be re-created once deleted
+     *
+     * Use [canDelete] to ask whether a *particular* HUD can be deleted right now
+     */
+    public open fun deletable(): Boolean = true
+
+    /**
+     * Whether this exact HUD can be deleted right now
+     */
+    public fun canDelete(): Boolean = deletable() && (isReal || this in HudManager.activeInstances)
+
+    internal open val profileLocalTree: Boolean get() = true
+
+    /**
+     * Drops this instance's config tree reference turning it back into a provider
+     *
+     * Called when the instance is removed so that a single-instance HUD (whose provider *is* its
+     * instance) can be made again instead of throwing "HUD is already made" forever
+     */
+    @ApiStatus.Internal
+    internal fun detachTree() {
+        toggleBind?.let(KeybindManager::unregister)
+        for (bind in clonedKeybinds) KeybindManager.unregister(bind)
+        tree = null
+        refreshVisibilityKeybind()
+    }
+
+    @ApiStatus.Internal
+    internal fun restoreCapturedDefaults() {
+        capturedDefaults?.let { Config.restoreCapturedDefaults(it, true) }
+    }
+
+    public open fun remove() {}
+
+    @ExperimentalTGOneConfigUiApi
+    protected fun cloneOptions() {
+        deepCopyHudOptions(this)
+    }
+
+    @ExperimentalTGOneConfigUiApi
+    public open fun onCloned() {}
+
+    @MustBeInvokedByOverriders
+    @Suppress("UNCHECKED_CAST")
+    override fun clone(): Hud = (super.clone() as Hud).apply {
+        _runtime = null
+        lastDraw = null
+        revision = AtomicInteger(this@Hud.revision.get())
+        _pinnedCorner = mutableStateOf(null)
+        unpinPending = false
+        isVisible = mutableStateOf(false)
+        chainExternal = emptyList()
+        chainParents = emptyList()
+        parentGeom = FloatArray(0)
+        geomValid = false
+        toggleBind = this@Hud.toggleBind?.let { src ->
+            TGOneConfigKeybind(src.keyCodes?.copyOf(), src.mouseBtns?.copyOf(), src.mods, src.durationNanos, ::onToggleKeybind).also {
+                it.unresolvedKeyInputs = src.unresolvedKeyInputs
+                it.unresolvedMouseInputs = src.unresolvedMouseInputs
+            }
+        }
+        positionKeep = 0
+        positionBatch = 0
+        positionMovePending = false
+        _movedByPlayer = mutableStateOf(this@Hud.movedByPlayer)
+        _visibilityKeybind = mutableStateOf(this@Hud.visibilityKeybind.let { it.copyWith(it.keyCodes?.clone(), it.mouseBtns?.clone(), it.mods) })
+        _visibilityKeyMode = mutableStateOf(this@Hud.visibilityKeyMode)
+        _visibilityKeyHoldThreshold = mutableStateOf(this@Hud.visibilityKeyHoldThreshold)
+        visibilityKeyState = KeyPressState()
+        registeredVisibilityKeybind = null
+        _visibilityKeyActive = mutableStateOf(false)
+        _staticWidth = mutableStateOf(this@Hud.staticWidth)
+        _section = mutableStateOf(this@Hud.section)
+        _relativeX = mutableStateOf(this@Hud.relativeX)
+        _relativeY = mutableStateOf(this@Hud.relativeY)
+        _renderedW = mutableStateOf(0f)
+        _renderedH = mutableStateOf(0f)
+        _alignment = mutableStateOf(this@Hud.alignment)
+        _growthAnchor = mutableStateOf(this@Hud.growthAnchor)
+        _snapEdgeX = mutableStateOf(this@Hud.snapEdgeX)
+        _snapEdgeY = mutableStateOf(this@Hud.snapEdgeY)
+        _anchorTargetId = mutableStateOf(this@Hud.anchorTargetId)
+        _anchorPoint = mutableStateOf(this@Hud.anchorPoint)
+        _selfAnchorPoint = mutableStateOf(this@Hud.selfAnchorPoint)
+        _mergeLinkX = mutableStateOf(null)
+        _mergeLinkY = mutableStateOf(null)
+        _anchorOffsetX = mutableStateOf(this@Hud.anchorOffsetX)
+        _anchorOffsetY = mutableStateOf(this@Hud.anchorOffsetY)
+        _groupPath = mutableStateOf(this@Hud.groupPath)
+        _collapsed = mutableStateOf(false)
+        _padTop = mutableStateOf(this@Hud.padTop)
+        _padBottom = mutableStateOf(this@Hud.padBottom)
+        _padLeft = mutableStateOf(this@Hud.padLeft)
+        _padRight = mutableStateOf(this@Hud.padRight)
+        _staticW = mutableStateOf(this@Hud.staticW)
+        _staticH = mutableStateOf(this@Hud.staticH)
+        _font = mutableStateOf(this@Hud.font)
+        _caseType = mutableStateOf(this@Hud.caseType)
+        _textScale = mutableStateOf(this@Hud.textScale)
+        _textBold = mutableStateOf(this@Hud.textBold)
+        _textItalic = mutableStateOf(this@Hud.textItalic)
+        _textUnderline = mutableStateOf(this@Hud.textUnderline)
+        _textWeight = mutableStateOf(this@Hud.textWeight)
+        _textAlign = mutableStateOf(this@Hud.textAlign)
+        _useGuiScale = mutableStateOf(this@Hud.useGuiScale)
+        _customScale = mutableStateOf(this@Hud.customScale)
+        _fixedGuiScale = mutableStateOf(this@Hud.fixedGuiScale)
+        _showBackground = mutableStateOf(this@Hud.showBackground)
+        _bgColor = mutableStateOf(this@Hud.bgColor)
+        _bgChroma = mutableStateOf(this@Hud.bgChroma)
+        _bgChromaSpeed = mutableStateOf(this@Hud.bgChromaSpeed)
+        _bgRadius = mutableStateOf(this@Hud.bgRadius)
+        _mergeBackground = mutableStateOf(this@Hud.mergeBackground)
+        _mergeDiagonally = mutableStateOf(this@Hud.mergeDiagonally)
+        _mergeAcrossColours = mutableStateOf(this@Hud.mergeAcrossColours)
+        _keepBgWhenHidden = mutableStateOf(this@Hud.keepBgWhenHidden)
+        _bgFused = mutableStateOf(false)
+        _bgGrouped = mutableStateOf(false)
+        _groupBackground = mutableStateOf(this@Hud.groupBackground)
+        _textColor = mutableStateOf(this@Hud.textColor)
+        _textChroma = mutableStateOf(this@Hud.textChroma)
+        _textChromaSpeed = mutableStateOf(this@Hud.textChromaSpeed)
+        _showShadow = mutableStateOf(this@Hud.showShadow)
+        _fullShadow = mutableStateOf(this@Hud.fullShadow)
+        _shadowColor = mutableStateOf(this@Hud.shadowColor)
+        _shadowChroma = mutableStateOf(this@Hud.shadowChroma)
+        _shadowChromaSpeed = mutableStateOf(this@Hud.shadowChromaSpeed)
+        _shadowOffsetX = mutableStateOf(this@Hud.shadowOffsetX)
+        _shadowOffsetY = mutableStateOf(this@Hud.shadowOffsetY)
+        _borderEnabled = mutableStateOf(this@Hud._borderEnabled.value)
+        _borderColor = mutableStateOf(this@Hud._borderColor.value)
+        _borderChroma = mutableStateOf(this@Hud._borderChroma.value)
+        _borderChromaSpeed = mutableStateOf(this@Hud._borderChromaSpeed.value)
+        _borderSize = mutableStateOf(this@Hud._borderSize.value)
+        _hidden = mutableStateOf(this@Hud.hidden)
+        _locked = mutableStateOf(this@Hud.locked)
+        clonedKeybinds = ArrayList()
+        deepCopyHudOptions(this, this@Hud)
+        onCloned()
+    }
+
+    private companion object {
+        private class PendingWrite(hud: Hud) : WeakReference<Hud>(hud) {
+            val at = System.nanoTime()
+        }
+
+        private const val PENDING_WRITE_TTL_NANOS = 10_000_000_000L
+
+        private val pendingWrites = WeakHashMap<Any, PendingWrite>()
+
+        private var instancesRevisionCache = 0
+        private var instancesRevisionWrites = -1
+
+        val instancesRevision: Int get() {
+            val writes = hudStateWrites.get()
+            if (writes != instancesRevisionWrites) {
+                instancesRevisionCache = Snapshot.withoutReadObservation { HudManager.instancesRevision.intValue }
+                instancesRevisionWrites = writes
+            }
+            return instancesRevisionCache
+        }
+
+        init {
+            Snapshot.registerGlobalWriteObserver { hudStateWrites.incrementAndGet() }
+            Snapshot.registerApplyObserver { changed, _ ->
+                if (changed.isNotEmpty()) hudStateWrites.incrementAndGet()
+                synchronized(pendingWrites) {
+                    if (pendingWrites.isEmpty()) return@registerApplyObserver
+                    for (state in changed) pendingWrites.remove(state)?.get()?.bumpRevision()
+                    val cutoff = System.nanoTime() - PENDING_WRITE_TTL_NANOS
+                    pendingWrites.values.removeIf { it.at - cutoff < 0 }
+                }
+            }
+        }
+
+        private fun sanitizeHudCapturedDefaults(tree: Tree) {
+            for (id in listOf("staticW", "staticH")) {
+                val prop = tree.getProp(id) ?: continue
+                val def = prop.getMetadata<Any?>("default") ?: continue
+                val f = (def as? Number)?.toFloat() ?: continue
+                if (f <= 0f) prop.removeMetadata("default")
+            }
+        }
+    }
+
+    public class Category private constructor(
+        private val rawName: String,
+        public val id: Byte,
+        categoryId: String,
+        private val pageTitle: PageText?,
+    ) {
+        @Deprecated("Use Category.create(id, title), which compares categories by their id")
+        public constructor(name: String, id: Byte) : this(name, id, name, null)
+
+        @ExperimentalTGOneConfigUiApi
+        public val categoryId: String = categoryId
+
+        public val name: String
+            get() {
+                val title = pageTitle ?: return rawName
+                val key = title.key ?: return title.fallback
+                val translated = runCatching { Platform.i18n().hasTranslation(key) }.getOrDefault(false)
+                return if (translated) key else title.fallback
+            }
+
+        @ExperimentalTGOneConfigUiApi
+        public val title: PageText
+            get() = pageTitle ?: if (rawName.isBlank()) PageText.literal(rawName) else PageText.translatable(rawName, rawName)
+
+        override fun equals(other: Any?): Boolean = this === other || (other is Category && other.categoryId == categoryId)
+        override fun hashCode(): Int = categoryId.hashCode()
+        override fun toString(): String = name
+
+        public companion object {
+            @JvmStatic public val COMBAT: Category = Category("tgoneconfig.combat", 1, "tgoneconfig.combat", null)
+            @JvmStatic public val INFO: Category = Category("tgoneconfig.info", 2, "tgoneconfig.info", null)
+            @JvmStatic public val PLAYER: Category = Category("tgoneconfig.player", 3, "tgoneconfig.player", null)
+            @JvmStatic public val COMPAT: Category = Category("tgoneconfig.compat", 4, "tgoneconfig.compat", null)
+
+            @ExperimentalTGOneConfigUiApi
+            @JvmStatic
+            public fun create(id: String, title: PageText): Category {
+                require(id.isNotBlank()) { "Category id must not be blank" }
+                return Category(id, 0, id, title)
+            }
+        }
+    }
+}
+
+

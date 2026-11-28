@@ -1,0 +1,93 @@
+package org.tg.tgoneconfig.test
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import org.tg.compose.composables.NodeBox
+import org.tg.compose.composables.NodeMcText
+import org.tg.compose.composables.NodeRow
+import org.tg.compose.composables.padding
+import org.tg.compose.layout.PolyInsets
+import org.tg.compose.minecraft.mc.NodeMcItemIcon
+import org.tg.tgoneconfig.api.config.v1.annotations.ItemList
+import org.tg.tgoneconfig.api.config.v1.annotations.Slider
+import org.tg.tgoneconfig.api.config.v1.annotations.Switch
+import org.tg.tgoneconfig.api.hud.v1.Hud
+import org.tg.tgoneconfig.internal.ui.components.item.ItemCatalog
+import org.tg.tgoneconfig.internal.ui.components.item.MinecraftItemCatalogService
+
+class TestItemHud_Test : Hud("test-item-hud", "Item List Hud", Category.INFO) {
+
+    @ItemList(title = "Items", description = "Items drawn by this HUD")
+    var items: MutableList<String> = mutableListOf("minecraft:diamond_sword", "minecraft:golden_apple")
+
+    @Slider(title = "Icon Size", min = 8f, max = 32f, step = 1f)
+    var iconSize: Int = 16
+
+    @Switch(title = "Show Names")
+    var showNames: Boolean = false
+
+    private var displayItems: MutableState<List<String>> = mutableStateOf(emptyList())
+
+    init {
+        padLeft = 4f
+        padRight = 4f
+        padTop = 4f
+        padBottom = 4f
+    }
+
+    @Composable
+    override fun Content() {
+        val ids = displayItems.value
+        val scale = textScale
+        val padding = PolyInsets(padLeft * scale, padTop * scale, padRight * scale, padBottom * scale)
+        NodeBox(modifier = hudBackground().padding(padding)) {
+            NodeRow(gap = 3f * scale) {
+                if (ids.isEmpty()) {
+                    NodeMcText(text = "§7No items", scale = scale)
+                } else {
+                    ids.forEach { id ->
+                        NodeRow(gap = 2f * scale) {
+                            MinecraftItemCatalogService.item(id)?.let { NodeMcItemIcon(it, iconSize * scale) }
+                            if (showNames) {
+                                NodeMcText(text = displayName(id), scale = scale)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun displayName(id: String): String =
+        ItemCatalog.items().firstOrNull { it.id == id }?.displayName ?: id.substringAfter(':')
+
+    override fun update(): Boolean {
+        val ids = items.toList()
+        if (ids == displayItems.value) return false
+        displayItems.value = ids
+        return true
+    }
+
+    override fun setup() {
+        super.setup()
+        if (isReal) {
+            updateWhenChanged("items")
+            updateWhenChanged("iconSize")
+            updateWhenChanged("showNames")
+        }
+        update()
+    }
+
+    override fun defaultPosition(): Pair<Float, Float> = 10f to 150f
+
+    override fun showByDefault(): Boolean = true
+
+    override fun minimumSize(): Pair<Float, Float> =
+        (padLeft + padRight + 8f) to (padTop + padBottom + 8f)
+
+    override fun clone(): Hud = (super.clone() as TestItemHud_Test).also {
+        it.items = this.items.toMutableList()
+        it.displayItems = mutableStateOf(emptyList())
+    }
+}

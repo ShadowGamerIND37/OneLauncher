@@ -1,0 +1,210 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+@file:JvmSynthetic
+@file:OptIn(ExperimentalTypeInference::class)
+
+package org.tg.tgoneconfig.api.event.v1
+
+import org.tg.tgoneconfig.api.event.v1.events.ChatEvent
+import org.tg.tgoneconfig.api.event.v1.events.Event
+import org.tg.tgoneconfig.api.event.v1.events.FramebufferRenderEvent
+import org.tg.tgoneconfig.api.event.v1.events.HudEvent
+import org.tg.tgoneconfig.api.event.v1.events.PacketEvent
+import org.tg.tgoneconfig.api.event.v1.events.RenderLivingEvent
+import org.tg.tgoneconfig.api.event.v1.events.TickEvent
+import org.tg.tgoneconfig.api.event.v1.events.WindowFocusEvent
+import org.tg.tgoneconfig.api.event.v1.events.WorldEvent
+import org.tg.tgoneconfig.api.event.v1.invoke.EventHandler
+import kotlin.experimental.ExperimentalTypeInference
+
+/**
+ * Kotlin specific API for registering event handlers
+ *
+ * Intended usage
+ *
+ * ```
+ * eventHandler { event: KeyInputEvent ->
+ *     println("Key event: $event")
+ * }
+ * ```
+ */
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerZ")
+public inline fun <reified E : Event> eventHandler(crossinline handler: (E) -> Boolean): EventHandler<E> = object : EventHandler<E>() {
+    override fun handle(event: E) = handler(event)
+
+    override fun getEventClass() = E::class.java
+}.register()
+
+/**
+ * Kotlin specific API for registering event handlers
+ *
+ * Intended usage
+ *
+ * ```
+ * eventHandler { event: KeyInputEvent ->
+ *     println("Key event: $event")
+ * }
+ * ```
+ */
+@OverloadResolutionByLambdaReturnType
+public inline fun <reified E : Event> eventHandler(crossinline handler: (E) -> Unit): EventHandler<E> = object : EventHandler<E>() {
+    override fun handle(event: E): Boolean {
+        handler(event)
+        return false
+    }
+
+    override fun getEventClass() = E::class.java
+}.register()
+
+// Compile-time rejection of handlers for abstract parent event types, which are never posted
+// directly and whose handlers would therefore never be called. These overloads are more specific
+// than the generic ones above, so they win overload resolution and surface as compile errors.
+
+private fun neverPosted(): Nothing =
+    throw UnsupportedOperationException("This event type is never posted directly")
+
+@Deprecated("Event is never posted directly; register for a concrete event type instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerEventZ")
+public fun eventHandler(handler: (Event) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("Event is never posted directly; register for a concrete event type instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerEvent")
+public fun eventHandler(handler: (Event) -> Unit): Nothing = neverPosted()
+
+@Deprecated("Event.Cancellable is never posted directly; register for a concrete event type instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerCancellableZ")
+public fun eventHandler(handler: (Event.Cancellable) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("Event.Cancellable is never posted directly; register for a concrete event type instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerCancellable")
+public fun eventHandler(handler: (Event.Cancellable) -> Unit): Nothing = neverPosted()
+
+@Deprecated("TickEvent is never posted directly; register for TickEvent.Start or TickEvent.End instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerTickZ")
+public fun eventHandler(handler: (TickEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("TickEvent is never posted directly; register for TickEvent.Start or TickEvent.End instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerTick")
+public fun eventHandler(handler: (TickEvent) -> Unit): Nothing = neverPosted()
+
+@Deprecated("WindowFocusEvent is never posted directly; register for WindowFocusEvent.Gained or WindowFocusEvent.Lost instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerWindowFocusZ")
+public fun eventHandler(handler: (WindowFocusEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("WindowFocusEvent is never posted directly; register for WindowFocusEvent.Gained or WindowFocusEvent.Lost instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerWindowFocus")
+public fun eventHandler(handler: (WindowFocusEvent) -> Unit): Nothing = neverPosted()
+
+@Deprecated("FramebufferRenderEvent is never posted directly; register for FramebufferRenderEvent.Start or FramebufferRenderEvent.End instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerFramebufferRenderZ")
+public fun eventHandler(handler: (FramebufferRenderEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("FramebufferRenderEvent is never posted directly; register for FramebufferRenderEvent.Start or FramebufferRenderEvent.End instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerFramebufferRender")
+public fun eventHandler(handler: (FramebufferRenderEvent) -> Unit): Nothing = neverPosted()
+
+@Deprecated("ChatEvent is never posted directly; register for ChatEvent.Send or ChatEvent.Receive instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerChatZ")
+public fun eventHandler(handler: (ChatEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("ChatEvent is never posted directly; register for ChatEvent.Send or ChatEvent.Receive instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerChat")
+public fun eventHandler(handler: (ChatEvent) -> Unit): Nothing = neverPosted()
+
+@Deprecated("HudEvent is never posted directly; register for HudEvent.Tab or HudEvent.Debug instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerHudZ")
+public fun eventHandler(handler: (HudEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("HudEvent is never posted directly; register for HudEvent.Tab or HudEvent.Debug instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerHud")
+public fun eventHandler(handler: (HudEvent) -> Unit): Nothing = neverPosted()
+
+@Deprecated("WorldEvent is never posted directly; register for WorldEvent.Load or WorldEvent.Unload instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerWorldZ")
+public fun eventHandler(handler: (WorldEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("WorldEvent is never posted directly; register for WorldEvent.Load or WorldEvent.Unload instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerWorld")
+public fun eventHandler(handler: (WorldEvent) -> Unit): Nothing = neverPosted()
+
+@Deprecated("PacketEvent is never posted directly; register for PacketEvent.Send or PacketEvent.Receive instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerPacketZ")
+public fun eventHandler(handler: (PacketEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("PacketEvent is never posted directly; register for PacketEvent.Send or PacketEvent.Receive instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerPacket")
+public fun eventHandler(handler: (PacketEvent) -> Unit): Nothing = neverPosted()
+
+@Deprecated("RenderLivingEvent is never posted directly; register for RenderLivingEvent.Pre or RenderLivingEvent.Post instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerRenderLivingZ")
+public fun eventHandler(handler: (RenderLivingEvent) -> Boolean): Nothing = neverPosted()
+
+@Deprecated("RenderLivingEvent is never posted directly; register for RenderLivingEvent.Pre or RenderLivingEvent.Post instead.", level = DeprecationLevel.ERROR)
+@OverloadResolutionByLambdaReturnType
+@JvmSynthetic
+@JvmName("eventHandlerRenderLiving")
+public fun eventHandler(handler: (RenderLivingEvent) -> Unit): Nothing = neverPosted()

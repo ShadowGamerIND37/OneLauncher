@@ -1,0 +1,14 @@
+[versions]
+modmenu = "12.0.0"
+yacl = "3.7.1+1.21.4-fabric"
+
+vulkanmod = "RAtVo03C"
+
+[libraries]
+modmenu = { module = "com.terraformersmc:modmenu", version.ref = "modmenu"}
+yacl = { module = "dev.isxander:yet-another-config-lib", version.ref = "yacl" }
+
+vulkanmod = { module = "maven.modrinth:vulkanmod", version.ref = "vulkanmod" }
+
+[bundles]
+compat = ["modmenu", "yacl"]

@@ -1,0 +1,299 @@
+package org.tg.tgoneconfig.api.hud.v1
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import org.tg.tgoneconfig.api.config.v1.CompatSnapshots
+import org.tg.tgoneconfig.api.config.v1.Properties
+import org.tg.tgoneconfig.api.config.v1.Property
+import org.tg.tgoneconfig.api.config.v1.Tree
+import java.util.concurrent.ConcurrentHashMap
+import java.util.function.BooleanSupplier
+
+private class TGOneConfigHudCompat(val wrapper: TGOneConfigHudWrapper) :
+    Hud(wrapper.id, wrapper.name, Category.COMPAT), LegacyHudMarker {
+
+    @Composable
+    override fun Content() {
+    }
+
+    private val hiddenRevision = mutableStateOf(0)
+
+    @Volatile
+    private var faulted = false
+    private val loggedFailures = ConcurrentHashMap.newKeySet<String>()
+
+    private fun fault(member: String, error: Throwable) {
+        if (faulted) return
+        faulted = true
+        HudManager.LOGGER.error(
+            "Disabling compat HUD '${wrapper.id}' from '${wrapper.modId ?: "unknown"}': $member failed, so " +
+                "that mod is probably a different version than TGOneConfig was built against",
+            error,
+        )
+    }
+
+    private fun reportTransient(member: String, error: Throwable) {
+        if (!loggedFailures.add(member)) return
+        HudManager.LOGGER.error("Compat HUD '${wrapper.id}': $member threw, using a fallback for it", error)
+    }
+
+    private inline fun <T> guard(member: String, fallback: T, block: () -> T): T {
+        if (faulted) return fallback
+        return try {
+            block()
+        } catch (e: LinkageError) {
+            fault(member, e)
+            fallback
+        } catch (e: Exception) {
+            reportTransient(member, e)
+            fallback
+        }
+    }
+
+    override var hidden: Boolean
+        get() {
+            hiddenRevision.value
+            return guard("hidden", true) { wrapper.hidden }
+        }
+        set(value) {
+            guard("hidden", Unit) {
+                if (wrapper.hidden != value) {
+                    wrapper.hidden = value
+                    hiddenRevision.value++
+                }
+            }
+        }
+
+    override val persistOwnState: Boolean get() = false
+
+    override fun hasVisibilityKeybind(): Boolean = false
+
+    override val profileLocalTree: Boolean get() = false
+
+    override fun update(): Boolean = false
+    override fun multipleInstancesAllowed(): Boolean = false
+
+    override fun deletable(): Boolean = faulted
+
+    override val supportsScale: Boolean get() = guard("supportsScale", false) { wrapper.supportsScale }
+
+    private var lastX = 0f
+    private var lastY = 0f
+    private var lastScale = 1f
+
+    override var x: Float
+        get() = guard<Float?>("x", null) { wrapper.x }?.also { lastX = it } ?: lastX
+        set(value) { if (value == x) return; guard("x", Unit) { wrapper.x = value; lastX = value } }
+    override var y: Float
+        get() = guard<Float?>("y", null) { wrapper.y }?.also { lastY = it } ?: lastY
+        set(value) { if (value == y) return; guard("y", Unit) { wrapper.y = value; lastY = value } }
+    override var relativeX: Float
+        get() = x
+        set(value) { x = value }
+    override var relativeY: Float
+        get() = y
+        set(value) { y = value }
+
+    override var customScale: Float
+        get() = guard<Float?>("scale", null) { wrapper.scale }?.also { lastScale = it } ?: lastScale
+        set(value) { keepPinned { guard("scale", Unit) { wrapper.scale = value; lastScale = value } } }
+
+    private var lastW = 0f
+    private var lastH = 0f
+
+    private fun sizeW(): Float {
+        val live = guard("scaledWidth", 0f) { wrapper.scaledWidth }
+        if (live > 0f) lastW = live
+        return if (live > 0f) live else lastW
+    }
+
+    private fun sizeH(): Float {
+        val live = guard("scaledHeight", 0f) { wrapper.scaledHeight }
+        if (live > 0f) lastH = live
+        return if (live > 0f) live else lastH
+    }
+
+    override val scaledWidth: Float get() = sizeW()
+    override val scaledHeight: Float get() = sizeH()
+
+    override var renderedW: Float
+        get() = sizeW()
+        set(_) {}
+    override var renderedH: Float
+        get() = sizeH()
+        set(_) {}
+
+    override var staticW: Float
+        get() = sizeW()
+        set(_) {}
+    override var staticH: Float
+        get() = sizeH()
+        set(_) {}
+
+    override val resizeAxes: HudResize get() = guard("resizeAxes", HudResize.None) { wrapper.resizeAxes }
+
+    override fun applyEditorWidth(width: Float) {
+        keepPinned { guard("scaledWidth", Unit) { wrapper.scaledWidth = width } }
+    }
+
+    // the size updates immediately so no deferred unpin is needed
+    private val pinState = mutableStateOf<HudAnchor?>(null)
+    private var pin: HudAnchor?
+        get() = pinState.value
+        set(v) { pinState.value = v }
+    private var pinX = 0f
+    private var pinY = 0f
+
+    // unpinned the wrapper lays itself out so only it knows where it lands
+    override fun xForWidth(width: Float): Float =
+        pin?.let { pinX - fracOf(it).first * width } ?: guard("xForWidth", x) { wrapper.xForWidth(width) }
+
+    override fun yForHeight(height: Float): Float =
+        pin?.let { pinY - fracOf(it).second * height } ?: guard("yForHeight", y) { wrapper.yForHeight(height) }
+
+    private fun fracOf(p: HudAnchor): Pair<Float, Float> {
+        val w = scaledWidth
+        val h = scaledHeight
+        return Pair(
+            if (w == 0f) 0f else (anchorPointX(p) - x) / w,
+            if (h == 0f) 0f else (anchorPointY(p) - y) / h,
+        )
+    }
+
+    override fun pinCorner(pin: HudAnchor) {
+        this.pin = pin
+        pinX = anchorPointX(pin)
+        pinY = anchorPointY(pin)
+    }
+    override fun unpinCorner() { pin = null }
+    override fun settlePin() {}
+
+    private inline fun keepPinned(change: () -> Unit) {
+        val pin = pin ?: return change()
+        change()
+        x = pinX - (anchorPointX(pin) - x)
+        y = pinY - (anchorPointY(pin) - y)
+    }
+
+    override fun updateRelativeX(absX: Float) { x = absX }
+    override fun updateRelativeY(absY: Float) { y = absY }
+
+    override fun onEditorDragStart() {
+        guard("onDragStart", Unit) { wrapper.onDragStart() }
+    }
+
+    override fun onEditorDragEnd() {
+        guard("onDragEnd", Unit) { wrapper.onDragEnd() }
+        CompatSnapshots.capture(tree)
+    }
+
+    private val placementReady: Boolean get() = guard("placementReady", false) { wrapper.placementReady }
+
+    private val ownsPlacement: Boolean get() = guard("ownsPlacement", true) { wrapper.ownsPlacement }
+
+    fun linkedPropertiesGuarded(): List<Property<*>> =
+        guard("linkedProperties", emptyList()) { wrapper.linkedProperties() }
+
+    private fun saveWrapper() {
+        guard("save", Unit) { wrapper.save() }
+    }
+
+    fun trackPlacementPerProfile(tree: Tree) {
+        excludeFromSnapshots(tree)
+        tree.addMetadata(CompatSnapshots.GATE_METADATA, BooleanSupplier { placementReady })
+        if (!ownsPlacement) {
+            tree["oc_compat_x"] = placementProperty("x", "X Position", { x }, { x = it })
+            tree["oc_compat_y"] = placementProperty("y", "Y Position", { y }, { y = it })
+            if (supportsScale) {
+                tree["oc_compat_scale"] = placementProperty("scale", "Scale", { customScale }, { customScale = it })
+            }
+        }
+        tree.addMetadata("custom_save", Runnable { saveWrapper() })
+        CompatSnapshots.track(tree)
+    }
+
+    private fun placementProperty(
+        key: String,
+        name: String,
+        getter: () -> Float,
+        setter: (Float) -> Unit,
+    ): Property<Float> = Properties.functional<Float>(
+        { getter() },
+        { value -> setter(value) },
+        "oc_compat_$key",
+        name,
+        null,
+        Float::class.java,
+    ).apply {
+        addMetadata(CompatSnapshots.KEY_METADATA, "oc_compat_$key")
+        addDisplayCondition { Property.Display.HIDDEN }
+    }
+
+    private fun excludeFromSnapshots(tree: Tree) {
+        for (node in tree.map.values) {
+            when (node) {
+                is Property<*> -> node.addMetadata(CompatSnapshots.NO_SNAPSHOT_META, true)
+                is Tree -> excludeFromSnapshots(node)
+            }
+        }
+    }
+}
+
+public interface TGOneConfigHudWrapper {
+    public var id: String
+    public var name: String
+
+    public val modId: String? get() = null
+
+    public var x: Float
+    public var y: Float
+
+    public var scale: Float
+
+    public var scaledWidth: Float
+    public var scaledHeight: Float
+
+    public var hidden: Boolean
+        get() = false
+        set(_) {}
+
+    public val supportsScale: Boolean get() = true
+
+    public val placementReady: Boolean get() = true
+
+    public val ownsPlacement: Boolean get() = false
+
+    public val resizeAxes: HudResize get() = HudResize.Both
+
+    /** Where [x] ends up if this resizes to [width] */
+    public fun xForWidth(width: Float): Float = x
+
+    /** Where [y] ends up if this resizes to [height] */
+    public fun yForHeight(height: Float): Float = y
+
+    public fun onDragStart() {}
+
+    public fun onDragEnd() {}
+
+    public fun linkedProperties(): List<Property<*>> = emptyList()
+
+    public fun save() {}
+
+    public fun register() {
+        val hud = TGOneConfigHudCompat(this)
+        val modId = modId
+        if (modId != null) HudManager.register(hud, modId) else HudManager.register(hud)
+        hud.make()
+        HudManager.activeInstances.add(hud)
+        HudManager.instancesRevision.intValue++
+        hud.setup()
+        val tree = hud.tree
+        if (tree != null) {
+            for (prop in hud.linkedPropertiesGuarded()) tree.put(prop)
+            hud.trackPlacementPerProfile(tree)
+        }
+        hud.captureStaticSizeDefaults()
+        hud.capturePositionDefaults()
+        HudManager.notifyRegistrationChanged()
+    }
+}

@@ -1,0 +1,30 @@
+package org.tg.tgoneconfig.internal.mixin.compat.skyblocker;
+
+//? skyblocker_compat {
+/*import de.hysky.skyblocker.skyblock.fancybars.FancyStatusBars;
+import org.tg.tgoneconfig.internal.compat.SkyblockerCompat;
+import org.tg.tgoneconfig.internal.ui.hud.CompatOverlayRenderer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+@Pseudo
+@Mixin(FancyStatusBars.class)
+public class Mixin_SkyblockerFancyStatusBarsStatic {
+
+    @Inject(method = "init", at = @At("TAIL"), require = 0, expect = 0)
+    private static void tgoneconfig$registerHudCompat(CallbackInfo ci) {
+        SkyblockerCompat.initialize();
+    }
+
+    @Inject(method = "extractRenderState", at = @At("HEAD"), cancellable = true, require = 0, expect = 0)
+    private static void tgoneconfig$suppressWhileEditing(CallbackInfoReturnable<Boolean> cir) {
+        if (CompatOverlayRenderer.oneConfigScreenOpen() && !SkyblockerCompat.isRedrawing() && SkyblockerCompat.isActive()) {
+            cir.setReturnValue(false);
+        }
+    }
+}
+*///? }

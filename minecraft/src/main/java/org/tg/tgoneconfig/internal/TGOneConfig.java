@@ -1,0 +1,484 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+//~ gui_graphics
+package org.tg.tgoneconfig.internal;
+
+import java.util.function.BooleanSupplier;
+import com.mojang.brigadier.Command;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.scores.Scoreboard;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.tg.tgoneconfig.api.commands.v1.CommandManager;
+import org.tg.tgoneconfig.api.config.v1.CompatSnapshots;
+import org.tg.tgoneconfig.api.config.v1.ConfigManager;
+import org.tg.tgoneconfig.api.event.v1.EventManager;
+import org.tg.tgoneconfig.api.event.v1.events.InitializationEvent;
+import org.tg.tgoneconfig.api.event.v1.events.ResourceFinishedLoading;
+import org.tg.tgoneconfig.api.event.v1.events.ScreenOpenEvent;
+import org.tg.tgoneconfig.api.event.v1.events.ShutdownEvent;
+import org.tg.tgoneconfig.api.event.v1.events.WorldEvent;
+import org.tg.tgoneconfig.api.hud.v1.HudManager;
+import org.tg.tgoneconfig.api.hud.v1.HudViewport;
+import org.tg.tgoneconfig.api.hud.v1.events.HudEditorToggleEvent;
+import org.tg.tgoneconfig.api.hypixel.v1.HypixelUtils;
+import org.tg.tgoneconfig.api.notifications.v1.Notification;
+import org.tg.tgoneconfig.api.notifications.v1.Notifications;
+import org.tg.tgoneconfig.api.platform.v1.ModInfo;
+import org.tg.tgoneconfig.api.platform.v1.Platform;
+import org.tg.tgoneconfig.api.platform.v1.ScreenPlatform;
+import org.tg.tgoneconfig.internal.compat.CompatLoader;
+import org.tg.tgoneconfig.internal.compat.ConfigEntrypoints;
+import org.tg.tgoneconfig.internal.compat.KaleidoCompat;
+import org.tg.tgoneconfig.internal.compat.toggle.ModGates;
+import org.tg.tgoneconfig.internal.ui.api.ConfigRegistry;
+import org.tg.tgoneconfig.internal.ui.api.ConfigSource;
+import org.tg.tgoneconfig.internal.ui.api.ThirdPartyModCategories;
+import org.tg.tgoneconfig.internal.ui.compose.McFontService;
+import org.tg.tgoneconfig.internal.ui.compose.TGOneConfigComposeHooks;
+//? if >= 1.21.11
+import org.tg.compose.minecraft.render.blaze.BlazeHud;
+import org.tg.compose.minecraft.render.gl.GlHost;
+import org.tg.compose.minecraft.mc.McItemIcons;
+import org.tg.tgoneconfig.internal.ui.compose.impls.HudEditorUIScreen;
+import org.tg.tgoneconfig.internal.ui.compose.impls.TGOneConfigUIScreen;
+import org.tg.tgoneconfig.internal.ui.hud.BuiltinHudRegistrar;
+import org.tg.tgoneconfig.internal.ui.hud.screens.HudDesignSession;
+import org.tg.tgoneconfig.internal.ui.hud.LegacyHudRenderer;
+import org.tg.tgoneconfig.internal.ui.keybind.KeybindConflicts;
+import org.tg.tgoneconfig.internal.ui.keybind.KeybindProviderRegistry;
+import org.tg.tgoneconfig.internal.ui.keybind.MinecraftKeybindProfiles;
+import org.tg.tgoneconfig.internal.ui.keybind.ProfileKeybinds;
+import org.tg.tgoneconfig.internal.ui.keybind.MinecraftKeybindProvider;
+import org.tg.tgoneconfig.internal.ui.navigation.BuiltinPages;
+import org.tg.tgoneconfig.internal.ui.navigation.graph.CreditsGraph;
+import org.tg.tgoneconfig.internal.ui.navigation.graph.KeybindsGraph;
+import org.tg.tgoneconfig.internal.ui.search.SearchCorpus;
+import org.tg.tgoneconfig.internal.ui.sound.ExternalSounds;
+import org.tg.tgoneconfig.internal.ui.themes.ThemeRegistry;
+import org.tg.tgoneconfig.test.TestMod_Test;
+
+//? if > 1.8.9 {
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.scores.DisplaySlot;
+import org.tg.tgoneconfig.internal.compat.ArmorHudCompat;
+//?}
+
+//? if skyblock
+import org.tg.tgoneconfig.internal.compat.FirmamentHudCompat;
+
+//? if fabric {
+import org.tg.tgoneconfig.internal.compat.ModMenuShimLoader;
+//?}
+
+//? if < 1.21.11 {
+/*import kotlin.Unit;
+*///?}
+
+//? if wwaypoints_compat {
+import org.tg.tgoneconfig.internal.compat.WWaypointsCompat;
+//?}
+
+
+public class TGOneConfig implements ClientModInitializer {
+    public static final TGOneConfig INSTANCE = new TGOneConfig();
+    private static final Logger LOGGER = LogManager.getLogger("TG OneConfig");
+    private boolean initialized = false;
+
+    public static boolean isInitialized() {
+        return INSTANCE.initialized;
+    }
+
+    private static void registerCommands() {
+        Command<FabricClientCommandSource> executor = (c) -> {
+            TGOneConfigUIScreen.openLastSession();
+            return Command.SINGLE_SUCCESS;
+        };
+
+        var node = CommandManager.literal("tgoneconfig")
+                .executes(executor)
+                .then(CommandManager.literal("hud")
+                        .executes((ctx) -> {
+                            HudManager.INSTANCE.openEditor();
+                            return Command.SINGLE_SUCCESS;
+                        })
+                )
+                .then(CommandManager.literal("credits")
+                        .executes((ctx) -> {
+                            Platform.screen().display(TGOneConfigUIScreen.forRoute(CreditsGraph.INSTANCE));
+                            return Command.SINGLE_SUCCESS;
+                        })
+                )
+                .then(CommandManager.literal("keybinds")
+                        .executes((ctx) -> {
+                            Platform.screen().display(TGOneConfigUIScreen.forRoute(KeybindsGraph.INSTANCE));
+                            return Command.SINGLE_SUCCESS;
+                        })
+                )
+                .build();
+        CommandManager.INSTANCE.register(node);
+        CommandManager.INSTANCE.register(CommandManager.literal("ocfg").executes(executor).redirect(node));
+    }
+
+    private static void registerKeybinds() {
+        // the action lives here rather than on the keybind because it references platform classes and
+        // is lost when the keybind is deserialized
+        TGOneConfigConfig.setOpenAction(pressed -> openFromKeybind(pressed, TGOneConfig::openFromMainKeybind));
+        TGOneConfigConfig.setMinimalOpenAction(pressed -> openFromKeybind(pressed, () -> Platform.screen().display(TGOneConfigUIScreen.minimal())));
+    }
+
+    private static void openFromMainKeybind() {
+        if (TGOneConfigConfig.hudFirst) {
+            HudDesignSession.launcherPending = true;
+            HudManager.INSTANCE.openEditor();
+        } else {
+            TGOneConfigUIScreen.openLastSession();
+        }
+    }
+
+    private static boolean openFromKeybind(boolean pressed, Runnable open) {
+        if (!pressed) {
+            return true;
+        }
+        // the screen may have closed itself on this very press (see notifyKeybindClosedGui) so
+        // reopening here would make the keybind look like it does nothing
+        if (TGOneConfigConfig.consumeKeybindClose()) {
+            return true;
+        }
+        Object screen = Platform.screen().current();
+        if (screen != null && !(Platform.compatibility().isDevelopment() && screen instanceof TitleScreen)) {
+            return true;
+        }
+        if (Minecraft.getInstance().level == null && !Platform.compatibility().isDevelopment()) {
+            return true;
+        }
+        try {
+            open.run();
+        } catch (Throwable t) {
+            //~ if >= 26.2 'gui.getChat' -> 'gui.hud.getChat'
+            Minecraft.getInstance().gui.hud.getChat()
+                    //~ if >= 26.1 'addMessage' -> 'addClientSystemMessage'
+                    .addClientSystemMessage(Component.literal("Failed to open TGOneConfig UI: " + t.getMessage() + ". Please report this!")
+                            .withStyle(
+                                    ChatFormatting.RED));
+            throw t;
+        }
+        return true;
+    }
+
+    /**
+     * Mirrors vanilla's tab list visibility check which is more than the keybind being held
+     * <p>
+     * In a single player world with no other listed players and no LIST scoreboard objective the
+     * tab list stays hidden even while the key is down
+     */
+    private static boolean isHudEditor(Object screen) {
+        return screen instanceof HudEditorUIScreen;
+    }
+
+    private static boolean isTabListVisible() {
+        BooleanSupplier override = HudManager.tabListVisibility;
+        if (override != null) return override.getAsBoolean();
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!minecraft.options.keyPlayerList.isDown()) return false;
+        if (minecraft.level == null || minecraft.player == null) return false;
+        if (!minecraft.isLocalServer()) return true;
+
+        Scoreboard scoreboard = minecraft.level.getScoreboard();
+        //~ if = 1.8.9 'player.connection.getListedOnlinePlayers' -> 'getNetworkHandler().getOnlinePlayers'
+        return minecraft.player.connection.getListedOnlinePlayers().size() > 1
+                //~ if = 1.8.9 'DisplaySlot.LIST' -> '0'
+                || scoreboard.getDisplayObjective(DisplaySlot.LIST) != null;
+    }
+
+    public static boolean isDebugScreenVisible() {
+        Minecraft minecraft = Minecraft.getInstance();
+        //? if >= 1.21.9 {
+        //~ if < 1.21.11 'isOverlayVisible' -> 'isF3Visible'
+        if (!minecraft.debugEntries.isOverlayVisible()) return false;
+        //?}
+        return minecraft.getDebugOverlay().showDebugScreen();
+    }
+
+
+    //~ if = 1.8.9 '(GuiGraphicsExtractor graphics)' -> '()'
+    public static void render(GuiGraphicsExtractor graphics) {
+        prepareHud();
+        //~ if = 1.8.9 '(graphics)' -> '()'
+        submitHud(graphics);
+    }
+
+    /**
+     * Runs the offscreen passes before vanilla extracts the HUD to maintain compatibility with Gnetum
+     */
+    public static void prepareHud() {
+        if (GlHost.INSTANCE.unavailableReason() != null) return;
+
+        ScreenPlatform screen = Platform.screen();
+        HudViewport viewport = HudManager.viewport;
+        float sw = viewport != null ? viewport.getGuiWidth() : screen.guiWidth();
+        float sh = viewport != null ? viewport.getGuiHeight() : screen.guiHeight();
+        // guiWidth()/guiHeight() are already GUI-scaled so do not divide by guiScale again
+        HudManager.guiScreenWidth = sw;
+        HudManager.guiScreenHeight = sh;
+
+        //? if >= 26.2 {
+        HudManager.isGuiHidden = Minecraft.getInstance().gui.hud.isHidden();
+        //? } else {
+        /*HudManager.isGuiHidden = Minecraft.getInstance().options.hideGui;
+        *///? }
+        HudManager.isDebugScreenVisible = isDebugScreenVisible();
+        HudManager.isTabListVisible = isTabListVisible();
+        Object current = screen.current();
+        HudManager.isGuiScreenOpen = current != null;
+        HudManager.isChatScreenOpen = current instanceof ChatScreen;
+        HudManager.inWorld = true;
+        HudManager.targetPixelWidth = screen.viewportWidth();
+        HudManager.targetPixelHeight = screen.viewportHeight();
+
+        if (HudManager.isConfigUiOpen) {
+            HudManager.INSTANCE.prepare(sw, sh);
+            McItemIcons.renderPending();
+            HudManager.invalidate();
+            return;
+        }
+        //? if >= 1.21.11 {
+        if (HudManager.INSTANCE.beginFrame(sw, sh, McItemIcons::renderPending, true, true)) BlazeHud.markDirty();
+        //?} else {
+        /*//~ if = 1.8.9 'GlHost.vanillaPipeline' -> 'true'
+        if (HudManager.INSTANCE.beginFrame(sw, sh, McItemIcons::renderPending, false, GlHost.vanillaPipeline)) {
+            GlHost.INSTANCE.drawHudGl((ctx, volatileCtx) -> {
+                HudManager.INSTANCE.render(ctx, sw, sh, volatileCtx);
+                return Unit.INSTANCE;
+            });
+        }
+        *///?}
+    }
+
+    /** Submits the legacy HUDs (unless the TGOneConfig menu draws them) and the GlHost HUD blit into the vanilla HUD */
+    //~ if = 1.8.9 '(GuiGraphicsExtractor graphics)' -> '()'
+    public static void submitHud(GuiGraphicsExtractor graphics) {
+        if (!HudManager.isConfigUiOpen || !GlHost.INSTANCE.getDrawsGuiOverScreen()) {
+            //~ if = 1.8.9 '(graphics)' -> '()'
+            LegacyHudRenderer.INSTANCE.renderLive(graphics);
+        }
+        if (GlHost.INSTANCE.unavailableReason() != null || HudManager.isConfigUiOpen) return;
+        // a HudViewport is in framebuffer pixels, so drop the pose the caller drew the vanilla HUD with
+        //? if >= 1.21.11 {
+        boolean absolute = HudManager.viewport != null;
+        if (absolute) graphics.pose().pushMatrix().identity();
+        try {
+            BlazeHud.render(graphics, TGOneConfigComposeHooks.drawHuds);
+        } finally {
+            if (absolute) graphics.pose().popMatrix();
+        }
+        //?} elif >= 1.21.8 {
+        /*boolean absolute = HudManager.viewport != null;
+        if (absolute) graphics.pose().pushMatrix().identity();
+        try {
+            GlHost.INSTANCE.blitHud(graphics);
+        } finally {
+            if (absolute) graphics.pose().popMatrix();
+        }
+        *///?} elif > 1.8.9 {
+        /*boolean absolute = HudManager.viewport != null;
+        if (absolute) {
+            graphics.pose().pushPose();
+            graphics.pose().setIdentity();
+        }
+        try {
+            GlHost.INSTANCE.blitHud(graphics);
+        } finally {
+            if (absolute) graphics.pose().popPose();
+        }
+        *///?} else {
+        /*GlHost.INSTANCE.blitHud();
+        *///?}
+    }
+
+    private static void registerEventHandlers() {
+        EventManager.register(ShutdownEvent.class, e -> MinecraftKeybindProfiles.shutdown());
+        EventManager.register(InitializationEvent.class, e -> {
+            HudManager.INSTANCE.setProfileReloadDispatcher(r -> {
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null && !mc.isSameThread()) mc.execute(r);
+                else r.run();
+            });
+            HudManager.INSTANCE.initialize();
+        });
+        EventManager.register(
+                HudEditorToggleEvent.class, e -> {
+                    if (e.open) {
+                        if (!isHudEditor(Platform.screen().current())) {
+                            Platform.screen().display(HudEditorUIScreen.open(Platform.screen().current() instanceof TGOneConfigUIScreen));
+                        }
+                    } else if (!e.screenAlreadyGone) {
+                        if (isHudEditor(Platform.screen().current())) {
+                            Platform.screen().display(null, 0);
+                        }
+                    }
+                });
+        // resets the editing flag if another screen replaces the HUD editor without going through
+        // HudManager.closeEditor() and null opens are ignored because commands close chat first
+        // closeEditor() would re-enter setScreen(null) mid-switch, which 26.2+ rejects during disconnect
+        EventManager.register(
+                ScreenOpenEvent.class, e -> {
+                    if (HudManager.INSTANCE.isEditorOpen() && e.getScreen() != null && !isHudEditor(e.getScreen())) {
+                        HudManager.INSTANCE.onEditorScreenRemoved();
+                    }
+                });
+        EventManager.register(
+                InitializationEvent.class, e -> {
+                    try {
+                        ConfigManager.setProfileSwitchDispatcher(Platform.screen()::runOnUiThread);
+                        try {
+                            ConfigEntrypoints.registerAll();
+                        } catch (Throwable t) {
+                            LOGGER.error("Failed to run the TGOneConfig config entrypoints", t);
+                        }
+                        ConfigManager.initialize();
+                    } finally {
+                        // compat stays queued until this runs
+                        ConfigEntrypoints.finishRegistration();
+                    }
+                    KeybindConflicts.unbindMinecraftKeybinds();
+                    CompatSnapshots.setDispatcher(r -> {
+                        Minecraft mc = Minecraft.getInstance();
+                        if (mc != null && !mc.isSameThread()) mc.execute(r);
+                        else r.run();
+                    });
+                    MinecraftKeybindProfiles.init();
+                    ProfileKeybinds.init();
+                    ConfigRegistry.INSTANCE.loadFrom(ConfigManager.active(), ConfigSource.OC);
+                    BuiltinHudRegistrar.register();
+                    ModGates.register();
+                    //? if skyblock
+                    FirmamentHudCompat.register();
+                    //? if > 1.8.9
+                    ArmorHudCompat.register();
+                    //? if wwaypoints_compat
+                    WWaypointsCompat.register();
+                    ThemeRegistry.INSTANCE.loadFromConfig();
+                });
+        EventManager.register(WorldEvent.Load.class, e -> {
+            showFirstLaunchNotification();
+        });
+        EventManager.register(WorldEvent.Unload.class, e -> HudManager.resetVisibilityKeys());
+        // after loading finishes so translation keys are available
+        EventManager.register(ResourceFinishedLoading.class, e -> SearchCorpus.INSTANCE.init());
+        EventManager.register(ResourceFinishedLoading.class, e -> CompatLoader.INSTANCE.onResourcesLoaded());
+    }
+
+    private static Notification firstLaunchToast;
+
+    private static void showFirstLaunchNotification() {
+        if (!TGOneConfigConfig.showFirstLaunchMessage) {
+            return;
+        }
+        TGOneConfigConfig.markFirstLaunchShown();
+        String keyName = TGOneConfigConfig.oneConfigKeybind.displayName();
+        String title = Platform.i18n().translateString("tgoneconfig.notification.first_launch.title");
+        String message = Platform.i18n().translateString("tgoneconfig.notification.first_launch.message", keyName);
+        firstLaunchToast = Notifications.builder(title, message)
+                .icon(Notifications.icon("/assets/tgoneconfig/brand/tgoneconfig-icon.svg", 64))
+                .persistent()
+                .onClick(TGOneConfigUIScreen::openLastSession)
+                .send();
+    }
+
+    public static void dismissFirstLaunchToast() {
+        if (firstLaunchToast != null) {
+            Notifications.dismiss(firstLaunchToast);
+            firstLaunchToast = null;
+        }
+    }
+
+    @Override
+    public void onInitializeClient() {
+        init();
+    }
+
+    private void init() {
+        if (initialized) {
+            LOGGER.error("Attempted to initialize tgoneconfig twice! this will be ignored");
+            return;
+        }
+
+        // to enable RenderDoc set these JVM arguments
+        // -Drenderdoc.enabled=true
+        // (Windows) -Drenderdoc.path="C:\Program Files\RenderDoc\renderdoc.dll" (or wherever you installed RenderDoc)
+        // (Linux) ensure librenderdoc.so is available in your LD_PRELOAD (TODO)
+        //RenderDoc.init();
+
+        if (Boolean.getBoolean("tgoneconfig.test")) {
+            try {
+                TestMod_Test.initialize();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+
+        long t1 = System.nanoTime();
+        ModInfo self = Platform.compatibility()
+                .getMods()
+                .stream()
+                .filter(it -> "tgoneconfig".equals(it.getId()))
+                .findFirst()
+                .orElse(null);
+        String v = self == null ? "LOCAL" : self.getVersion();
+        LOGGER.info("Loading TGOneConfig v{}", v);
+        McFontService.INSTANCE.init();
+        TGOneConfigComposeHooks.INSTANCE.install();
+        ThirdPartyModCategories.INSTANCE.init();
+        BuiltinPages.register();
+        // force class-load so the hello/disconnect handlers are armed before joining any server
+        HypixelUtils.isHypixel();
+        ExternalSounds.INSTANCE.ensureDownloaded();
+
+        KeybindProviderRegistry.INSTANCE.register(MinecraftKeybindProvider.INSTANCE);
+        registerKeybinds();
+        new TGOneConfigConfig();
+        new ThemeConfig();
+        registerCommands();
+        registerEventHandlers();
+        MainMenuFpsSampler.init();
+        ClassPreloader.init();
+        //? fabric
+        ModMenuShimLoader.enable();
+        KaleidoCompat.enable();
+
+        initialized = true;
+        LOGGER.info("TG OneConfig initialization took {}ms", (System.nanoTime() - t1) / 1_000_000.0);
+    }
+
+}

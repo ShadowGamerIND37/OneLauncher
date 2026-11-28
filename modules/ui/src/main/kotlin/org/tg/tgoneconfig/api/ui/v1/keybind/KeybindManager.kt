@@ -1,0 +1,272 @@
+package org.tg.tgoneconfig.api.ui.v1.keybind
+
+import org.apache.logging.log4j.LogManager
+import org.tg.tgoneconfig.api.event.v1.eventHandler
+import org.tg.tgoneconfig.api.event.v1.events.KeyInputEvent
+import org.tg.tgoneconfig.api.event.v1.events.MouseInputEvent
+import org.tg.tgoneconfig.api.event.v1.events.ScreenOpenEvent
+import org.tg.tgoneconfig.api.event.v1.events.TickEvent
+import org.tg.tgoneconfig.api.event.v1.events.WindowFocusEvent
+import org.tg.tgoneconfig.api.ui.v1.ExperimentalTGOneConfigUiApi
+import org.tg.tgoneconfig.api.ui.v1.internal.keybindBridge
+import org.tg.tgoneconfig.api.ui.v1.internal.loadBridge
+import java.util.Collections
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.function.BooleanSupplier
+import kotlin.experimental.and
+import kotlin.experimental.inv
+import kotlin.experimental.or
+
+@Suppress("UnstableApiUsage")
+public object KeybindManager {
+    private val LOGGER = LogManager.getLogger("TG OneConfig/Keybinds")
+
+    private val binds = CopyOnWriteArrayList<TGOneConfigKeybind>()
+    private val activeBinds = HashSet<TGOneConfigKeybind>()
+
+    /**
+     * Bridge into Minecraft's native Controls menu if present
+     */
+    private val bridge: MinecraftKeybindBridge? by lazy {
+        loadBridge(MinecraftKeybindBridge::class.java, "TG OneConfig keybinds will not appear in the Controls menu")
+    }
+
+    /** Listeners notified when a keybind is rebound from Minecraft's Controls menu */
+    private val rebindListeners = ArrayList<(TGOneConfigKeybind, TGOneConfigKeybind) -> Unit>()
+
+    /** Listeners notified when a keybind is edited in-place from Minecraft's Controls menu (same instance) */
+    private val menuEditListeners = ArrayList<(TGOneConfigKeybind) -> Unit>()
+
+    private val inputCaptures = CopyOnWriteArrayList<BooleanSupplier>()
+
+    private val downKeys = HashSet<Int>()
+    private val downMouse = HashSet<Int>()
+    private var mods: Byte = KeyModifiers.NONE
+
+    init {
+        eventHandler { (key, _, state): KeyInputEvent ->
+            // key == 0 marks a character event not a coded key press and it never reports a release
+            // so tracking it in downKeys would leave 0 stuck and match any keybind bound to code 0
+            if (key == 0) return@eventHandler
+            if (state == KeyInputEvent.REPEAT) return@eventHandler
+            val down = state == KeyInputEvent.PRESSED
+            val mod = KeyModifiers.of(key)
+            if (mod != KeyModifiers.NONE) {
+                mods = if (down) (mods or mod) else (mods and mod.inv())
+            }
+            if (down) downKeys.add(key) else downKeys.remove(key)
+        }
+
+        eventHandler { (btn, state): MouseInputEvent ->
+            if (state == 1) {
+                downMouse += btn
+            } else {
+                downMouse -= btn
+            }
+        }
+
+        eventHandler { _: TickEvent.End ->
+            checkBinds()
+        }
+
+        eventHandler { (screen): ScreenOpenEvent ->
+            if (screen == null) {
+                TextInputFocus.clear()
+                clearState()
+            }
+        }
+
+        eventHandler { _: WindowFocusEvent.Lost ->
+            clearState()
+        }
+    }
+
+    @OptIn(ExperimentalTGOneConfigUiApi::class)
+    @JvmStatic
+    public fun register(bind: TGOneConfigKeybind): TGOneConfigKeybind {
+        if (bind !in binds) binds.add(bind)
+        if (bind.mirrorToVanilla) bridge?.register(bind)
+        return bind
+    }
+
+    @JvmStatic
+    public fun unregister(bind: TGOneConfigKeybind) {
+        binds.remove(bind)
+        activeBinds.remove(bind)
+        bridge?.unregister(bind)
+    }
+
+    @JvmStatic
+    public fun isRegistered(bind: TGOneConfigKeybind): Boolean = bind in binds
+
+    /**
+     * Re-push an already-registered keybind to the Minecraft Controls menu
+     *
+     * Use after mutating a keybind's [TGOneConfigKeybind.name]/[TGOneConfigKeybind.category] so the vanilla
+     * mapping picks up the new metadata
+     */
+    @OptIn(ExperimentalTGOneConfigUiApi::class)
+    @JvmStatic
+    public fun refreshMinecraftBinding(bind: TGOneConfigKeybind) {
+        if (bind !in binds) return
+        if (bind.mirrorToVanilla) bridge?.register(bind) else bridge?.unregister(bind)
+    }
+
+    /**
+     * Swap a registered keybind for a new one while preserving its registration
+     *
+     * Setting the config property may either mutate [old] in place (so [old] and [new] are the same instance and
+     * already registered) or hand back a fresh instance in which case the stale one is swapped out here
+     *
+     * Nothing happens if [old] was never registered
+     */
+    @OptIn(ExperimentalTGOneConfigUiApi::class)
+    @JvmStatic
+    public fun replace(old: TGOneConfigKeybind?, new: TGOneConfigKeybind): TGOneConfigKeybind {
+        if (old != null && new !== old) {
+            if (new.name == null) new.name = old.name
+            if (new.category == null) new.category = old.category
+            if (new.defaultKeybind == null) new.defaultKeybind = old.defaultKeybind
+            if (!old.mirrorToVanilla) new.mirrorToVanilla = false
+        }
+        if (old === new) {
+            bridge?.sync(new)
+            return new
+        }
+        if (old == null || old !in binds) return new
+        unregister(old)
+        register(new)
+        return new
+    }
+
+    @JvmStatic
+    public fun addRebindListener(listener: (TGOneConfigKeybind, TGOneConfigKeybind) -> Unit) {
+        rebindListeners.add(listener)
+    }
+
+    @JvmStatic
+    public fun addMenuEditListener(listener: (TGOneConfigKeybind) -> Unit) {
+        menuEditListeners.add(listener)
+    }
+
+    /**
+     * Notify that [bind] was mutated in place by Minecraft's Controls menu (rebind/unbind/reset)
+     *
+     * Re-syncs the vanilla mapping and notifies [menuEditListeners]
+     */
+    @JvmStatic
+    public fun notifyMenuEdit(bind: TGOneConfigKeybind) {
+        for (listener in menuEditListeners) {
+            try {
+                listener(bind)
+            } catch (t: Throwable) {
+                LOGGER.error("Keybind menu-edit listener threw an exception", t)
+            }
+        }
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    public fun rebindFromMinecraft(
+        old: TGOneConfigKeybind,
+        keyCodes: IntArray?,
+        mouseBtns: IntArray? = null,
+        mods: Byte = KeyModifiers.NONE,
+    ): TGOneConfigKeybind {
+        old.keyCodes = keyCodes
+        old.mouseBtns = mouseBtns
+        old.mods = mods
+        old.unresolvedKeyInputs = null
+        old.unresolvedMouseInputs = null
+        bridge?.sync(old)
+        notifyMenuEdit(old)
+        for (listener in rebindListeners) {
+            try {
+                listener(old, old)
+            } catch (t: Throwable) {
+                LOGGER.error("Keybind rebind listener threw an exception", t)
+            }
+        }
+        return old
+    }
+
+    @JvmStatic
+    public fun findConflicts(bind: TGOneConfigKeybind): List<TGOneConfigKeybind> {
+        if (!bind.isBound) return emptyList()
+        return binds.filter { it.conflictsWith(bind) }
+    }
+
+    @ExperimentalTGOneConfigUiApi
+    @JvmStatic
+    public fun configKeybinds(): List<ConfigKeybind> = keybindBridge()?.configKeybinds() ?: emptyList()
+
+    @ExperimentalTGOneConfigUiApi
+    @JvmStatic
+    public fun addInputCapture(capture: BooleanSupplier) {
+        if (!inputCaptures.addIfAbsent(capture)) LOGGER.debug("Ignoring input capture {} that is already registered", capture.javaClass.name)
+    }
+
+    @ExperimentalTGOneConfigUiApi
+    @JvmStatic
+    public fun removeInputCapture(capture: BooleanSupplier): Boolean = inputCaptures.remove(capture)
+
+    @ExperimentalTGOneConfigUiApi
+    @JvmStatic
+    public fun isInputCaptured(): Boolean = inputCaptures.any { capture ->
+        try {
+            capture.asBoolean
+        } catch (t: Throwable) {
+            LOGGER.error("Input capture {} failed", capture.javaClass.name, t)
+            false
+        }
+    }
+
+    /** True when a registered keybind containing [button] matches the current input state */
+    @JvmStatic
+    public fun hasTriggeredMouseBind(button: Int): Boolean = binds.any { isTriggeredByMouse(it, button) }
+
+    /** True when [bind] contains [button] and matches the current input state */
+    @JvmStatic
+    public fun isTriggeredByMouse(bind: TGOneConfigKeybind, button: Int): Boolean =
+        bind.mouseBtns?.contains(button) == true && bind.test(downKeys, downMouse, mods)
+
+    /** Keys held down right now, including ones pressed before the current screen opened */
+    @JvmStatic
+    public val heldKeys: Set<Int> = Collections.unmodifiableSet(downKeys)
+
+    @JvmStatic
+    public fun builder(): KeybindHelper = KeybindHelper()
+
+    @OptIn(ExperimentalTGOneConfigUiApi::class)
+    private fun checkBinds() {
+        val typing = TextInputFocus.isTyping
+        val captured = isInputCaptured()
+        for (bind in binds) {
+            @Suppress("SENSELESS_COMPARISON")
+            if (bind.action == null) continue
+            val triggered = !captured && (!typing || bind.firesWhileTyping) && bind.test(downKeys, downMouse, mods)
+            val wasActive = bind in activeBinds
+            try {
+                if (triggered && !wasActive) {
+                    activeBinds.add(bind)
+                    bind.action(true)
+                } else if (!triggered && wasActive) {
+                    activeBinds.remove(bind)
+                    bind.action(false)
+                }
+            } catch (t: Throwable) {
+                LOGGER.error("Keybind action threw an exception", t)
+            }
+        }
+    }
+
+    private fun clearState() {
+        for (bind in activeBinds) {
+            try { bind.action(false) } catch (_: Throwable) {}
+        }
+        activeBinds.clear()
+        downKeys.clear()
+        downMouse.clear()
+        mods = KeyModifiers.NONE
+    }
+}

@@ -1,0 +1,224 @@
+package org.tg.tgoneconfig.internal.ui
+
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.Density
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import org.apache.logging.log4j.LogManager
+import org.tg.tgoneconfig.api.ui.v1.InternalTGOneConfigUiApi
+import org.tg.tgoneconfig.api.ui.v1.a11y.Motion
+import org.tg.tgoneconfig.api.ui.v1.components.FeedbackHosts
+import org.tg.tgoneconfig.internal.TGOneConfigConfig
+import org.tg.tgoneconfig.internal.ThemeConfig
+import org.tg.tgoneconfig.internal.ui.components.LocalSearchFieldFocused
+import org.tg.tgoneconfig.internal.ui.components.RetainedVisibility
+import org.tg.tgoneconfig.internal.ui.hud.screens.HudDragLayer
+import org.tg.tgoneconfig.internal.ui.navigation.graph.ModsGraph
+import org.tg.tgoneconfig.internal.ui.shell.LocalShell
+import org.tg.tgoneconfig.internal.ui.shell.LocalShellNavController
+import org.tg.tgoneconfig.internal.ui.shell.Shell
+import org.tg.tgoneconfig.internal.ui.shell.ShellController
+import org.tg.tgoneconfig.internal.ui.themes.Theme
+import org.tg.tgoneconfig.internal.ui.themes.ThemeRegistry
+import kotlin.math.pow
+
+private val LOGGER = LogManager.getLogger("TG OneConfig/UI")
+
+fun guiCloseAnimationMillis(): Long =
+    if (!ThemeConfig.guiClosingAnimation || !ThemeConfig.animations) 0L
+    else (ThemeConfig.animationTime * 1000f).toLong().coerceIn(1L, MAX_CLOSE_ANIMATION_MS)
+
+private const val MAX_CLOSE_ANIMATION_MS = 160L
+
+private const val GRAPH_WAIT_TIMEOUT_MS = 10_000L
+
+@OptIn(InternalTGOneConfigUiApi::class)
+@Composable
+fun TGOneConfigInterface(
+    windowWidth: Float,
+    windowHeight: Float,
+    initialRoute: Any = ModsGraph,
+    /** Set when [initialRoute] is a page the user was already on which is put back without a transition and keeps its search */
+    restoring: Boolean = false,
+    openRevision: Int = 0,
+    onCloseRequest: () -> Unit = {},
+    onCloseReady: ((requestClose: () -> Unit) -> Unit)? = null,
+    onOpenReady: ((requestOpen: () -> Unit) -> Unit)? = null,
+    shell: ShellController = ShellController.shared,
+    shellBackdrop: DrawScope.(Offset) -> Unit = {}
+) {
+    ThemeRegistry.init()
+
+    val navController = rememberNavController()
+    DisposableEffect(navController) {
+        shell.navigation.attach(navController)
+        onDispose { shell.navigation.detach(navController) }
+    }
+
+    LaunchedEffect(initialRoute, openRevision) {
+        shell.navigation.attach(navController)
+        val alreadyThere = initialRoute == shell.navigation.currentRoute
+        if (!restoring) shell.search.clear()
+        if (alreadyThere) shell.navigation.takeQueued()
+
+        try {
+            if (!alreadyThere) {
+                shell.transitions.beginOpening()
+                // an initial navigation fires a page transition gated by "Show opening page animation" unless
+                // the page is only being put back which should look like it was never left
+                val animateOpening = !restoring && ThemeConfig.showOpeningPageAnimation
+                // the NavHost only sets its graph once the Shell is composed so wait for it or navigate()
+                // crashes with "must call setGraph() before getGraph()"
+                if (animateOpening) {
+                    var attempts = 0
+                    while (attempts++ < 600) {
+                        val ready = try {
+                            navController.graph; true
+                        } catch (_: IllegalStateException) {
+                            false
+                        }
+                        if (ready) break
+                        withFrameNanos { }
+                    }
+                } else {
+                    withTimeoutOrNull(GRAPH_WAIT_TIMEOUT_MS) {
+                        navController.currentBackStackEntryFlow.first()
+                    }
+                }
+                try {
+                    shell.navigation.navigate(initialRoute, clearSearch = !restoring, animate = animateOpening)
+                } catch (t: Throwable) {
+                    LOGGER.error("Failed to open the TGOneConfig UI on {}, falling back to the mods page", initialRoute, t)
+                    runCatching { shell.navigation.navigate(ModsGraph) }
+                        .onFailure { UiErrors.error("Failed to open the TGOneConfig UI on the mods page", it) }
+                }
+            }
+        } finally {
+            shell.transitions.finishOpening()
+        }
+    }
+
+    var visible by remember { mutableStateOf(false) }
+    var opened by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        visible = true
+    }
+
+    LaunchedEffect(visible) {
+        if (visible) opened = true
+        else if (opened) onCloseRequest()
+    }
+
+    val searchFocused = remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val requestClose: () -> Unit = {
+        // commit any field still being edited before configs save, but keep search focused for reopening
+        if (!searchFocused.value) focusManager.clearFocus()
+        visible = false
+    }
+    val requestOpen: () -> Unit = { visible = true }
+
+    SideEffect {
+        onCloseReady?.invoke(requestClose)
+        onOpenReady?.invoke(requestOpen)
+    }
+
+    CompositionLocalProvider(
+        LocalCloseRequest provides requestClose,
+        LocalSearchFieldFocused provides searchFocused,
+        LocalShell provides shell,
+        LocalShellNavController provides navController,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!shell.warming) HudDragLayer()
+
+            val currentDensity = LocalDensity.current
+            val scaleFactor = run {
+                val designWidthPx  = DESIGN_WIDTH_DP  * currentDensity.density
+                val designHeightPx = DESIGN_HEIGHT_DP * currentDensity.density
+                minOf(
+                    (windowWidth  * EDGE_MARGIN_FRACTION) / designWidthPx,
+                    (windowHeight * EDGE_MARGIN_FRACTION) / designHeightPx,
+                    1f
+                ).coerceAtLeast(0.25f)
+            }
+            val adjustedDensity = if (scaleFactor == 1f) currentDensity
+                else Density(currentDensity.density * scaleFactor, currentDensity.fontScale)
+
+            CompositionLocalProvider(LocalDensity provides adjustedDensity) {
+                CompositionLocalProvider(
+                    LocalLifecycleOwner provides shell.session,
+                    LocalViewModelStoreOwner provides shell.session,
+                ) {
+                    Theme(pixelGrid = true) {
+                        val animMs = (ThemeConfig.animationTime * 1000f).toInt().coerceAtLeast(1)
+                        val enterMs = if (ThemeConfig.guiOpenAnimation) animMs else 1
+                        val exitMs = guiCloseAnimationMillis().toInt().coerceAtLeast(1)
+                        val dragAlpha by Motion.animateFloatAsState(
+                            target = if (shell.layout.hudDragging) (TGOneConfigConfig.hudDragUiOpacity / 100f).coerceIn(0f, 1f) else 1f,
+                            label = "hudDragShellAlpha"
+                        )
+
+                        val shellContent: @Composable () -> Unit = {
+                            RetainedVisibility(
+                                visible = visible,
+                                enter = tween(enterMs, easing = EaseOutExpo),
+                                exit = tween(exitMs, easing = EaseOutCubic),
+                                alphaMultiplier = dragAlpha,
+                                openKey = openRevision,
+                                modifier = Modifier.onGloballyPositioned {
+                                    shell.layout.updateShellBounds(it.boundsInRoot())
+                                },
+                            ) { _ ->
+                                Shell(windowWidth, windowHeight, shellBackdrop)
+                            }
+                        }
+                        val latestShellContent by rememberUpdatedState(shellContent)
+                        val movableShell = remember { movableContentOf { latestShellContent() } }
+                        if (shell.warming) movableShell() else FeedbackHosts(movableShell)
+                    }
+                }
+            }
+        }
+    }
+}
+
+internal const val DESIGN_WIDTH_DP  = 1391f
+internal const val DESIGN_HEIGHT_DP = 700f
+internal const val EDGE_MARGIN_FRACTION = 0.9f
+
+private val EaseOutExpo = Easing { x -> if (x >= 1f) 1f else 1f - 2f.pow(-10f * x) }
+
+val LocalCloseRequest = staticCompositionLocalOf { {} }

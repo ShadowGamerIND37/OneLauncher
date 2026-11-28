@@ -1,0 +1,58 @@
+{
+  "ui.open": {
+    "sounds": [
+      "tgoneconfig:ui/open"
+    ]
+  },
+  "ui.close": {
+    "sounds": [
+      "tgoneconfig:ui/close"
+    ]
+  },
+  "ui.click": {
+    "sounds": [
+      "tgoneconfig:ui/click"
+    ]
+  },
+  "ui.slider": {
+    "sounds": [
+      "tgoneconfig:ui/slider"
+    ]
+  },
+  "ui.pad_loop": {
+    "sounds": [
+      {
+        "name": "tgoneconfig:ui/pad_loop",
+        "stream": true
+      }
+    ]
+  },
+  "ui.mc_ambient": {
+    "sounds": [
+      { "name": "tgoneconfig:ambient/trees", "stream": true },
+      { "name": "tgoneconfig:ambient/moog_1", "stream": true },
+      { "name": "tgoneconfig:ambient/moog_2", "stream": true },
+      { "name": "tgoneconfig:ambient/lullaby", "stream": true }
+    ]
+  },
+  "ui.mc_ambient.trees": {
+    "sounds": [
+      { "name": "tgoneconfig:ambient/trees", "stream": true }
+    ]
+  },
+  "ui.mc_ambient.moog_1": {
+    "sounds": [
+      { "name": "tgoneconfig:ambient/moog_1", "stream": true }
+    ]
+  },
+  "ui.mc_ambient.moog_2": {
+    "sounds": [
+      { "name": "tgoneconfig:ambient/moog_2", "stream": true }
+    ]
+  },
+  "ui.mc_ambient.lullaby": {
+    "sounds": [
+      { "name": "tgoneconfig:ambient/lullaby", "stream": true }
+    ]
+  }
+}

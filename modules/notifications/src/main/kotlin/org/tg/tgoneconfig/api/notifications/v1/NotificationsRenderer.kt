@@ -1,0 +1,170 @@
+/*
+ * This file is part of TGOneConfig.
+ * TGOneConfig - Next Generation Config Library for Minecraft: Java Edition
+ * Copyright (C) 2021~2024 TG.
+ *   <https://github.com/ShadowGamerIND37> <https://github.com/TG/>
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ *   TGOneConfig is licensed under the terms of version 3 of the GNU Lesser
+ * General Public License as published by the Free Software Foundation, AND
+ * under the Additional Terms Applicable to TGOneConfig, as published by TG,
+ * either version 1.0 of the Additional Terms, or (at your option) any later
+ * version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ * License.  If not, see <https://www.gnu.org/licenses/>. You should
+ * have also received a copy of the Additional Terms Applicable
+ * to TGOneConfig, as published by TG. If not, see
+ * <https://github.com/ShadowGamerIND37/legal/tgoneconfig/additional-terms>
+ */
+
+package org.tg.tgoneconfig.api.notifications.v1
+
+import org.apache.logging.log4j.LogManager
+import org.jetbrains.annotations.ApiStatus
+import org.tg.compose.node.PolyNode
+import org.tg.compose.render.RenderContext
+import org.tg.compose.runtime.PolyComposeHost
+import org.tg.compose.runtime.PolyComposeRuntime
+import org.tg.tgoneconfig.api.platform.v1.Platform
+
+@ApiStatus.Internal
+public object NotificationsRenderer {
+    private val LOGGER = LogManager.getLogger("TG OneConfig/Notifications")
+
+    private const val BASE_SCALE = 0.5f
+
+    private val clock = PolyComposeHost.notifications
+
+    private var runtime: PolyComposeRuntime? = null
+
+    private var lastViewWidth = 0f
+    private var lastViewHeight = 0f
+    private var lastScale = 0f
+
+    private fun runtime(): PolyComposeRuntime =
+        runtime ?: PolyComposeRuntime(clock).also {
+            runtime = it
+            it.setContent { NotificationToasts() }
+            ToastInput.install()
+        }
+
+    /**
+     * Renders the toast stack into [ctx]
+     */
+    @JvmStatic
+    public fun render(ctx: RenderContext, screenWidth: Float, screenHeight: Float) {
+        prepare(screenWidth, screenHeight)
+        draw(ctx)
+    }
+
+    @JvmStatic
+    public fun prepare(screenWidth: Float, screenHeight: Float): Boolean {
+        val guiScale = Platform.compatibility().options().guiScale
+        val scale = guiScale * BASE_SCALE
+        val viewWidth = screenWidth * guiScale / scale
+        val viewHeight = screenHeight * guiScale / scale
+        ToastViewport.width = viewWidth
+        ToastViewport.height = viewHeight
+        ToastViewport.scale = scale
+
+        val rt = runtime()
+        clock.frame()
+        val changed = clock.appliedChange || viewWidth != lastViewWidth || viewHeight != lastViewHeight || scale != lastScale
+        if (changed) {
+            rt.layout(viewWidth, viewHeight)
+            lastViewWidth = viewWidth
+            lastViewHeight = viewHeight
+            lastScale = scale
+        }
+        handleInput(rt.root, scale)
+        return changed
+    }
+
+    @JvmStatic
+    public fun draw(ctx: RenderContext) {
+        val rt = runtime ?: return
+        ctx.save()
+        ctx.scale(lastScale, lastScale)
+        rt.root.render(ctx)
+        ctx.restore()
+    }
+
+    private fun handleInput(root: PolyNode, scale: Float) {
+        val screenOpen = Platform.screen().current<Any?>() != null
+        var top: ToastHit? = null
+
+        if (screenOpen && ToastInput.mouseX >= 0f && ToastInput.mouseY >= 0f) {
+            val pixelRatio = Platform.screen().pixelRatio()
+            top = topHit(root, ToastInput.mouseX * pixelRatio / scale, ToastInput.mouseY * pixelRatio / scale, null)
+        }
+
+        updateHovered(top?.notification)
+        ToastInput.hoverTarget = top
+        val hoveredAction = (top as? ToastHit.Action)?.action
+        if (ToastInput.hoveredAction !== hoveredAction) ToastInput.hoveredAction = hoveredAction
+    }
+
+    internal fun updateHovered(hovered: Notification?) {
+        for (notification in NotificationsManager.active) {
+            val isHovered = notification === hovered
+            if (notification.hovered != isHovered) NotificationsManager.mutate { notification.hovered = isHovered }
+        }
+    }
+
+    internal fun hitNow(): ToastHit? {
+        val rt = runtime ?: return null
+        if (NotificationsManager.count == 0 || lastScale <= 0f) return null
+        if (Platform.screen().current<Any?>() == null) return null
+        if (ToastInput.mouseX < 0f || ToastInput.mouseY < 0f) return null
+        val pixelRatio = Platform.screen().pixelRatio()
+        val hit = topHit(rt.root, ToastInput.mouseX * pixelRatio / lastScale, ToastInput.mouseY * pixelRatio / lastScale, null)
+        return hit?.takeIf { NotificationsManager.contains(it.notification) }
+    }
+
+    @JvmStatic
+    public fun consumeMouseButton(button: Int, pressed: Boolean): Boolean = ToastInput.consumeButton(button, pressed)
+
+    @JvmStatic
+    public fun isPointerOverToast(): Boolean = ToastInput.hovered() != null
+
+    internal fun dispatchClick(target: ToastHit?) {
+        if (target == null) return
+        if (!NotificationsManager.contains(target.notification) || target.notification.dismissRequested) {
+            ToastInput.clearHover()
+            return
+        }
+        when (target) {
+            is ToastHit.Action -> {
+                if (!target.action.enabled) return
+                LOGGER.info("Notification #{} action '{}' clicked", target.notification.id, target.action.label)
+                runCatching { target.action.onClick.run() }
+                    .onFailure { LOGGER.error("Notification action '${target.action.label}' threw", it) }
+                if (target.action.dismissOnClick) NotificationsManager.remove(target.notification)
+            }
+            is ToastHit.Body -> {
+                LOGGER.info("Notification #{} body clicked", target.notification.id)
+                runCatching { target.notification.onClick?.run() }
+                    .onFailure { LOGGER.error("Notification onClick threw", it) }
+                NotificationsManager.mutate { target.notification.dismissRequested = true }
+            }
+        }
+    }
+
+    private fun topHit(node: PolyNode, x: Float, y: Float, current: ToastHit?): ToastHit? {
+        var top = current
+        val tag = node.style.tag
+        if (tag is ToastHit && contains(node, x, y)) top = tag
+        for (child in node.children) top = topHit(child, x, y, top)
+        return top
+    }
+
+    private fun contains(node: PolyNode, x: Float, y: Float): Boolean =
+        x >= node.x && x <= node.x + node.width && y >= node.y && y <= node.y + node.height
+}

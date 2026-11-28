@@ -1,0 +1,8 @@
+{
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "package": "org.tg.tgoneconfig.internal.mixin.init",
+  "plugin": "org.tg.tgoneconfig.internal.TGOneConfigEarlyMixinInit",
+  "verbose": true,
+  "target": "@env(INIT)"
+}
