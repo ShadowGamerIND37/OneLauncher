@@ -49,8 +49,8 @@ class TGOneConfigSetupPlugin : Plugin<Project> {
                 content { for (group in groups) includeGroupAndSubgroups(group) }
             }
 
-            scopedMaven("https://repo.polyfrost.org/releases", "org.tg")
-            scopedMaven("https://repo.polyfrost.org/snapshots", "org.tg")
+            scopedMaven("https://repo.polyfrost.org/releases", "org.polyfrost", "org.tg")
+            scopedMaven("https://repo.polyfrost.org/snapshots", "org.polyfrost", "org.tg")
             scopedMaven("https://repo.hypixel.net/repository/Hypixel/", "net.hypixel")
             scopedMaven("https://maven.deftu.dev/releases", "dev.deftu")
             scopedMaven("https://maven.notenoughupdates.org/releases/", "org.notenoughupdates")
