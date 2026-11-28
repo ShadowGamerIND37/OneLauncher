@@ -26,8 +26,8 @@ import org.tg.tgvanillahud.compat.SoundFixCaptions
 import org.tg.tgvanillahud.mixin.compat.soundfix.ISubtitleEntry
 *///?}
 import net.minecraft.world.item.ItemStack
-import org.tg.compose.minecraft.mc.McHeadStyle
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.minecraft.mc.McHeadStyle
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.Tree
 import org.tg.tgoneconfig.api.config.v1.annotations.*
 import org.tg.tgoneconfig.api.config.v1.showWhen

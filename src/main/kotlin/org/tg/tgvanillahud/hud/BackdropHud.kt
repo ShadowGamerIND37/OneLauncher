@@ -1,6 +1,6 @@
 package org.tg.tgvanillahud.hud
 
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.Property
 import org.tg.tgoneconfig.api.config.v1.Tree
 import org.tg.tgoneconfig.api.config.v1.showWhen

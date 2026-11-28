@@ -175,7 +175,7 @@ class HudStyleDefaultsTest {
         val hotbar = huds.resolve("tgvanillahud-hotbar.json")
         try {
             Files.writeString(stamp, "8")
-            Files.writeString(board, """{"showBackground":true,"bgRadius":4.0,"rounded":true,"cornerRadius":3.0,"textType":1,"backgroundColor":{"value":[1,2,3,64],"class":"org.tg.compose.render.PolyColor"},"font":{"class":"org.tg.tgoneconfig.api.hud.v1.Font","value":"Poppins"}}""")
+            Files.writeString(board, """{"showBackground":true,"bgRadius":4.0,"rounded":true,"cornerRadius":3.0,"textType":1,"backgroundColor":{"value":[1,2,3,64],"class":"org.polyfrost.compose.render.PolyColor"},"font":{"class":"org.tg.tgoneconfig.api.hud.v1.Font","value":"Poppins"}}""")
             Files.writeString(bar, """{"showBackground":true,"bgRadius":4.0,"background":false,"paddingX":5.0}""")
             Files.writeString(hotbar, """{"id":"tgvanillahud-hotbar.json","showBackground":true,"bgRadius":4.0,"style":1}""")
 

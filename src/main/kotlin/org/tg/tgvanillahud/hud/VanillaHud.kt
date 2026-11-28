@@ -14,8 +14,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
-import org.tg.compose.layout.PolyAlign
-import org.tg.compose.render.PolyColor
+import org.polyfrost.compose.layout.PolyAlign
+import org.polyfrost.compose.render.PolyColor
 import org.tg.tgoneconfig.api.config.v1.Property
 import org.tg.tgoneconfig.api.config.v1.Tree
 import org.tg.tgoneconfig.api.config.v1.annotations.Switch

@@ -4,7 +4,7 @@ import com.google.gson.JsonParser
 import net.fabricmc.loader.api.FabricLoader
 //? if > 1.8.9 {
 import net.minecraft.client.Minecraft
-import org.tg.compose.minecraft.platform.HostEvents
+import org.polyfrost.compose.minecraft.platform.HostEvents
 //?}
 import java.io.Reader
 import java.util.Properties
