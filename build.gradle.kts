@@ -110,7 +110,7 @@ dependencies {
         // Loom strips the nested Kotlin jars from a remapped copy, so the plain copy above must stay the only candidate
         exclude(group = "net.fabricmc", module = "fabric-language-kotlin")
     }
-    modImplementation("org.tg:polycompose-$mcversion-$loader:$polycomposeversion") {
+    modImplementation("org.polyfrost:polycompose-$mcversion-$loader:$polycomposeversion") {
         exclude(group = "net.fabricmc", module = "fabric-language-kotlin")
     }
 
